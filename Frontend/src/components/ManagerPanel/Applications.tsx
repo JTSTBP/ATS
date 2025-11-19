@@ -1,0 +1,239 @@
+import {
+  Search,
+  Filter,
+  Download,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Clock,
+} from "lucide-react";
+
+export default function ManagerApplication() {
+  const applications = [
+    {
+      id: 1,
+      jobTitle: "Senior Dermatologist",
+      candidate: "Dr Chaithra Shankar",
+      appliedDate: "2025-10-29",
+      status: "Under Review",
+      experience: "2 years",
+      location: "Bengaluru",
+      salary: "12 LPA",
+    },
+    {
+      id: 2,
+      jobTitle: "HR Manager",
+      candidate: "Rajesh Kumar",
+      appliedDate: "2025-10-28",
+      status: "Shortlisted",
+      experience: "5 years",
+      location: "Mumbai",
+      salary: "18 LPA",
+    },
+    {
+      id: 3,
+      jobTitle: "Software Engineer",
+      candidate: "Priya Sharma",
+      appliedDate: "2025-10-27",
+      status: "Interview Scheduled",
+      experience: "3 years",
+      location: "Pune",
+      salary: "15 LPA",
+    },
+    {
+      id: 4,
+      jobTitle: "Marketing Manager",
+      candidate: "Amit Patel",
+      appliedDate: "2025-10-26",
+      status: "Rejected",
+      experience: "4 years",
+      location: "Delhi",
+      salary: "16 LPA",
+    },
+    {
+      id: 5,
+      jobTitle: "Sales Executive",
+      candidate: "Sneha Reddy",
+      appliedDate: "2025-10-25",
+      status: "New",
+      experience: "1 year",
+      location: "Hyderabad",
+      salary: "8 LPA",
+    },
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "New":
+        return "bg-blue-50 text-blue-700 border-blue-200";
+      case "Under Review":
+        return "bg-yellow-50 text-yellow-700 border-yellow-200";
+      case "Shortlisted":
+        return "bg-green-50 text-green-700 border-green-200";
+      case "Interview Scheduled":
+        return "bg-purple-50 text-purple-700 border-purple-200";
+      case "Rejected":
+        return "bg-red-50 text-red-700 border-red-200";
+      default:
+        return "bg-gray-50 text-gray-700 border-gray-200";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "Shortlisted":
+        return <CheckCircle className="w-4 h-4" />;
+      case "Rejected":
+        return <XCircle className="w-4 h-4" />;
+      default:
+        return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900">Applications</h1>
+        <p className="text-gray-600 mt-1">
+          Track and manage all job applications
+        </p>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search applications..."
+                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
+                />
+              </div>
+              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+                <Filter className="w-4 h-4" />
+                Filter
+              </button>
+            </div>
+
+            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+              <Download className="w-4 h-4" />
+              Export Applications
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Candidate
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Job Title
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Experience
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Location
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Expected Salary
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Applied Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {applications.map((application) => (
+                <tr key={application.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-semibold text-sm">
+                        {application.candidate.charAt(0)}
+                      </div>
+                      <div className="ml-3">
+                        <div className="text-sm font-medium text-gray-900">
+                          {application.candidate}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {application.jobTitle}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {application.experience}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {application.location}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {application.salary}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {application.appliedDate}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                        application.status
+                      )}`}
+                    >
+                      {getStatusIcon(application.status)}
+                      {application.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button className="text-blue-600 hover:text-blue-700 font-medium">
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Showing <span className="font-medium">1</span> to{" "}
+            <span className="font-medium">5</span> of{" "}
+            <span className="font-medium">5</span> applications
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+              Previous
+            </button>
+            <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+              1
+            </button>
+            <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
