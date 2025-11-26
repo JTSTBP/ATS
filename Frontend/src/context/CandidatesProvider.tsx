@@ -1,0 +1,233 @@
+import axios from "axios";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { toast } from "react-toastify";
+
+const API_BASE_URL =
+  import.meta.env.VITE_BACKEND_URL;
+const API_URL = `${API_BASE_URL}/api/CandidatesJob`;
+
+type Candidate = {
+  _id?: string;
+  jobId: string;
+  createdBy: string;
+  resumeUrl?: string;
+  linkedinUrl?: string;
+  portfolioUrl?: string;
+  notes?: string;
+  status?: string;
+  dynamicFields?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type CandidateContextType = {
+  candidates: Candidate[];
+  loading: boolean;
+  error: string | null;
+  fetchCandidatesByJob: (jobId: string) => Promise<void>;
+  fetchallCandidates: () => Promise<void>;
+  fetchCandidatesByUser: (userId: string) => Promise<void>;
+  createCandidate: (data: Candidate, file?: File) => Promise<Candidate | null>;
+  updateCandidate: (
+    id: string,
+    data: Candidate,
+    file?: File
+  ) => Promise<Candidate | null>;
+  deleteCandidate: (id: string, role: string) => Promise<boolean>;
+  updateStatus: (
+    id: string,
+    status: string,
+    role: string,
+    interviewStage?: string,
+    stageStatus?: "Selected" | "Rejected",
+    stageNotes?: string
+  ) => Promise<Candidate | null>;
+};
+
+const CandidateContext = createContext<CandidateContextType | undefined>(
+  undefined
+);
+
+export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchallCandidates = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`${API_URL}`);
+      if (data.success) setCandidates(data.candidates);
+      else throw new Error("Failed to load candidates");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🟢 Fetch candidates by jobId
+  const fetchCandidatesByJob = async (jobId: string) => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`${API_URL}/job/${jobId}`);
+      if (data.success) setCandidates(data.candidates);
+      else throw new Error("Failed to load candidates");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCandidatesByUser = async (userId: string) => {
+    setLoading(true);
+    try {
+      const { data } = await axios.get(`${API_URL}/user/${userId}`);
+      if (data.success) setCandidates(data.candidates);
+      else throw new Error("Failed to load user candidates");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createCandidate = async (candidate: any, file?: File) => {
+    try {
+      const formData = new FormData();
+
+      // Append all normal fields
+      formData.append("jobId", candidate.jobId);
+      formData.append("createdBy", candidate.createdBy);
+      formData.append("linkedinUrl", candidate.linkedinUrl);
+      formData.append("portfolioUrl", candidate.portfolioUrl);
+      formData.append("notes", candidate.notes);
+      formData.append("dynamicFields", JSON.stringify(candidate.dynamicFields));
+
+      // Append file
+      if (file) {
+        formData.append("resume", file);
+      }
+
+      const { data } = await axios.post(API_URL, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      return data.candidate;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
+  };
+
+  // 🟡 Update
+  const updateCandidate = async (id: string, updated: any, file?: File) => {
+    try {
+      const formData = new FormData();
+
+      // Append all normal fields
+      formData.append("jobId", updated.jobId);
+      formData.append("createdBy", updated.createdBy);
+      formData.append("linkedinUrl", updated.linkedinUrl);
+      formData.append("portfolioUrl", updated.portfolioUrl);
+      formData.append("notes", updated.notes);
+      formData.append("dynamicFields", JSON.stringify(updated.dynamicFields));
+
+      // Append file if provided
+      if (file) {
+        formData.append("resume", file);
+      }
+
+      const { data } = await axios.put(`${API_URL}/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (data.success) {
+        setCandidates((prev) =>
+          prev.map((c) => (c._id === id ? data.candidate : c))
+        );
+        return data.candidate;
+      }
+      throw new Error("Failed to update");
+    } catch (err: any) {
+      console.error("Error updating candidate:", err);
+      setError(err.message);
+      return null;
+    }
+  };
+
+  // 🔴 Delete
+  const deleteCandidate = async (id: string, role: string) => {
+    try {
+      console.log(role, "ooo");
+      const { data } = await axios.delete(`${API_URL}/${id}/${role}`);
+      if (data.success) {
+        setCandidates((prev) => prev.filter((c) => c._id !== id));
+        return true;
+      }
+      throw new Error("Failed to delete");
+    } catch (err: any) {
+      setError(err.message);
+      return false;
+    }
+  };
+
+  // 🔵 Update Status
+  const updateStatus = async (
+    id: string,
+    status: string,
+    role: string,
+    interviewStage?: string,
+    stageStatus?: "Selected" | "Rejected",
+    stageNotes?: string
+  ) => {
+    try {
+      const { data } = await axios.patch(`${API_URL}/${id}/status`, {
+        status,
+        role,
+        interviewStage,
+        stageStatus,
+        stageNotes,
+      });
+      if (data.success) {
+        toast.success("Candidate status updated successfully");
+        return data.candidate;
+      }
+      throw new Error("Failed to update status");
+    } catch (err: any) {
+      setError(err.message);
+      return null;
+    }
+  };
+
+  return (
+    <CandidateContext.Provider
+      value={{
+        candidates,
+        loading,
+        error,
+        fetchallCandidates,
+        fetchCandidatesByJob,
+        fetchCandidatesByUser,
+        createCandidate,
+        updateCandidate,
+        deleteCandidate,
+        updateStatus,
+      }}
+    >
+      {children}
+    </CandidateContext.Provider>
+  );
+};
+
+export const useCandidateContext = () => {
+  const context = useContext(CandidateContext);
+  if (!context)
+    throw new Error(
+      "useCandidateContext must be used within a CandidateProvider"
+    );
+  return context;
+};
