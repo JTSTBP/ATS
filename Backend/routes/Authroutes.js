@@ -40,6 +40,7 @@ router.post("/login", async (req, res) => {
         designation: user.designation,
         isAdmin: user.isAdmin,
         createdAt: user.createdAt,
+        appPassword: user.appPassword,
         reporter: user.reporter // populated reporter info
           ? {
             _id: user.reporter._id,
@@ -83,9 +84,6 @@ router.put(
   profileUpload.single("profilePhoto"),
   async (req, res) => {
     try {
-      console.log("📝 Update profile request received");
-      console.log("Body:", req.body);
-      console.log("File:", req.file);
 
       const user = await User.findById(req.user._id);
 
@@ -96,6 +94,7 @@ router.put(
         user.designation = req.body.designation || user.designation;
         user.department = req.body.department || user.department;
         user.joinDate = req.body.joinDate || user.joinDate;
+        user.appPassword = req.body.appPassword || user.appPassword;
 
         // 🗑️ REMOVE PHOTO
         if (req.body.removePhoto === "true") {
@@ -131,6 +130,7 @@ router.put(
             department: updatedUser.department,
             joinDate: updatedUser.joinDate,
             profilePhoto: updatedUser.profilePhoto,
+            appPassword: updatedUser.appPassword,
             isAdmin: updatedUser.isAdmin,
             createdAt: updatedUser.createdAt,
           },

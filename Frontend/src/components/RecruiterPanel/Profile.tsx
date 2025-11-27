@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Save, X, Camera } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Save, X, Camera, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthProvider';
 
@@ -17,7 +17,9 @@ export default function Profile() {
         phone: user?.phone || '', // Ensure phone is mapped correctly if it exists in User type
         designation: user?.designation || '',
         department: user?.department || '', // Ensure department is mapped correctly
+        department: user?.department || '', // Ensure department is mapped correctly
         joinDate: user?.joinDate || '',
+        appPassword: user?.appPassword || '',
     });
 
     // Initialize profile photo from user data
@@ -55,6 +57,7 @@ export default function Profile() {
         data.append('designation', formData.designation);
         data.append('department', formData.department);
         data.append('joinDate', formData.joinDate);
+        data.append('appPassword', formData.appPassword);
 
         if (removePhoto) {
             console.log('🗑️ Removing profile photo');
@@ -84,6 +87,7 @@ export default function Profile() {
             designation: user?.designation || '',
             department: user?.department || '',
             joinDate: user?.joinDate || '',
+            appPassword: user?.appPassword || '',
         });
         setRemovePhoto(false);
         setSelectedFile(null);
@@ -300,6 +304,29 @@ export default function Profile() {
                             <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
                                 {formData.joinDate ? new Date(formData.joinDate).toLocaleDateString() : 'Not provided'}
                             </p>
+                        </div>
+
+                        {/* App Password */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Shield size={16} className="text-slate-400" />
+                                    APP PASSWORD
+                                </div>
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={formData.appPassword}
+                                    onChange={(e) => setFormData({ ...formData, appPassword: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    placeholder="Enter App Password"
+                                />
+                            ) : (
+                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
+                                    {user?.appPassword || 'Not provided'}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

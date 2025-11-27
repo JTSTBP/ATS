@@ -19,6 +19,7 @@ import {
   Link,
   Users,
   Eye,
+  UserCheck,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
@@ -57,6 +58,9 @@ const CandidatesList = () => {
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
   const [showStageSelection, setShowStageSelection] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [selectedPocs, setSelectedPocs] = useState<string[]>([]);
+  const [emailCandidates, setEmailCandidates] = useState<any[]>([]);
 
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -394,6 +398,106 @@ const CandidatesList = () => {
         </div>
       )}
 
+      {/* Email Selection Modal */}
+      {showEmailModal && emailCandidates.length > 0 && (
+        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
+          <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold">
+                Share {emailCandidates.length} Candidate{emailCandidates.length > 1 ? 's' : ''} via Email
+              </h3>
+              <button onClick={() => setShowEmailModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X size={20} />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              Select Client POCs to CC in the email:
+            </p>
+
+            <div className="mb-6 max-h-60 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3">
+              {emailCandidates[0]?.jobId?.clientId?.pocs?.length > 0 ? (
+                emailCandidates[0].jobId.clientId.pocs.map((poc: any) => (
+                  <label key={poc._id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPocs.includes(poc.email)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedPocs([...selectedPocs, poc.email]);
+                        } else {
+                          setSelectedPocs(selectedPocs.filter(email => email !== poc.email));
+                        }
+                      }}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                    />
+                    <div>
+                      <div className="font-medium text-sm text-gray-900">{poc.name}</div>
+                      <div className="text-xs text-gray-500">{poc.email}</div>
+                    </div>
+                  </label>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-2">No Client POCs found for this job.</p>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!user?.email || !user?.appPassword) {
+                    toast.error("Please configure your App Password in your Profile settings first.");
+                    return;
+                  }
+
+                  if (selectedPocs.length === 0) {
+                    toast.error("Please select at least one recipient.");
+                    return;
+                  }
+
+                  try {
+                    const response = await fetch(`${API_BASE_URL}/api/CandidatesJob/send-email`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        senderEmail: user.email,
+                        appPassword: user.appPassword,
+                        recipientEmails: selectedPocs,
+                        ccEmails: [],
+                        candidateIds: emailCandidates.map(c => c._id),
+                      }),
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                      toast.success("Email sent successfully!");
+                      setShowEmailModal(false);
+                    } else {
+                      toast.error(data.message || "Failed to send email.");
+                    }
+                  } catch (error) {
+                    console.error("Error sending email:", error);
+                    toast.error("An error occurred while sending the email.");
+                  }
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Send Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Resume Preview Modal */}
       {previewResumeUrl && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
@@ -655,7 +759,7 @@ const CandidatesList = () => {
               disabled={selectedCandidates.length === 0}
               className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Share2 className="w-4 h-4" />
+              <UserCheck className="w-4 h-4" />
               Shortlist
             </button>
 
@@ -682,10 +786,24 @@ const CandidatesList = () => {
               Reject
             </button>
 
-            {/* <button className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900">
-                <Mail className="w-4 h-4" />
-                Email
-              </button> */}
+            <button
+              onClick={() => {
+                if (selectedCandidates.length === 0) {
+                  toast.error('Please select at least one candidate');
+                  return;
+                }
+                const selectedObjs = filteredList.filter((c: any) => selectedCandidates.includes(c._id));
+                setEmailCandidates(selectedObjs);
+                setSelectedPocs([]);
+                setShowEmailModal(true);
+              }}
+              disabled={selectedCandidates.length === 0}
+              className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {/* <Mail className="w-4 h-4" /> */}
+              <Share2 className="w-5 h-5" />
+              Email
+            </button>
 
             <button
               onClick={() => {
@@ -954,31 +1072,9 @@ const CandidatesList = () => {
                         <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-48">
                           <button
                             onClick={() => {
-                              const phone = candidate.dynamicFields?.Phone;
-                              const name = candidate.dynamicFields?.candidateName || 'Candidate';
-                              const jobTitle = candidate.jobId?.title || 'Position';
-                              if (phone) {
-                                window.open(`https://wa.me/${phone.replace(/[^0-9]/g, '')}?text=Hi ${name}, regarding ${jobTitle}`);
-                              } else {
-                                toast.error('No phone number available');
-                              }
-                              setShareMenuOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
-                          >
-                            <MessageSquare className="w-4 h-4 text-green-600" />
-                            WhatsApp
-                          </button>
-                          <button
-                            onClick={() => {
-                              const email = candidate.dynamicFields?.Email;
-                              const name = candidate.dynamicFields?.candidateName || 'Candidate';
-                              const jobTitle = candidate.jobId?.title || 'Position';
-                              if (email) {
-                                window.location.href = `mailto:${email}?subject=Regarding ${jobTitle}&body=Hi ${name},`;
-                              } else {
-                                toast.error('No email available');
-                              }
+                              setEmailCandidates([candidate]);
+                              setSelectedPocs([]);
+                              setShowEmailModal(true);
                               setShareMenuOpen(null);
                             }}
                             className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
@@ -986,20 +1082,7 @@ const CandidatesList = () => {
                             <Mail className="w-4 h-4 text-blue-600" />
                             Email
                           </button>
-                          <button
-                            onClick={() => {
-                              if (candidate.linkedinUrl) {
-                                window.open(candidate.linkedinUrl, '_blank');
-                              } else {
-                                toast.error('No LinkedIn profile available');
-                              }
-                              setShareMenuOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
-                          >
-                            <Link className="w-4 h-4 text-blue-700" />
-                            LinkedIn
-                          </button>
+
                           <button
                             onClick={() => {
                               const details = `Name: ${candidate.dynamicFields?.candidateName}\nEmail: ${candidate.dynamicFields?.Email}\nPhone: ${candidate.dynamicFields?.Phone}\nPosition: ${candidate.jobId?.title}`;
@@ -1036,7 +1119,7 @@ const CandidatesList = () => {
             ))
           )}
         </div>
-      </div>
+      </div >
       {selectedCandidate && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-start justify-center overflow-y-auto">
           <div className="bg-white/95 w-full max-w-4xl my-12 rounded-3xl shadow-2xl border border-gray-200 backdrop-blur-xl">

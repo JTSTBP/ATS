@@ -33,6 +33,11 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const [lastViewed, setLastViewed] = useState(() => {
+    const saved = localStorage.getItem('notificationLastViewed');
+    return saved ? new Date(saved) : new Date(0);
+  });
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -122,12 +127,10 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
     return date.toLocaleDateString();
   };
 
-  // Get recent activities (last 24 hours)
-  const recentActivities = activities.filter(activity => {
+  // Get unread activities (newer than lastViewed)
+  const unreadActivities = activities.filter(activity => {
     const activityDate = new Date(activity.createdAt);
-    const oneDayAgo = new Date();
-    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
-    return activityDate >= oneDayAgo;
+    return activityDate > lastViewed;
   });
 
   return (
@@ -154,15 +157,19 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
 
           <button
             onClick={() => {
-              setShowNotifications(!showNotifications);
               if (!showNotifications) {
                 fetchActivities(); // Refresh activities when opening
+                // Mark as read immediately
+                const now = new Date();
+                setLastViewed(now);
+                localStorage.setItem('notificationLastViewed', now.toISOString());
               }
+              setShowNotifications(!showNotifications);
             }}
             className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-colors relative"
           >
             <Bell size={20} />
-            {recentActivities.length > 0 && (
+            {unreadActivities.length > 0 && (
               <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
             )}
           </button>
@@ -187,7 +194,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
                   <h3 className="font-semibold text-slate-800">Recent Activity</h3>
                   <div className="flex items-center gap-2">
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
-                      {recentActivities.length} new
+                      {unreadActivities.length} new
                     </span>
                   </div>
                 </div>
@@ -200,16 +207,16 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
                   ) : activities.length > 0 ? (
                     activities.slice(0, 20).map((activity) => {
                       const notification = formatNotification(activity);
-                      const isRecent = recentActivities.some(a => a._id === activity._id);
+                      const isUnread = unreadActivities.some(a => a._id === activity._id);
 
                       return (
                         <div
                           key={activity._id}
                           onClick={() => handleNotificationClick(activity)}
-                          className={`p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer ${isRecent ? 'bg-blue-50/50' : ''}`}
+                          className={`p-4 border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer ${isUnread ? 'bg-blue-50/50' : ''}`}
                         >
                           <div className="flex items-start gap-3">
-                            {isRecent && (
+                            {isUnread && (
                               <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 shrink-0"></div>
                             )}
                             <div className="flex-1 min-w-0">

@@ -51,6 +51,9 @@ const UserSchema = new mongoose.Schema({
   profilePhoto: {
     type: String,
   },
+  appPassword: {
+    type: String,
+  },
 });
 
 // Encrypt password using bcrypt before saving

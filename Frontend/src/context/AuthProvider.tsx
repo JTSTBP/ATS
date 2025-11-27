@@ -25,6 +25,7 @@ interface User {
     email: string;
     designation: string;
   } | null;
+  appPassword?: string;
 }
 
 interface AuthContextType {

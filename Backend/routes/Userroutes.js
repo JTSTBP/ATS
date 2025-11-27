@@ -22,6 +22,7 @@ router.post("/", async (req, res) => {
       password,
       reporter: reporter || null,
       isAdmin: isAdmin || false,
+      appPassword: req.body.appPassword,
     });
 
     res.status(201).json(newUser);
@@ -51,21 +52,27 @@ router.put("/:id", async (req, res) => {
     let user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
     user.name = name || user.name;
     user.email = email || user.email;
     user.designation = designation || user.designation;
     user.reporter = reporter || user.reporter;
     user.isAdmin = isAdmin !== undefined ? isAdmin : user.isAdmin;
+    user.appPassword = req.body.appPassword || user.appPassword;
 
     // Only update password if provided
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
+      user.password = password;
     }
 
     await user.save();
     res.json(user);
   } catch (err) {
+    console.log(err)
     res.status(500).json({ msg: "Server error" });
   }
 });

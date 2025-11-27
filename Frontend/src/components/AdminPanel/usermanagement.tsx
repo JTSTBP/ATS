@@ -21,6 +21,7 @@ export default function UserManagement() {
     email: "",
     designation: "",
     password: "",
+    appPassword: "",
     reporter: "",
     isAdmin: false,
     personalEmail: "",
@@ -56,6 +57,7 @@ export default function UserManagement() {
       email: "",
       designation: "",
       password: "",
+      appPassword: "",
       reporter: "",
       isAdmin: false,
       personalEmail: "",
@@ -115,6 +117,7 @@ export default function UserManagement() {
       email: user.email,
       designation: user.designation,
       password: "",
+      appPassword: user.appPassword || "",
       reporter: user.reporter || "",
       isAdmin: user.isAdmin,
       personalEmail: user.personalEmail || "",
@@ -589,6 +592,18 @@ export default function UserManagement() {
                         onChange={handleChange}
                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                         placeholder={editUserId ? "Leave blank to keep current" : "••••••••"}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">App Password</label>
+                      <input
+                        type="text"
+                        name="appPassword"
+                        value={formData.appPassword}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                        placeholder="App Password"
                       />
                     </div>
                   </div>
