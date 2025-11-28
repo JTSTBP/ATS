@@ -13,7 +13,11 @@ interface User {
   name: string;
   email: string;
   designation: string;
-  reporter?: string;
+  reporter?: {
+    _id: string;
+    name: string;
+    designation: string;
+  };
   createdAt: string;
   isAdmin: boolean;
 }
@@ -37,6 +41,7 @@ interface Leave {
   reason: string;
   status: "Pending" | "Approved" | "Rejected";
   appliedAt: string;
+  role: string;
 }
 
 interface LeaveFormData {
@@ -51,18 +56,20 @@ interface UserContextType {
   users: User[];
   loading: boolean;
   fetchUsers: () => Promise<void>;
-  addUser: (userData: UserFormData) => Promise<void>;
-  updateUser: (id: string, userData: UserFormData) => Promise<void>;
-  deleteUser: (id: string) => Promise<void>;
+  addUser: (userData: UserFormData) => Promise<boolean>;
+  updateUser: (id: string, userData: UserFormData) => Promise<boolean>;
+  deleteUser: (id: string) => Promise<boolean>;
 
   // 🔹 Leaves
   leaves: Leave[];
-  fetchLeaves: () => Promise<void>;
-  applyLeave: (leaveData: LeaveFormData) => Promise<void>;
+  fetchAllLeaves: () => Promise<void>;
+  fetchLeaves: (userId: string) => Promise<void>;
+  applyLeave: (leaveData: LeaveFormData) => Promise<boolean>;
   updateLeaveStatus: (
     id: string,
-    status: "Approved" | "Rejected"
-  ) => Promise<void>;
+    status: "Approved" | "Rejected",
+    role: string
+  ) => Promise<boolean>;
 }
 
 const API_BASE_URL =
@@ -100,8 +107,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const addUser = async (userData: UserFormData) => {
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/users`, userData);
-      setUsers((prev) => [...prev, res.data]);
+      await axios.post(`${API_BASE_URL}/api/users`, userData);
+      await fetchUsers(); // Fetch fresh list to get populated fields
       toast.success("User added successfully!");
       return true;
     } catch (err: any) {
@@ -112,7 +119,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUser = async (id: string, userData: UserFormData) => {
     try {
-      const res = await axios.put(`${API_BASE_URL}/api/users/${id}`, userData);
+      await axios.put(`${API_BASE_URL}/api/users/${id}`, userData);
 
       await fetchUsers();
       toast.success("User updated successfully!");
@@ -188,7 +195,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     role: string
   ) => {
     try {
-      const res = await axios.put(`${API_BASE_URL}/api/leaves/${id}/status`, {
+      await axios.put(`${API_BASE_URL}/api/leaves/${id}/status`, {
         status,
         role,
       });

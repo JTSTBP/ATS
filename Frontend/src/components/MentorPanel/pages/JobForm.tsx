@@ -306,10 +306,25 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
+  const validateForm = () => {
+    if (!formData.title.trim()) return "Job Title is required";
+    if (!formData.salary?.min) return "Minimum Salary is required";
+    if (!formData.salary?.max) return "Maximum Salary is required";
+    if (!formData.salary?.currency) return "Currency is required";
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      setLoading(false);
+      return;
+    }
 
     try {
       const url = job
@@ -380,25 +395,35 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 Basic Information
               </h4>
               <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="Job Title"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border rounded-lg"
-                  required
-                />
-                <textarea
-                  placeholder="Job Description"
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border rounded-lg"
-                  rows={3}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Job Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Senior Software Engineer"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Job Description
+                  </label>
+                  <textarea
+                    placeholder="Describe the role..."
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                    rows={3}
+                  />
+                </div>
                 <SearchableClientSelect
                   clients={clients}
                   value={formData.clientId || ""}
@@ -444,47 +469,62 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 Salary & Experience
               </h4>
               <div className="grid grid-cols-3 gap-4">
-                <input
-                  type="number"
-                  placeholder="Min Salary"
-                  value={formData.salary?.min}
-                  required
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      salary: { ...formData.salary!, min: e.target.value },
-                    })
-                  }
-                  className="w-full px-4 py-2 border rounded-lg"
-                />
-                <input
-                  type="number"
-                  placeholder="Max Salary"
-                  value={formData.salary?.max}
-                  required
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      salary: { ...formData.salary!, max: e.target.value },
-                    })
-                  }
-                  className="w-full px-4 py-2 border rounded-lg"
-                />
-                <select
-                  value={formData.salary?.currency}
-                  required
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      salary: { ...formData.salary!, currency: e.target.value },
-                    })
-                  }
-                  className="w-full px-4 py-2 border rounded-lg"
-                >
-                  <option value="USD">USD</option>
-                  <option value="INR">INR</option>
-                  <option value="EUR">EUR</option>
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Min Salary <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    value={formData.salary?.min}
+                    required
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        salary: { ...formData.salary!, min: e.target.value },
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Max Salary <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="Max"
+                    value={formData.salary?.max}
+                    required
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        salary: { ...formData.salary!, max: e.target.value },
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Currency <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.salary?.currency}
+                    required
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        salary: { ...formData.salary!, currency: e.target.value },
+                      })
+                    }
+                    className="w-full px-4 py-2 border rounded-lg"
+                  >
+                    <option value="USD">USD</option>
+                    <option value="INR">INR</option>
+                    <option value="EUR">EUR</option>
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4 mt-4">

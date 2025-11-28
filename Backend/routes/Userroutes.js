@@ -52,7 +52,12 @@ router.put("/:id", async (req, res) => {
     let user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
-    const existingUser = await User.findOne({ email });
+    // Check if email exists but ignore the same user
+    const existingUser = await User.findOne({
+      email,
+      _id: { $ne: req.params.id }
+    });
+
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
@@ -64,7 +69,7 @@ router.put("/:id", async (req, res) => {
     user.isAdmin = isAdmin !== undefined ? isAdmin : user.isAdmin;
     user.appPassword = req.body.appPassword || user.appPassword;
 
-    // Only update password if provided
+    // Update password if provided
     if (password) {
       user.password = password;
     }
@@ -72,10 +77,11 @@ router.put("/:id", async (req, res) => {
     await user.save();
     res.json(user);
   } catch (err) {
-    console.log(err)
+    console.log(err);
     res.status(500).json({ msg: "Server error" });
   }
 });
+
 
 // delete
 router.delete("/:id", async (req, res) => {

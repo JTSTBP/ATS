@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye } from "lucide-react";
+import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserContext } from "../../context/UserProvider";
 import { useSearchParams } from "react-router-dom";
@@ -12,6 +12,8 @@ export default function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showAppPassword, setShowAppPassword] = useState(false);
 
   const roleFilter = searchParams.get("role");
   const adminFilter = searchParams.get("isAdmin");
@@ -216,6 +218,7 @@ export default function UserManagement() {
             <tr className="bg-slate-50/80 border-b border-slate-200 text-xs uppercase text-slate-500 font-bold tracking-wider">
               <th className="px-6 py-4 w-[35%]">User</th>
               <th className="px-6 py-4 w-[25%]">Role</th>
+              <th className="px-6 py-4 w-[25%]">Reporter</th>
               <th className="px-6 py-4 text-center w-[20%]">Status</th>
               <th className="px-6 py-4 text-right w-[20%]">Actions</th>
             </tr>
@@ -262,6 +265,19 @@ export default function UserManagement() {
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      {user.reporter ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          {user.reporter.name}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                          No Reporter
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-6 py-4 text-center">
@@ -584,27 +600,45 @@ export default function UserManagement() {
                       <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
                         {editUserId ? "New Password (Optional)" : "Password"}
                       </label>
-                      <input
-                        type="password"
-                        name="password"
-                        required={!editUserId}
-                        value={formData.password}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                        placeholder={editUserId ? "Leave blank to keep current" : "••••••••"}
-                      />
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          name="password"
+                          required={!editUserId}
+                          value={formData.password}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all pr-10"
+                          placeholder={editUserId ? "Leave blank to keep current" : "••••••••"}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">App Password</label>
-                      <input
-                        type="text"
-                        name="appPassword"
-                        value={formData.appPassword}
-                        onChange={handleChange}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
-                        placeholder="App Password"
-                      />
+                      <div className="relative">
+                        <input
+                          type={showAppPassword ? "text" : "password"}
+                          name="appPassword"
+                          value={formData.appPassword}
+                          onChange={handleChange}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all pr-10"
+                          placeholder="App Password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAppPassword(!showAppPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-600 transition-colors"
+                        >
+                          {showAppPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 

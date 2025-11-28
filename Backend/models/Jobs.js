@@ -10,7 +10,7 @@ const candidateFieldSchema = new mongoose.Schema({
 });
 
 const stageSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  name: { type: String, },
   responsible: { type: String, default: "Recruiter" },
   mandatory: { type: Boolean, default: true },
 });
