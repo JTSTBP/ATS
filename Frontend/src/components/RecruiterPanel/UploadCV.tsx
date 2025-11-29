@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useJobContext, Job } from "../../context/DataProvider";
+import { useAuth } from "../../context/AuthProvider";
 import JobOpeningCard from "./JobOpeningCard";
 import { Search, Filter, Briefcase } from "lucide-react";
 
@@ -11,16 +12,19 @@ import { Search, Filter, Briefcase } from "lucide-react";
 export type JobOpening = Job;
 
 export default function UploadCV() {
-  const { jobs, fetchJobs } = useJobContext();
+  const { assignedJobs, fetchAssignedJobs } = useJobContext();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
   useEffect(() => {
-    fetchJobs();
-  }, []);
+    if (user?._id) {
+      fetchAssignedJobs(user._id);
+    }
+  }, [user]);
 
-  const filteredJobs = jobs.filter((job) => {
+  const filteredJobs = assignedJobs.filter((job) => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       job.department.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "All" || job.status === statusFilter;
@@ -83,10 +87,10 @@ export default function UploadCV() {
             <Briefcase size={32} className="text-slate-400" />
           </div>
           <h3 className="text-lg font-medium text-slate-800 mb-1">
-            {jobs.length === 0 ? "Loading jobs..." : "No jobs found"}
+            {assignedJobs.length === 0 ? "Loading jobs..." : "No jobs found"}
           </h3>
           <p className="text-slate-500">
-            {jobs.length === 0 ? "Please wait while we fetch your jobs" : "Try adjusting your search or filters."}
+            {assignedJobs.length === 0 ? "Please wait while we fetch your jobs" : "Try adjusting your search or filters."}
           </p>
         </div>
       ) : (

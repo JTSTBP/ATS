@@ -5,7 +5,7 @@ const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL;
 const API_URL = `${API_BASE_URL}/api/jobs`;
 
-type Job = {
+export type Job = {
   _id?: string;
   title: string;
   description: string;
@@ -26,6 +26,10 @@ type Job = {
   teamMembers?: string[];
   assignedRecruiters?: string[];
   leadRecruiter?: string;
+  createdAt?: string;
+  clientId?: any;
+  CreatedBy?: any;
+  candidateFields?: any[];
 };
 
 type JobContextType = {
@@ -37,6 +41,10 @@ type JobContextType = {
   createJob: (jobData: Job) => Promise<Job | null>;
   updateJob: (id: string, jobData: Job) => Promise<Job | null>;
   deleteJob: (id: string) => Promise<boolean>;
+  jobsByUser: Job[];
+  fetchJobsByCreator: (userId: string) => Promise<void>;
+  assignedJobs: Job[];
+  fetchAssignedJobs: (recruiterId: string) => Promise<void>;
 };
 
 const JobContext = createContext<JobContextType | undefined>(undefined);
@@ -48,6 +56,7 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [jobsByUser, setJobsByUser] = useState<Job[]>([]);
+  const [assignedJobs, setAssignedJobs] = useState<Job[]>([]);
 
   // 🔹 Fetch all jobs
   const fetchJobs = async () => {
@@ -145,6 +154,25 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  // 🔹 Fetch jobs assigned to a recruiter
+  const fetchAssignedJobs = async (recruiterId: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/assigned/${recruiterId}`);
+      const data = await res.json();
+      if (data.success) {
+        setAssignedJobs(data.jobs);
+      } else {
+        setAssignedJobs([]);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch assigned jobs:", err);
+      setAssignedJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Auto-fetch jobs on mount
   useEffect(() => {
     fetchJobs();
@@ -163,6 +191,8 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
         deleteJob,
         jobsByUser,
         fetchJobsByCreator,
+        assignedJobs,
+        fetchAssignedJobs,
       }}
     >
       {children}

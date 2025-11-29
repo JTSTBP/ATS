@@ -17,13 +17,12 @@ const UserSchema = new mongoose.Schema({
   },
   designation: {
     type: String,
-    enum: ["Mentor", "Recruiter", "Manager"],
+    enum: ["Mentor", "Recruiter", "Manager", "Admin"],
     required: [true, "Designation is required"],
   },
   reporter: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
-
   },
   password: {
     type: String,

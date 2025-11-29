@@ -84,6 +84,28 @@ router.get("/createdby/:userId", async (req, res) => {
   }
 });
 
+// 🎯 Get jobs assigned to a specific recruiter
+router.get("/assigned/:recruiterId", async (req, res) => {
+  try {
+    const { recruiterId } = req.params;
+
+    const jobs = await Job.find({ assignedRecruiters: recruiterId })
+      .populate("assignedRecruiters", "name email")
+      .populate("leadRecruiter", "name email")
+      .populate("CreatedBy", "name email")
+      .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, jobs });
+  } catch (error) {
+    console.error("Error fetching assigned jobs:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch assigned jobs",
+    });
+  }
+});
+
 // 🧾 Get Single Job
 router.get("/:id", async (req, res) => {
   try {

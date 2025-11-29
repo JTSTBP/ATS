@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Upload, FileText, CheckCircle } from "lucide-react";
 import { useJobContext, Job } from "../../context/DataProvider";
+import { useCandidateContext } from "../../context/CandidatesProvider";
+import { useAuth } from "../../context/AuthProvider";
 
 export default function UploadCandidatePage() {
     const { jobId } = useParams();
@@ -92,6 +94,9 @@ export default function UploadCandidatePage() {
         setScreeningAnswers(prev => ({ ...prev, [key]: value }));
     };
 
+    const { createCandidate } = useCandidateContext();
+    const { user } = useAuth();
+
     const handleUpload = async () => {
         if (!file || !job) return;
 
@@ -104,16 +109,32 @@ export default function UploadCandidatePage() {
 
         setUploading(true);
 
-        // Simulate upload delay
-        setTimeout(() => {
+        try {
+            const payload = {
+                jobId: job._id,
+                createdBy: user?._id || "",
+                dynamicFields: formData,
+                // Add these if your form collects them, otherwise they might be empty or part of dynamicFields
+                linkedinUrl: formData.linkedinUrl || "",
+                portfolioUrl: formData.portfolioUrl || "",
+                notes: formData.notes || "",
+            };
+
+            const success = await createCandidate(payload, file);
+
+            if (success) {
+                setUploadStatus("success");
+            } else {
+                setUploadStatus("error");
+                alert("Failed to create candidate. Please try again.");
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            setUploadStatus("error");
+            alert("An error occurred during upload.");
+        } finally {
             setUploading(false);
-            setUploadStatus("success");
-            // Here you would implement the actual upload logic
-            console.log("Uploading file:", file.name);
-            console.log("Candidate details:", formData);
-            console.log("Screening Answers:", screeningAnswers);
-            console.log("For job:", job.title);
-        }, 1500);
+        }
     };
 
     if (!job) {
