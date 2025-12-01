@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, Briefcase, X } from "lucide-react"
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
+import logo from "../images/logo.png";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export default function Login() {
             transition={{ delay: 0.2 }}
             className="w-16 h-16 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mb-8 border border-white/20 shadow-xl"
           >
-            <Briefcase size={32} className="text-white" />
+            <img src={logo} className="w-20 h-20 object-contain" />
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -108,8 +109,9 @@ export default function Login() {
             transition={{ delay: 0.4 }}
             className="text-lg text-blue-100 leading-relaxed"
           >
-            Streamline your hiring process with our advanced Applicant Tracking System.
-            Manage candidates, schedule interviews, and build your dream team.
+            Streamline your hiring process with our advanced Applicant Tracking
+            System. Manage candidates, schedule interviews, and build your dream
+            team.
           </motion.p>
 
           {/* Glass Card Stats */}
@@ -144,9 +146,9 @@ export default function Login() {
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: "spring" }}
-              className="inline-block mb-4 p-3 rounded-2xl bg-blue-50 text-blue-600"
+              className="inline-block p-3 rounded-2xl text-blue-600"
             >
-              <Briefcase size={32} />
+              <img src={logo} className="w-20 h-20 object-contain" />
             </motion.div>
             <motion.h2
               initial={{ y: 20, opacity: 0 }}
@@ -177,31 +179,53 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 ml-1">Email Address</label>
+              <label className="text-sm font-medium text-slate-700 ml-1">
+                Email Address
+              </label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                <Mail
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
+                  size={20}
+                />
                 <input
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.email ? "border-red-500 bg-red-50" : "border-slate-200"
-                    }`}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${
+                    errors.email
+                      ? "border-red-500 bg-red-50"
+                      : "border-slate-200"
+                  }`}
                   placeholder="name@company.com"
                 />
               </div>
-              {errors.email && <p className="text-xs text-red-500 ml-1">{errors.email}</p>}
+              {errors.email && (
+                <p className="text-xs text-red-500 ml-1">{errors.email}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 ml-1">Password</label>
+              <label className="text-sm font-medium text-slate-700 ml-1">
+                Password
+              </label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                <Lock
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
+                  size={20}
+                />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={`w-full pl-12 pr-12 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.password ? "border-red-500 bg-red-50" : "border-slate-200"
-                    }`}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  className={`w-full pl-12 pr-12 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${
+                    errors.password
+                      ? "border-red-500 bg-red-50"
+                      : "border-slate-200"
+                  }`}
                   placeholder="••••••••"
                 />
                 <button
@@ -212,7 +236,9 @@ export default function Login() {
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
-              {errors.password && <p className="text-xs text-red-500 ml-1">{errors.password}</p>}
+              {errors.password && (
+                <p className="text-xs text-red-500 ml-1">{errors.password}</p>
+              )}
             </div>
 
             {errors.general && (
@@ -236,7 +262,10 @@ export default function Login() {
               ) : (
                 <>
                   Sign In
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight
+                    size={20}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
                 </>
               )}
             </button>
@@ -282,7 +311,10 @@ export default function Login() {
               {!resetSent ? (
                 <form onSubmit={handleForgotPassword} className="space-y-4">
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={20} />
+                    <Mail
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
+                      size={20}
+                    />
                     <input
                       type="email"
                       value={forgotEmail}
@@ -306,12 +338,23 @@ export default function Login() {
                   className="text-center py-4"
                 >
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-8 h-8 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </div>
                   <p className="text-slate-600 font-medium">
-                    Password reset link sent to<br />
+                    Password reset link sent to
+                    <br />
                     <span className="text-blue-600">{forgotEmail}</span>
                   </p>
                 </motion.div>
