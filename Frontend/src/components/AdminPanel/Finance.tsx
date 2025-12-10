@@ -132,7 +132,7 @@ const Finance = () => {
 
     const fetchSummary = async () => {
         try {
-            const response = await axios.get("http://localhost:5000/api/invoices/summary", {
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/summary`, {
                 params: { filter: summaryFilter }
             });
             setSummaryData(response.data);
@@ -148,7 +148,7 @@ const Finance = () => {
                 startDate: filterExpenseStartDate,
                 endDate: filterExpenseEndDate,
             };
-            const response = await axios.get("http://localhost:5000/api/expenses/all", { params });
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/expenses/all`, { params });
             setExpenses(response.data);
         } catch (error) {
             console.error("Error fetching expenses:", error);
@@ -163,7 +163,7 @@ const Finance = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            await axios.post("http://localhost:5000/api/expenses/create", {
+            await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/expenses/create`, {
                 ...expenseData,
                 createdBy: user?._id,
             });
@@ -188,7 +188,7 @@ const Finance = () => {
     const handleDeleteExpense = async (id: string) => {
         if (!window.confirm("Are you sure you want to delete this expense?")) return;
         try {
-            await axios.delete(`http://localhost:5000/api/expenses/${id}`);
+            await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/expenses/${id}`);
             toast.success("Expense deleted successfully");
             fetchExpenses();
         } catch (error) {
@@ -206,7 +206,7 @@ const Finance = () => {
                 startDate: filterInvoiceStartDate,
                 endDate: filterInvoiceEndDate,
             };
-            const response = await axios.get("http://localhost:5000/api/invoices/all", { params });
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/all`, { params });
             setInvoices(response.data);
         } catch (error) {
             console.error("Error fetching invoices:", error);
@@ -221,7 +221,7 @@ const Finance = () => {
                 startDate: filterPaymentStartDate,
                 endDate: filterPaymentEndDate,
             };
-            const response = await axios.get("http://localhost:5000/api/invoices/payments", { params });
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/payments`, { params });
             setPayments(response.data);
         } catch (error) {
             console.error("Error fetching payments:", error);
@@ -230,7 +230,7 @@ const Finance = () => {
 
     const fetchClients = async () => {
         try {
-            const response = await axios.get("http://localhost:5000/api/clients");
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/clients`);
             if (response.data.success) {
                 setClients(response.data.clients);
             }
@@ -241,7 +241,7 @@ const Finance = () => {
 
     const fetchCandidates = async () => {
         try {
-            const response = await axios.get("http://localhost:5000/api/CandidatesJob");
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/CandidatesJob`);
             if (response.data.success) {
                 setCandidates(response.data.candidates);
             }
@@ -262,7 +262,7 @@ const Finance = () => {
         e.preventDefault();
         setLoading(true);
         try {
-            await axios.post("http://localhost:5000/api/invoices/create", {
+            await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/create`, {
                 ...formData,
                 createdBy: user?._id,
             });
@@ -287,7 +287,7 @@ const Finance = () => {
         }
         setLoading(true);
         try {
-            await axios.post("http://localhost:5000/api/invoices/mark-paid", {
+            await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/mark-paid`, {
                 invoiceId: selectedInvoice._id,
                 amountReceived: parseFloat(paymentData.amountReceived),
                 receivedDate: paymentData.receivedDate,
@@ -310,7 +310,7 @@ const Finance = () => {
     const handleDeleteInvoice = async (id: string) => {
         if (!window.confirm("Are you sure you want to delete this invoice?")) return;
         try {
-            await axios.delete(`http://localhost:5000/api/invoices/${id}`);
+            await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/${id}`);
             toast.success("Invoice deleted successfully");
             fetchInvoices();
         } catch (error) {
@@ -326,7 +326,7 @@ const Finance = () => {
         }
         if (!window.confirm("Are you sure you want to send the invoice email to the client?")) return;
         try {
-            await axios.post("http://localhost:5000/api/invoices/send-email", {
+            await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/send-email`, {
                 invoiceId: id,
                 senderEmail: user.email,
                 senderPassword: user.appPassword
@@ -341,7 +341,7 @@ const Finance = () => {
     const handleResetStatus = async (id: string) => {
         if (!window.confirm("Are you sure you want to reset this invoice to Pending? This will delete the payment record.")) return;
         try {
-            await axios.post("http://localhost:5000/api/invoices/reset-status", { invoiceId: id });
+            await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/reset-status`, { invoiceId: id });
             toast.success("Invoice status reset to Pending");
             fetchInvoices();
             fetchPayments();
