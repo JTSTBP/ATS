@@ -3,12 +3,15 @@ import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthProvider";
 
 export default function AdminDashboard() {
   const { users, leaves, fetchAllLeaves, fetchUsers } = useUserContext();
   const { jobs, fetchJobs } = useJobContext();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
+  console.log(user, "user")
   // Fetch data on mount
   useEffect(() => {
     fetchUsers();
@@ -149,7 +152,7 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {jobs.filter((j) => j.status === "Open").slice(0, 5).length >
-              0 ? (
+                0 ? (
                 jobs
                   .filter((j) => j.status === "Open")
                   .slice(0, 5)
@@ -166,8 +169,8 @@ export default function AdminDashboard() {
                           ? job.location.map((l: any) => l.name).join(", ")
                           : typeof job.location === "object" &&
                             job.location !== null
-                          ? (job.location as any).name
-                          : job.location}
+                            ? (job.location as any).name
+                            : job.location}
                       </td>
                       <td className="px-6 py-4 text-slate-600">
                         {job.clientId?.companyName || "N/A"}

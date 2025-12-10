@@ -45,6 +45,8 @@ import { ManagerCandidates } from "./components/ManagerPanel/Candidates";
 import { MentorReports } from "./components/MentorPanel/pages/Reports";
 
 import TaskManagement from "./components/AdminPanel/TaskManagement";
+import Finance from "./components/AdminPanel/Finance";
+import { AdminCandidates } from "./components/AdminPanel/Candidates";
 import JobPreviewPage from "./components/RecruiterPanel/JobPreviewPage";
 import JobPreviewDetails from "./components/RecruiterPanel/JobPreviewDetails";
 import UploadCandidatePage from "./components/RecruiterPanel/UploadCandidatePage";
@@ -111,10 +113,12 @@ function App() {
               element={<MentorLeaveApplications />}
             />
             <Route path="/Admin/tasks" element={<TaskManagement />} />
+            <Route path="/Admin/finance" element={<Finance />} />
             <Route path="/Admin" element={<AdminDashboard />} />
             <Route path="/Admin/reports" element={<ReportsTab />} />
             <Route path="/Admin/analytics" element={<AnalyticsTab />} />
             <Route path="/Admin/jobs" element={<JobsManager />} />
+            <Route path="/Admin/candidates" element={<AdminCandidates />} />
           </Route>
           {/* recruiter */}
           <Route

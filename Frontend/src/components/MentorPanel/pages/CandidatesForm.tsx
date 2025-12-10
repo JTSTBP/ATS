@@ -9,7 +9,7 @@ import { useUserContext } from "../../../context/UserProvider";
 export const CandidateForm = ({ isOpen, onClose, candidate }) => {
   const { jobs, fetchJobs } = useJobContext();
   const { user } = useAuth();
-    const { users } = useUserContext();
+  const { users } = useUserContext();
   const { createCandidate, updateCandidate } = useCandidateContext();
   const fileInputRef = useRef(null);
 
@@ -76,7 +76,9 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
 
   let filteredJobs;
 
-  if (user.designation === "Manager") {
+  if (user.designation === "Admin") {
+    filteredJobs = jobs;
+  } else if (user.designation === "Manager") {
     // 1. Find all reporting users
     const reportingUsers = users.filter((u) => u?.reporter?._id === user._id);
 
@@ -106,12 +108,12 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       jobId,
       dynamicFields: jobObj
         ? jobObj.candidateFields.reduce((acc, field) => {
-            if (field.name) {
-              // Keep existing value if editing, else initialize empty
-              acc[field.name] = candidate?.dynamicFields?.[field.name] || "";
-            }
-            return acc;
-          }, {})
+          if (field.name) {
+            // Keep existing value if editing, else initialize empty
+            acc[field.name] = candidate?.dynamicFields?.[field.name] || "";
+          }
+          return acc;
+        }, {})
         : {},
     }));
   };

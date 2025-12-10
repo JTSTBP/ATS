@@ -9,7 +9,7 @@ import * as XLSX from "xlsx";
 import CandidateModal from "./CandidateModal";
 
 export default function Candidates() {
-  const { candidates, fetchallCandidates, updateStatus, loading } = useCandidateContext();
+  const { candidates, fetchCandidatesByUser, updateStatus, loading } = useCandidateContext();
   const { user } = useAuth();
   const { jobs, fetchJobs } = useJobContext();
   const [searchParams] = useSearchParams();
@@ -27,7 +27,7 @@ export default function Candidates() {
   useEffect(() => {
     if (user?._id) {
       // Fetch all candidates to ensure data visibility
-      fetchallCandidates();
+      fetchCandidatesByUser(user._id);
       fetchJobs(); // Ensure jobs are loaded for the modal
     }
   }, [user]);

@@ -11,6 +11,8 @@ const CandidatesJob = require("./routes/CandidatesByJobroutes");
 const clientRoutes = require("./routes/Clientroutes");
 const sessionRoutes = require("./routes/Sessionroutes");
 const activityRoutes = require("./routes/Activityroutes");
+const invoiceRoutes = require("./routes/Invoiceroutes");
+const expenseRoutes = require("./routes/Expenseroutes");
 
 
 // Load environment variables
@@ -41,6 +43,8 @@ app.use("/api/CandidatesJob", CandidatesJob);
 app.use("/api/clients", clientRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/activities", activityRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/expenses", expenseRoutes);
 
 
 

@@ -99,10 +99,10 @@ router.get("/user/:userId", async (req, res) => {
       .populate("createdBy", "name email")
       .populate({
         path: "jobId",
-        select: "title _id clientId",
+        select: "title _id clientId stages candidateFields",
         populate: {
           path: "clientId",
-          select: "companyName"
+          select: "companyName pocs"
         }
       })
       .populate({
