@@ -48,7 +48,13 @@ const JobCard: React.FC<JobCardProps> = ({
     const navigate = useNavigate();
     const handleTitleClick = () => {
         if (id) {
-            const basePath = user?.designation === "Manager" ? "/Manager" : "/Mentor";
+            const basePath =
+                user?.designation === "Admin"
+                    ? "/Admin"
+                    : user?.designation === "Manager"
+                        ? "/Manager"
+                        : "/Mentor";
+
             navigate(`${basePath}/jobs/${id}/candidates`);
         }
     };

@@ -77,26 +77,59 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
   let filteredJobs;
 
   if (user.designation === "Admin") {
+    // ADMIN → Get ALL jobs
     filteredJobs = jobs;
+
   } else if (user.designation === "Manager") {
+    // MANAGER → Own jobs + jobs created by reportees
+
     // 1. Find all reporting users
     const reportingUsers = users.filter((u) => u?.reporter?._id === user._id);
 
-    // Extract reporting user IDs
+    // 2. Extract IDs
     const reportingUserIds = reportingUsers.map((u) => u._id);
 
-    // 2. Filter jobs created by manager OR reporting users
+    // 3. Filter jobs
     filteredJobs = jobs.filter((job) => {
       const createdById = job?.CreatedBy?._id || job?.CreatedBy;
 
       return createdById === user._id || reportingUserIds.includes(createdById);
     });
+
+  } else if (user.designation === "Mentor") {
+
+    // 1️⃣ Get all users reporting to this mentor
+    const mentorReportees = users.filter(
+      (u) => u?.reporter?._id === user._id
+    );
+
+    const mentorReporteeIds = mentorReportees.map((u) => u._id);
+
+    filteredJobs = jobs.filter((job) => {
+      const createdById =
+        job?.CreatedBy?._id || job?.CreatedBy;
+
+      // 2️⃣ Mentor created this job
+      const isCreatedByMentor = createdById === user._id;
+
+      // 3️⃣ Job assigned to any mentor reportee
+      const isJobAssignedToMentorTeam =
+        Array.isArray(job.assignedRecruiters) &&
+        job.assignedRecruiters.some(
+          (r: any) => mentorReporteeIds.includes(r._id)
+        );
+
+      // 4️⃣ Final allow-or-deny
+      return isCreatedByMentor || isJobAssignedToMentorTeam;
+    });
+
   } else {
-    // 👉 Your existing filter
+    // DEFAULT → Only jobs created by user
     filteredJobs = jobs.filter(
       (job) => job?.CreatedBy === user._id || job?.CreatedBy?._id === user._id
     );
   }
+
 
   const handleJobChange = (e) => {
     const jobId = e.target.value;
@@ -229,9 +262,8 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
         resumeUrl: "",
       });
       onClose();
-    } else {
-      toast.error("Something went wrong!");
     }
+    // Error message is already shown by CandidatesProvider
   };
 
   if (!isOpen) return null;

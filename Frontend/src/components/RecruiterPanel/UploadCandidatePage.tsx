@@ -126,12 +126,12 @@ export default function UploadCandidatePage() {
                 setUploadStatus("success");
             } else {
                 setUploadStatus("error");
-                alert("Failed to create candidate. Please try again.");
+                // Error message is already shown by CandidatesProvider
             }
         } catch (error) {
             console.error("Upload error:", error);
             setUploadStatus("error");
-            alert("An error occurred during upload.");
+            // Error message is already shown by CandidatesProvider
         } finally {
             setUploading(false);
         }

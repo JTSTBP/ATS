@@ -184,13 +184,49 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
   });
 
   // Filter only users whose designation is 'Recruiter'
-  const recruiterUsers = users?.filter(
-    (u) =>
-      u.designation?.toLowerCase() === "recruiter" &&
-      (u.reporter?._id === user?._id || u.reporter === user?._id)
-  );
+  const getAllowedRecruiters = (loggedUser, allUsers) => {
+    const designation = loggedUser?.designation?.toLowerCase();
 
-  console.log(recruiterUsers, users);
+    // 1️⃣ ADMIN → all recruiters
+    if (designation === "admin") {
+      return allUsers.filter(u => u.designation?.toLowerCase() === "recruiter");
+    }
+
+    // 2️⃣ MENTOR → only recruiters directly under this mentor
+    if (designation === "mentor") {
+      return allUsers.filter(
+        (u) =>
+          u.designation?.toLowerCase() === "recruiter" &&
+          (u.reporter?._id === loggedUser._id || u.reporter === loggedUser._id)
+      );
+    }
+
+    // 3️⃣ MANAGER → recruiters under all mentors reporting to this manager
+    if (designation === "manager") {
+      const mentors = allUsers.filter(
+        (u) =>
+          u.designation?.toLowerCase() === "mentor" &&
+          (u.reporter?._id === loggedUser._id || u.reporter === loggedUser._id)
+      );
+
+      const mentorIds = mentors.map((m) => m._id);
+
+      const recruiters = allUsers.filter(
+        (u) =>
+          u.designation?.toLowerCase() === "recruiter" &&
+          mentorIds.includes(u.reporter?._id || u.reporter)
+      );
+
+      return recruiters;
+    }
+
+    // 4️⃣ Recruiter → sees only themselves
+    return allUsers.filter((u) => u._id === loggedUser._id);
+  };
+  const recruiterUsers = getAllowedRecruiters(user, users);
+
+
+  console.log(recruiterUsers, "recruiterUsers", users);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -734,9 +770,10 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
               {/* Lead Recruiter */}
               <Grid item xs={12}>
-                <FormControl
+                < FormControl
                   fullWidth
-                  disabled={(formData.assignedRecruiters || []).length === 0}
+                  disabled={(formData.assignedRecruiters || []).length === 0
+                  }
                 >
                   <InputLabel>Lead Recruiter</InputLabel>
                   <Select

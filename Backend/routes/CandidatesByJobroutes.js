@@ -47,6 +47,69 @@ router.post("/", upload.single("resume"), async (req, res) => {
       ? JSON.parse(req.body.dynamicFields)
       : {};
 
+    const { jobId } = req.body;
+
+    // 1️⃣ Check if job exists
+    const job = await Job.findById(jobId);
+    if (!job) {
+      return res.status(404).json({
+        success: false,
+        message: "Job not found. Please select a valid job.",
+      });
+    }
+
+    // 2️⃣ Check for duplicate candidate (same email or phone for this job)
+    const email = parsedFields.Email || parsedFields.email;
+    const phone = parsedFields.Phone || parsedFields.phone;
+
+    if (email || phone) {
+      const duplicateQuery = {
+        jobId: jobId,
+        $or: [],
+      };
+
+      if (email) {
+        duplicateQuery.$or.push({
+          $or: [
+            { "dynamicFields.Email": email },
+            { "dynamicFields.email": email },
+          ],
+        });
+      }
+
+      if (phone) {
+        duplicateQuery.$or.push({
+          $or: [
+            { "dynamicFields.Phone": phone },
+            { "dynamicFields.phone": phone },
+          ],
+        });
+      }
+
+      const existingCandidate = await Candidate.findOne(duplicateQuery);
+
+      if (existingCandidate) {
+        const duplicateField = [];
+        if (email && (existingCandidate.dynamicFields?.Email === email || existingCandidate.dynamicFields?.email === email)) {
+          duplicateField.push("email");
+        }
+        if (phone && (existingCandidate.dynamicFields?.Phone === phone || existingCandidate.dynamicFields?.phone === phone)) {
+          duplicateField.push("phone");
+        }
+
+        return res.status(400).json({
+          success: false,
+          message: `A candidate with the same ${duplicateField.join(" and ")} already exists for this job.`,
+          duplicateCandidate: {
+            name: existingCandidate.dynamicFields?.candidateName || existingCandidate.dynamicFields?.CandidateName,
+            email: existingCandidate.dynamicFields?.Email || existingCandidate.dynamicFields?.email,
+            phone: existingCandidate.dynamicFields?.Phone || existingCandidate.dynamicFields?.phone,
+          },
+        });
+      }
+    }
+
+    // 3️⃣ Create the candidate if no duplicates found
     const resumePath = req.file
       ? `/uploads/resumes/${req.file.filename}`
       : null;

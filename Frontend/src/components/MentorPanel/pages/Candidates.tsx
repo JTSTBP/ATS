@@ -78,23 +78,60 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
   useEffect(() => {
     if (!candidates || !user) return;
 
-    // 🔸 Step 1: Direct reportees (works for mentor & manager)
-    const directReportees = users.filter((u) => u?.reporter?._id === user._id);
+    // 🔥 Role-Based User Visibility (Same logic you wanted)
+    const designation = user?.designation?.toLowerCase();
 
-    let allReporteeIds = directReportees.map((u) => u._id);
+    let allowedUserIds: string[] = [];
 
-    // 🔸 Step 2: ONLY if user is manager → also get mentor's reportees (recruiters)
-    if (user.designation === "Manager") {
-      directReportees.forEach((mentor) => {
-        const mentorReportees = users.filter(
-          (u) => u?.reporter?._id === mentor._id
-        );
-        allReporteeIds = [
-          ...allReporteeIds,
-          ...mentorReportees.map((u) => u._id),
-        ];
-      });
+    // 1️⃣ ADMIN → sees all candidates
+    if (designation === "admin") {
+      allowedUserIds = users.map((u) => u._id);
     }
+
+    // 2️⃣ RECRUITER → only sees their own candidates
+    else if (designation === "recruiter") {
+      allowedUserIds = [user._id];
+    }
+
+    // 3️⃣ MENTOR → sees self + all recruiters directly reporting to mentor
+    else if (designation === "mentor") {
+      const recruiters = users.filter(
+        (u) =>
+          u.designation?.toLowerCase() === "recruiter" &&
+          (u.reporter?._id === user._id || u.reporter === user._id)
+      );
+
+      allowedUserIds = [
+        user._id,
+        ...recruiters.map((r) => r._id),
+      ];
+    }
+
+    // 4️⃣ MANAGER → sees self + mentors + all recruiters under those mentors
+    else if (designation === "manager") {
+      // Step A: Mentors reporting to manager
+      const mentors = users.filter(
+        (u) =>
+          u.designation?.toLowerCase() === "mentor" &&
+          (u.reporter?._id === user._id || u.reporter === user._id)
+      );
+
+      const mentorIds = mentors.map((m) => m._id);
+
+      // Step B: Recruiters reporting to those mentors
+      const recruiters = users.filter(
+        (u) =>
+          u.designation?.toLowerCase() === "recruiter" &&
+          mentorIds.includes(u.reporter?._id || u.reporter)
+      );
+
+      allowedUserIds = [
+        user._id,
+        ...mentorIds,
+        ...recruiters.map((r) => r._id),
+      ];
+    }
+
 
     // 🔸 Step 3: Get IDs of jobs where user is assigned or lead
     const assignedJobIds = Array.isArray(jobs)
@@ -112,13 +149,14 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         .map((job) => job._id)
       : [];
 
-    // 🔸 Step 4: Filter candidates
-    const filtered = candidates.filter(
-      (c) =>
-        c.createdBy?._id === user._id ||
-        allReporteeIds.includes(c.createdBy?._id) ||
+    const filtered = candidates.filter((c) => {
+      const createdById = c?.createdBy?._id;
+
+      return (
+        allowedUserIds.includes(createdById) ||
         assignedJobIds.includes(c.jobId?._id || c.jobId)
-    );
+      );
+    });
 
     setFilteredList(filtered);
   }, [candidates, users, user, jobs]);

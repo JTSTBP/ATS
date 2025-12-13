@@ -118,6 +118,10 @@ function App() {
             <Route path="/Admin/reports" element={<ReportsTab />} />
             <Route path="/Admin/analytics" element={<AnalyticsTab />} />
             <Route path="/Admin/jobs" element={<JobsManager />} />
+            <Route
+              path="/Admin/jobs/:id/candidates"
+              element={<CandidatesList />}
+            />
             <Route path="/Admin/candidates" element={<AdminCandidates />} />
           </Route>
           {/* recruiter */}

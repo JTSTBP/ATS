@@ -82,15 +82,23 @@ const CandidatesList = () => {
   useEffect(() => {
     if (!candidates || !users || !user || !id) return;
 
-    const reportingUsers = users.filter((u) => u?.reporter?._id === user._id);
-    const reportingUserIds = reportingUsers.map((u) => u._id);
+    let filtered;
 
-    let filtered = candidates.filter(
-      (c) =>
-        (c.createdBy?._id === user._id ||
-          reportingUserIds.includes(c.createdBy?._id)) &&
-        c.jobId?._id === id
-    );
+    // Admin sees all candidates for the job
+    if (user.designation === "Admin") {
+      filtered = candidates.filter((c) => c.jobId?._id === id);
+    } else {
+      // Other roles see candidates created by them or their reporting users
+      const reportingUsers = users.filter((u) => u?.reporter?._id === user._id);
+      const reportingUserIds = reportingUsers.map((u) => u._id);
+
+      filtered = candidates.filter(
+        (c) =>
+          (c.createdBy?._id === user._id ||
+            reportingUserIds.includes(c.createdBy?._id)) &&
+          c.jobId?._id === id
+      );
+    }
 
     // Status filter
     if (statusFilter !== "all") {
@@ -145,13 +153,13 @@ const CandidatesList = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (shareMenuOpen && !target.closest('.share-menu-container')) {
+      if (shareMenuOpen && !target.closest(".share-menu-container")) {
         setShareMenuOpen(null);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [shareMenuOpen]);
 
   const handleDelete = async (candidateId: string) => {
@@ -216,7 +224,6 @@ const CandidatesList = () => {
     }
   };
 
-
   const onMoveToNextClick = () => {
     if (!user?._id) return;
     if (selectedCandidate?.jobId?.stages?.length > 0) {
@@ -229,9 +236,10 @@ const CandidatesList = () => {
   };
 
   // Extract stages from the first candidate (assuming all are for the same job)
-  const jobStages = candidates && candidates.length > 0 && candidates[0].jobId?.stages
-    ? candidates[0].jobId.stages
-    : [];
+  const jobStages =
+    candidates && candidates.length > 0 && candidates[0].jobId?.stages
+      ? candidates[0].jobId.stages
+      : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -239,9 +247,12 @@ const CandidatesList = () => {
       {showStageSelection && selectedCandidate && (
         <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold mb-2">Move to Interview Stage</h3>
+            <h3 className="text-xl font-semibold mb-2">
+              Move to Interview Stage
+            </h3>
             <p className="text-sm text-gray-600 mb-6">
-              Select a stage, status, and add notes for this candidate's progression
+              Select a stage, status, and add notes for this candidate's
+              progression
             </p>
 
             {/* Stage Selection */}
@@ -255,21 +266,37 @@ const CandidatesList = () => {
                     key={stage._id}
                     onClick={() => {
                       // Store selected stage in state
-                      const stageInput = document.getElementById('selected-stage') as HTMLInputElement;
+                      const stageInput = document.getElementById(
+                        "selected-stage"
+                      ) as HTMLInputElement;
                       if (stageInput) stageInput.value = stage.name;
 
                       // Visual feedback
-                      document.querySelectorAll('[data-stage-btn]').forEach(btn => {
-                        btn.classList.remove('bg-blue-50', 'border-blue-300', 'ring-2', 'ring-blue-200');
-                        btn.classList.add('bg-white', 'border-gray-200');
-                      });
-                      (document.activeElement as HTMLElement)?.classList.add('bg-blue-50', 'border-blue-300', 'ring-2', 'ring-blue-200');
+                      document
+                        .querySelectorAll("[data-stage-btn]")
+                        .forEach((btn) => {
+                          btn.classList.remove(
+                            "bg-blue-50",
+                            "border-blue-300",
+                            "ring-2",
+                            "ring-blue-200"
+                          );
+                          btn.classList.add("bg-white", "border-gray-200");
+                        });
+                      (document.activeElement as HTMLElement)?.classList.add(
+                        "bg-blue-50",
+                        "border-blue-300",
+                        "ring-2",
+                        "ring-blue-200"
+                      );
                     }}
                     data-stage-btn
                     className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition flex justify-between items-center"
                   >
                     <span className="font-medium">{stage.name}</span>
-                    <span className="text-xs text-gray-500">{stage.responsible}</span>
+                    <span className="text-xs text-gray-500">
+                      {stage.responsible}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -284,12 +311,28 @@ const CandidatesList = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => {
-                    const statusInput = document.getElementById('selected-status') as HTMLInputElement;
-                    if (statusInput) statusInput.value = 'Selected';
+                    const statusInput = document.getElementById(
+                      "selected-status"
+                    ) as HTMLInputElement;
+                    if (statusInput) statusInput.value = "Selected";
 
                     // Visual feedback
-                    document.getElementById('status-selected')?.classList.add('bg-green-50', 'border-green-500', 'ring-2', 'ring-green-200');
-                    document.getElementById('status-rejected')?.classList.remove('bg-red-50', 'border-red-500', 'ring-2', 'ring-red-200');
+                    document
+                      .getElementById("status-selected")
+                      ?.classList.add(
+                        "bg-green-50",
+                        "border-green-500",
+                        "ring-2",
+                        "ring-green-200"
+                      );
+                    document
+                      .getElementById("status-rejected")
+                      ?.classList.remove(
+                        "bg-red-50",
+                        "border-red-500",
+                        "ring-2",
+                        "ring-red-200"
+                      );
                   }}
                   id="status-selected"
                   className="px-4 py-3 rounded-lg border-2 border-gray-200 bg-white hover:bg-green-50 hover:border-green-300 transition flex items-center justify-center gap-2 font-medium"
@@ -299,12 +342,28 @@ const CandidatesList = () => {
                 </button>
                 <button
                   onClick={() => {
-                    const statusInput = document.getElementById('selected-status') as HTMLInputElement;
-                    if (statusInput) statusInput.value = 'Rejected';
+                    const statusInput = document.getElementById(
+                      "selected-status"
+                    ) as HTMLInputElement;
+                    if (statusInput) statusInput.value = "Rejected";
 
                     // Visual feedback
-                    document.getElementById('status-rejected')?.classList.add('bg-red-50', 'border-red-500', 'ring-2', 'ring-red-200');
-                    document.getElementById('status-selected')?.classList.remove('bg-green-50', 'border-green-500', 'ring-2', 'ring-green-200');
+                    document
+                      .getElementById("status-rejected")
+                      ?.classList.add(
+                        "bg-red-50",
+                        "border-red-500",
+                        "ring-2",
+                        "ring-red-200"
+                      );
+                    document
+                      .getElementById("status-selected")
+                      ?.classList.remove(
+                        "bg-green-50",
+                        "border-green-500",
+                        "ring-2",
+                        "ring-green-200"
+                      );
                   }}
                   id="status-rejected"
                   className="px-4 py-3 rounded-lg border-2 border-gray-200 bg-white hover:bg-red-50 hover:border-red-300 transition flex items-center justify-center gap-2 font-medium"
@@ -318,7 +377,10 @@ const CandidatesList = () => {
 
             {/* Notes/Comments */}
             <div className="mb-6">
-              <label htmlFor="stage-notes" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="stage-notes"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Notes / Comments
               </label>
               <textarea
@@ -335,12 +397,18 @@ const CandidatesList = () => {
                 onClick={() => {
                   setShowStageSelection(false);
                   // Reset form
-                  const stageInput = document.getElementById('selected-stage') as HTMLInputElement;
-                  const statusInput = document.getElementById('selected-status') as HTMLInputElement;
-                  const notesInput = document.getElementById('stage-notes') as HTMLTextAreaElement;
-                  if (stageInput) stageInput.value = '';
-                  if (statusInput) statusInput.value = '';
-                  if (notesInput) notesInput.value = '';
+                  const stageInput = document.getElementById(
+                    "selected-stage"
+                  ) as HTMLInputElement;
+                  const statusInput = document.getElementById(
+                    "selected-status"
+                  ) as HTMLInputElement;
+                  const notesInput = document.getElementById(
+                    "stage-notes"
+                  ) as HTMLTextAreaElement;
+                  if (stageInput) stageInput.value = "";
+                  if (statusInput) statusInput.value = "";
+                  if (notesInput) notesInput.value = "";
                 }}
                 className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
               >
@@ -350,27 +418,37 @@ const CandidatesList = () => {
                 onClick={async () => {
                   if (!user?._id) return;
 
-                  const stageInput = document.getElementById('selected-stage') as HTMLInputElement;
-                  const statusInput = document.getElementById('selected-status') as HTMLInputElement;
-                  const notesInput = document.getElementById('stage-notes') as HTMLTextAreaElement;
+                  const stageInput = document.getElementById(
+                    "selected-stage"
+                  ) as HTMLInputElement;
+                  const statusInput = document.getElementById(
+                    "selected-status"
+                  ) as HTMLInputElement;
+                  const notesInput = document.getElementById(
+                    "stage-notes"
+                  ) as HTMLTextAreaElement;
 
                   const stageName = stageInput?.value;
-                  const stageStatus = statusInput?.value as "Selected" | "Rejected";
-                  const stageNotes = notesInput?.value || '';
+                  const stageStatus = statusInput?.value as
+                    | "Selected"
+                    | "Rejected";
+                  const stageNotes = notesInput?.value || "";
 
                   if (!stageName) {
-                    toast.error('Please select an interview stage');
+                    toast.error("Please select an interview stage");
                     return;
                   }
 
                   if (!stageStatus) {
-                    toast.error('Please select a status (Selected or Rejected)');
+                    toast.error(
+                      "Please select a status (Selected or Rejected)"
+                    );
                     return;
                   }
 
                   const success = await updateStatus(
                     selectedCandidate._id,
-                    'Interviewed',
+                    "Interviewed",
                     user._id,
                     stageName,
                     stageStatus,
@@ -384,9 +462,9 @@ const CandidatesList = () => {
                     setSelectedCandidate(null);
 
                     // Reset form
-                    if (stageInput) stageInput.value = '';
-                    if (statusInput) statusInput.value = '';
-                    if (notesInput) notesInput.value = '';
+                    if (stageInput) stageInput.value = "";
+                    if (statusInput) statusInput.value = "";
+                    if (notesInput) notesInput.value = "";
                   }
                 }}
                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
@@ -404,9 +482,13 @@ const CandidatesList = () => {
           <div className="bg-white p-6 rounded-xl shadow-xl max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-semibold">
-                Share {emailCandidates.length} Candidate{emailCandidates.length > 1 ? 's' : ''} via Email
+                Share {emailCandidates.length} Candidate
+                {emailCandidates.length > 1 ? "s" : ""} via Email
               </h3>
-              <button onClick={() => setShowEmailModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button
+                onClick={() => setShowEmailModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -418,7 +500,10 @@ const CandidatesList = () => {
             <div className="mb-6 max-h-60 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3">
               {emailCandidates[0]?.jobId?.clientId?.pocs?.length > 0 ? (
                 emailCandidates[0].jobId.clientId.pocs.map((poc: any) => (
-                  <label key={poc._id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                  <label
+                    key={poc._id}
+                    className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                  >
                     <input
                       type="checkbox"
                       checked={selectedPocs.includes(poc.email)}
@@ -426,19 +511,25 @@ const CandidatesList = () => {
                         if (e.target.checked) {
                           setSelectedPocs([...selectedPocs, poc.email]);
                         } else {
-                          setSelectedPocs(selectedPocs.filter(email => email !== poc.email));
+                          setSelectedPocs(
+                            selectedPocs.filter((email) => email !== poc.email)
+                          );
                         }
                       }}
                       className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                     />
                     <div>
-                      <div className="font-medium text-sm text-gray-900">{poc.name}</div>
+                      <div className="font-medium text-sm text-gray-900">
+                        {poc.name}
+                      </div>
                       <div className="text-xs text-gray-500">{poc.email}</div>
                     </div>
                   </label>
                 ))
               ) : (
-                <p className="text-sm text-gray-500 text-center py-2">No Client POCs found for this job.</p>
+                <p className="text-sm text-gray-500 text-center py-2">
+                  No Client POCs found for this job.
+                </p>
               )}
             </div>
 
@@ -452,7 +543,9 @@ const CandidatesList = () => {
               <button
                 onClick={async () => {
                   if (!user?.email || !user?.appPassword) {
-                    toast.error("Please configure your App Password in your Profile settings first.");
+                    toast.error(
+                      "Please configure your App Password in your Profile settings first."
+                    );
                     return;
                   }
 
@@ -462,19 +555,22 @@ const CandidatesList = () => {
                   }
 
                   try {
-                    const response = await fetch(`${API_BASE_URL}/api/CandidatesJob/send-email`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        senderEmail: user.email,
-                        appPassword: user.appPassword,
-                        recipientEmails: selectedPocs,
-                        ccEmails: [],
-                        candidateIds: emailCandidates.map(c => c._id),
-                      }),
-                    });
+                    const response = await fetch(
+                      `${API_BASE_URL}/api/CandidatesJob/send-email`,
+                      {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                          senderEmail: user.email,
+                          appPassword: user.appPassword,
+                          recipientEmails: selectedPocs,
+                          ccEmails: [],
+                          candidateIds: emailCandidates.map((c) => c._id),
+                        }),
+                      }
+                    );
 
                     const data = await response.json();
 
@@ -540,10 +636,13 @@ const CandidatesList = () => {
           <div className="flex items-center gap-8 border-b border-gray-200">
             {/* ALL */}
             <button
-              onClick={() => { setStatusFilter("all"); setInterviewStageFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("all");
+                setInterviewStageFilter("all");
+              }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "all"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               All responses{" "}
@@ -554,10 +653,13 @@ const CandidatesList = () => {
 
             {/* NEW */}
             <button
-              onClick={() => { setStatusFilter("New"); setInterviewStageFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("New");
+                setInterviewStageFilter("all");
+              }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "New"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               New{" "}
@@ -568,10 +670,13 @@ const CandidatesList = () => {
 
             {/* SHORTLISTED */}
             <button
-              onClick={() => { setStatusFilter("Shortlisted"); setInterviewStageFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("Shortlisted");
+                setInterviewStageFilter("all");
+              }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Shortlisted"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Shortlisted{" "}
@@ -582,10 +687,13 @@ const CandidatesList = () => {
 
             {/* INTERVIEWED */}
             <button
-              onClick={() => { setStatusFilter("Interviewed"); setInterviewStageFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("Interviewed");
+                setInterviewStageFilter("all");
+              }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Interviewed"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Interviewed{" "}
@@ -596,10 +704,13 @@ const CandidatesList = () => {
 
             {/* SELECTED */}
             <button
-              onClick={() => { setStatusFilter("Selected"); setInterviewStageFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("Selected");
+                setInterviewStageFilter("all");
+              }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Selected"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Selected{" "}
@@ -610,10 +721,13 @@ const CandidatesList = () => {
 
             {/* JOINED */}
             <button
-              onClick={() => { setStatusFilter("Joined"); setInterviewStageFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("Joined");
+                setInterviewStageFilter("all");
+              }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Joined"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Joined{" "}
@@ -624,10 +738,13 @@ const CandidatesList = () => {
 
             {/* REJECTED */}
             <button
-              onClick={() => { setStatusFilter("Rejected"); setInterviewStageFilter("all"); }}
+              onClick={() => {
+                setStatusFilter("Rejected");
+                setInterviewStageFilter("all");
+              }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Rejected"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Rejected{" "}
@@ -646,8 +763,8 @@ const CandidatesList = () => {
             <button
               onClick={() => setInterviewStageFilter("all")}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${interviewStageFilter === "all"
-                ? "bg-blue-100 text-blue-700 border border-blue-200"
-                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
                 }`}
             >
               All Stages
@@ -657,8 +774,8 @@ const CandidatesList = () => {
                 key={stage._id}
                 onClick={() => setInterviewStageFilter(stage.name)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${interviewStageFilter === stage.name
-                  ? "bg-blue-100 text-blue-700 border border-blue-200"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                    ? "bg-blue-100 text-blue-700 border border-blue-200"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
                   }`}
               >
                 {stage.name}
@@ -746,13 +863,15 @@ const CandidatesList = () => {
             <button
               onClick={async () => {
                 if (!user?._id || selectedCandidates.length === 0) {
-                  toast.error('Please select at least one candidate');
+                  toast.error("Please select at least one candidate");
                   return;
                 }
                 for (const candidateId of selectedCandidates) {
-                  await updateStatus(candidateId, 'Shortlisted', user._id);
+                  await updateStatus(candidateId, "Shortlisted", user._id);
                 }
-                toast.success(`${selectedCandidates.length} candidate(s) shortlisted`);
+                toast.success(
+                  `${selectedCandidates.length} candidate(s) shortlisted`
+                );
                 if (id) fetchCandidatesByJob(id);
                 setSelectedCandidates([]);
               }}
@@ -766,16 +885,20 @@ const CandidatesList = () => {
             <button
               onClick={async () => {
                 if (!user?._id || selectedCandidates.length === 0) {
-                  toast.error('Please select at least one candidate');
+                  toast.error("Please select at least one candidate");
                   return;
                 }
-                const confirmReject = window.confirm(`Are you sure you want to reject ${selectedCandidates.length} candidate(s)?`);
+                const confirmReject = window.confirm(
+                  `Are you sure you want to reject ${selectedCandidates.length} candidate(s)?`
+                );
                 if (!confirmReject) return;
 
                 for (const candidateId of selectedCandidates) {
-                  await updateStatus(candidateId, 'Rejected', user._id);
+                  await updateStatus(candidateId, "Rejected", user._id);
                 }
-                toast.success(`${selectedCandidates.length} candidate(s) rejected`);
+                toast.success(
+                  `${selectedCandidates.length} candidate(s) rejected`
+                );
                 if (id) fetchCandidatesByJob(id);
                 setSelectedCandidates([]);
               }}
@@ -789,10 +912,12 @@ const CandidatesList = () => {
             <button
               onClick={() => {
                 if (selectedCandidates.length === 0) {
-                  toast.error('Please select at least one candidate');
+                  toast.error("Please select at least one candidate");
                   return;
                 }
-                const selectedObjs = filteredList.filter((c: any) => selectedCandidates.includes(c._id));
+                const selectedObjs = filteredList.filter((c: any) =>
+                  selectedCandidates.includes(c._id)
+                );
                 setEmailCandidates(selectedObjs);
                 setSelectedPocs([]);
                 setShowEmailModal(true);
@@ -808,23 +933,26 @@ const CandidatesList = () => {
             <button
               onClick={() => {
                 if (selectedCandidates.length === 0) {
-                  toast.error('Please select at least one candidate');
+                  toast.error("Please select at least one candidate");
                   return;
                 }
-                const candidatesWithResume = filteredList.filter((c: any) =>
-                  selectedCandidates.includes(c._id) && c.resumeUrl
+                const candidatesWithResume = filteredList.filter(
+                  (c: any) => selectedCandidates.includes(c._id) && c.resumeUrl
                 );
                 if (candidatesWithResume.length === 0) {
-                  toast.error('No resumes available for selected candidates');
+                  toast.error("No resumes available for selected candidates");
                   return;
                 }
                 candidatesWithResume.forEach((c: any) => {
-                  const link = document.createElement('a');
+                  const link = document.createElement("a");
                   link.href = `${API_BASE_URL}${c.resumeUrl}`;
-                  link.download = `${c.dynamicFields?.candidateName || 'candidate'}_resume.pdf`;
+                  link.download = `${c.dynamicFields?.candidateName || "candidate"
+                    }_resume.pdf`;
                   link.click();
                 });
-                toast.success(`Downloading ${candidatesWithResume.length} resume(s)`);
+                toast.success(
+                  `Downloading ${candidatesWithResume.length} resume(s)`
+                );
               }}
               disabled={selectedCandidates.length === 0}
               className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -836,16 +964,20 @@ const CandidatesList = () => {
             <button
               onClick={async () => {
                 if (!user?._id || selectedCandidates.length === 0) {
-                  toast.error('Please select at least one candidate');
+                  toast.error("Please select at least one candidate");
                   return;
                 }
-                const confirmDelete = window.confirm(`⚠️ Are you sure you want to delete ${selectedCandidates.length} candidate(s)? This action cannot be undone.`);
+                const confirmDelete = window.confirm(
+                  `⚠️ Are you sure you want to delete ${selectedCandidates.length} candidate(s)? This action cannot be undone.`
+                );
                 if (!confirmDelete) return;
 
                 for (const candidateId of selectedCandidates) {
                   await deleteCandidate(candidateId, user._id);
                 }
-                toast.success(`${selectedCandidates.length} candidate(s) deleted`);
+                toast.success(
+                  `${selectedCandidates.length} candidate(s) deleted`
+                );
                 if (id) fetchCandidatesByJob(id);
                 setSelectedCandidates([]);
               }}
@@ -866,7 +998,8 @@ const CandidatesList = () => {
                 No candidates found
               </h3>
               <p className="text-gray-500 max-w-md mx-auto">
-                No candidates match your current filters. Try adjusting your search or filters.
+                No candidates match your current filters. Try adjusting your
+                search or filters.
               </p>
             </div>
           ) : (
@@ -908,11 +1041,12 @@ const CandidatesList = () => {
                           </span>
 
                           {/* Interview Stage Badge */}
-                          {candidate.status === "Interviewed" && candidate.interviewStage && (
-                            <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
-                              {candidate.interviewStage}
-                            </span>
-                          )}
+                          {candidate.status === "Interviewed" &&
+                            candidate.interviewStage && (
+                              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
+                                {candidate.interviewStage}
+                              </span>
+                            )}
 
                           {/* Job Title */}
                           <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 text-xs font-medium rounded border border-purple-200">
@@ -959,7 +1093,9 @@ const CandidatesList = () => {
                       {/* Skills */}
                       {candidate.dynamicFields?.Skills && (
                         <div>
-                          <div className="text-xs text-gray-500 mb-1">Skills</div>
+                          <div className="text-xs text-gray-500 mb-1">
+                            Skills
+                          </div>
                           <div className="text-sm text-gray-900">
                             {candidate.dynamicFields.Skills}
                           </div>
@@ -996,8 +1132,8 @@ const CandidatesList = () => {
                           <div>
                             <div className="text-xs text-gray-500 mb-1">CTC</div>
                             <div className="text-sm text-gray-900">
-                              CTC: ₹{candidate.dynamicFields.currentCTC} → Expected:
-                              ₹{candidate.dynamicFields.expectedCTC}
+                              CTC: ₹{candidate.dynamicFields.currentCTC} →
+                              Expected: ₹{candidate.dynamicFields.expectedCTC}
                             </div>
                           </div>
                         )}
@@ -1061,7 +1197,13 @@ const CandidatesList = () => {
                     {/* Share Button with Dropdown */}
                     <div className="relative share-menu-container">
                       <button
-                        onClick={() => setShareMenuOpen(shareMenuOpen === candidate._id ? null : candidate._id)}
+                        onClick={() =>
+                          setShareMenuOpen(
+                            shareMenuOpen === candidate._id
+                              ? null
+                              : candidate._id
+                          )
+                        }
                         className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded"
                       >
                         <Share2 className="w-5 h-5" />
@@ -1087,7 +1229,7 @@ const CandidatesList = () => {
                             onClick={() => {
                               const details = `Name: ${candidate.dynamicFields?.candidateName}\nEmail: ${candidate.dynamicFields?.Email}\nPhone: ${candidate.dynamicFields?.Phone}\nPosition: ${candidate.jobId?.title}`;
                               navigator.clipboard.writeText(details);
-                              toast.success('Details copied to clipboard');
+                              toast.success("Details copied to clipboard");
                               setShareMenuOpen(null);
                             }}
                             className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-t"
@@ -1106,7 +1248,7 @@ const CandidatesList = () => {
                         if (phone) {
                           window.location.href = `tel:${phone}`;
                         } else {
-                          toast.error('No phone number available');
+                          toast.error("No phone number available");
                         }
                       }}
                       className="p-2 text-gray-400 hover:text-green-600 hover:bg-gray-50 rounded"
@@ -1119,7 +1261,7 @@ const CandidatesList = () => {
             ))
           )}
         </div>
-      </div >
+      </div>
       {selectedCandidate && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-start justify-center overflow-y-auto">
           <div className="bg-white/95 w-full max-w-4xl my-12 rounded-3xl shadow-2xl border border-gray-200 backdrop-blur-xl">
@@ -1147,11 +1289,12 @@ const CandidatesList = () => {
                     </span>
 
                     {/* Interview Stage Badge */}
-                    {selectedCandidate.status === "Interviewed" && selectedCandidate.interviewStage && (
-                      <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full border border-blue-300 shadow-sm">
-                        {selectedCandidate.interviewStage}
-                      </span>
-                    )}
+                    {selectedCandidate.status === "Interviewed" &&
+                      selectedCandidate.interviewStage && (
+                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full border border-blue-300 shadow-sm">
+                          {selectedCandidate.interviewStage}
+                        </span>
+                      )}
 
                     {/* Tags */}
                     {selectedCandidate.tags?.map((tag: string) => (
@@ -1223,7 +1366,11 @@ const CandidatesList = () => {
                 <div className="flex flex-wrap gap-3">
                   {selectedCandidate.resumeUrl && (
                     <button
-                      onClick={() => setPreviewResumeUrl(`${API_BASE_URL}${selectedCandidate.resumeUrl}`)}
+                      onClick={() =>
+                        setPreviewResumeUrl(
+                          `${API_BASE_URL}${selectedCandidate.resumeUrl}`
+                        )
+                      }
                       className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition text-blue-600 font-medium"
                     >
                       <Eye className="w-4 h-4" /> Preview Resume
@@ -1252,54 +1399,60 @@ const CandidatesList = () => {
                 </div>
               </div>
 
-
               {/* Interview Stage History */}
-              {selectedCandidate.interviewStageHistory && selectedCandidate.interviewStageHistory.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <span className="text-blue-600">📋</span>
-                    Interview Stage History
-                  </h3>
-                  <div className="space-y-3">
-                    {selectedCandidate.interviewStageHistory.map((history: any, index: number) => (
-                      <div
-                        key={index}
-                        className={`p-4 rounded-xl border-l-4 shadow-sm ${history.status === "Selected"
-                          ? "bg-green-50 border-green-500"
-                          : "bg-red-50 border-red-500"
-                          }`}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold text-gray-900">
-                                {history.stageName}
-                              </h4>
-                              <span
-                                className={`px-2 py-0.5 text-xs font-medium rounded-full ${history.status === "Selected"
-                                  ? "bg-green-100 text-green-700 border border-green-200"
-                                  : "bg-red-100 text-red-700 border border-red-200"
-                                  }`}
-                              >
-                                {history.status === "Selected" ? "✓ Selected" : "✗ Rejected"}
-                              </span>
+              {selectedCandidate.interviewStageHistory &&
+                selectedCandidate.interviewStageHistory.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <span className="text-blue-600">📋</span>
+                      Interview Stage History
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedCandidate.interviewStageHistory.map(
+                        (history: any, index: number) => (
+                          <div
+                            key={index}
+                            className={`p-4 rounded-xl border-l-4 shadow-sm ${history.status === "Selected"
+                                ? "bg-green-50 border-green-500"
+                                : "bg-red-50 border-red-500"
+                              }`}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h4 className="font-semibold text-gray-900">
+                                    {history.stageName}
+                                  </h4>
+                                  <span
+                                    className={`px-2 py-0.5 text-xs font-medium rounded-full ${history.status === "Selected"
+                                        ? "bg-green-100 text-green-700 border border-green-200"
+                                        : "bg-red-100 text-red-700 border border-red-200"
+                                      }`}
+                                  >
+                                    {history.status === "Selected"
+                                      ? "✓ Selected"
+                                      : "✗ Rejected"}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {history.updatedBy?.name || "Unknown"} •{" "}
+                                  {new Date(history.timestamp).toLocaleString()}
+                                </p>
+                              </div>
                             </div>
-                            <p className="text-xs text-gray-500">
-                              {history.updatedBy?.name || "Unknown"} •{" "}
-                              {new Date(history.timestamp).toLocaleString()}
-                            </p>
+                            {history.notes && (
+                              <div className="mt-2 p-3 bg-white rounded-lg border border-gray-200">
+                                <p className="text-sm text-gray-700 italic">
+                                  "{history.notes}"
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        </div>
-                        {history.notes && (
-                          <div className="mt-2 p-3 bg-white rounded-lg border border-gray-200">
-                            <p className="text-sm text-gray-700 italic">"{history.notes}"</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                        )
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Notes */}
               <div>
@@ -1344,11 +1497,10 @@ const CandidatesList = () => {
                 </button>
               </div>
             </div>
-          </div >
-        </div >
-      )
-      }
-    </div >
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

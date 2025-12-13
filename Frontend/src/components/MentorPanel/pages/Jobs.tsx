@@ -138,31 +138,113 @@ export const JobsManager = ({
   //   return isCreatedByAllowedUser && matchesSearch && matchesStatus;
   // });
 
+  // const filteredJobs = jobs.filter((job) => {
+  //   // 🔥 ADMIN — show ALL jobs
+  //   if (user?.designation?.toLowerCase() === "admin") {
+  //     // skip createdBy filter
+  //   } else {
+  //     // 🔸 Mentor / Recruiter / Manager filtering
+  //     let allowedUserIds: string[] = [user?._id];
+
+  //     if (user?.designation?.toLowerCase() === "manager") {
+  //       const directReportees = users.filter(
+  //         (u) => u?.reporter?._id === user._id
+  //       );
+  //       const directReporteeIds = directReportees.map((u) => u._id);
+  //       allowedUserIds = [...allowedUserIds, ...directReporteeIds];
+  //     }
+
+  //     const createdById =
+  //       typeof job?.CreatedBy === "object" && job?.CreatedBy !== null
+  //         ? job.CreatedBy._id
+  //         : job.CreatedBy;
+
+  //     if (!allowedUserIds.includes(createdById)) return false;
+  //   }
+
+  //   // 🔍 Search filter
+  //   const locationNames = Array.isArray(job.location)
+  //     ? job.location.map((loc) => loc.name.toLowerCase()).join(" ")
+  //     : job.location?.toLowerCase() || "";
+
+  //   const matchesSearch =
+  //     job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     job.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     locationNames.includes(searchTerm.toLowerCase()) ||
+  //     (typeof job.clientId === "object" &&
+  //       job.clientId?.companyName
+  //         ?.toLowerCase()
+  //         .includes(searchTerm.toLowerCase()));
+
+  //   const matchesStatus = filterStatus === "all" || job.status === filterStatus;
+
+  //   return matchesSearch && matchesStatus;
+  // });
+
   const filteredJobs = jobs.filter((job) => {
-    // 🔥 ADMIN — show ALL jobs
-    if (user?.designation?.toLowerCase() === "admin") {
-      // skip createdBy filter
-    } else {
-      // 🔸 Mentor / Recruiter / Manager filtering
-      let allowedUserIds: string[] = [user?._id];
+    const designation = user?.designation?.toLowerCase();
+    const createdById =
+      typeof job?.CreatedBy === "object" && job?.CreatedBy !== null
+        ? job.CreatedBy._id
+        : job.CreatedBy;
 
-      if (user?.designation?.toLowerCase() === "manager") {
-        const directReportees = users.filter(
-          (u) => u?.reporter?._id === user._id
-        );
-        const directReporteeIds = directReportees.map((u) => u._id);
-        allowedUserIds = [...allowedUserIds, ...directReporteeIds];
-      }
+    /** ============================
+     *  1️⃣ ADMIN → See all jobs
+     *  ============================ */
+    if (designation === "admin") {
+      // no filtering by createdBy
+    }
 
-      const createdById =
-        typeof job?.CreatedBy === "object" && job?.CreatedBy !== null
-          ? job.CreatedBy._id
-          : job.CreatedBy;
+    /** ============================
+     *  2️⃣ MANAGER → See:
+     *  - own jobs
+     *  - reportees jobs
+     *  ============================ */
+    else if (designation === "manager") {
+      // Manager + all users reporting to this manager
+      let allowedUserIds = [user._id];
+
+      const reportees = users.filter(
+        (u) => u?.reporter?._id === user._id
+      );
+
+      allowedUserIds.push(...reportees.map((u) => u._id));
 
       if (!allowedUserIds.includes(createdById)) return false;
     }
 
-    // 🔍 Search filter
+    /** =====================================================
+     *  3️⃣ MENTOR → See:
+     *  - jobs created by mentor
+     *  - jobs created by manager **IF assigned recruiter is the mentor**
+     *  ===================================================== */
+    else if (designation === "mentor") {
+
+      // 1️⃣ Get all users reporting to this mentor
+      const mentorReportees = users.filter(
+        (u) => u?.reporter?._id === user._id
+      );
+
+      const mentorReporteeIds = mentorReportees.map((u) => u._id);
+
+      // 2️⃣ Mentor created this job
+      const isCreatedByMentor = createdById === user._id;
+
+      // 3️⃣ Job assigned to any of the mentor's reportees
+      const isJobAssignedToMentorTeam =
+        Array.isArray(job.assignedRecruiters) &&
+        job.assignedRecruiters.some(
+          (r: any) => mentorReporteeIds.includes(r._id)
+        );
+
+      // 4️⃣ Final allow-or-deny
+      if (!isCreatedByMentor && !isJobAssignedToMentorTeam) return false;
+    }
+
+
+    /** ===================
+     *  🔍 Search Logic
+     *  ================== */
     const locationNames = Array.isArray(job.location)
       ? job.location.map((loc) => loc.name.toLowerCase()).join(" ")
       : job.location?.toLowerCase() || "";
@@ -172,14 +254,13 @@ export const JobsManager = ({
       job.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       locationNames.includes(searchTerm.toLowerCase()) ||
       (typeof job.clientId === "object" &&
-        job.clientId?.companyName
-          ?.toLowerCase()
-          .includes(searchTerm.toLowerCase()));
+        job.clientId?.companyName?.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesStatus = filterStatus === "all" || job.status === filterStatus;
 
     return matchesSearch && matchesStatus;
   });
+
 
   const statusColors: Record<string, string> = {
     Open: "bg-green-100 text-green-700",
@@ -257,9 +338,9 @@ export const JobsManager = ({
             client={
               job.clientId
                 ? {
-                    companyName: job.clientId.companyName,
-                    logo: job.clientId.logo,
-                  }
+                  companyName: job.clientId.companyName,
+                  logo: job.clientId.logo,
+                }
                 : undefined
             }
             tags={[job.department, job.employmentType, job.status].filter(
