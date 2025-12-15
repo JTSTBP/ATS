@@ -12,6 +12,7 @@ import {
   ClipboardList,
   Briefcase,
   DollarSign,
+  Building2,
 } from "lucide-react";
 
 export default function AdminLayout() {
@@ -38,6 +39,7 @@ export default function AdminLayout() {
     { path: "/admin/users", label: "Manage Users", icon: Users },
     { path: "/Admin/candidates", label: "Candidates", icon: Users },
     { path: "/Admin/jobs", label: "Jobs", icon: Briefcase },
+    { path: "/Admin/clients", label: "Clients", icon: Building2 },
     {
       path: "/Admin/leaveApplications",
       label: "Leave Applications",

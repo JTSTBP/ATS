@@ -122,6 +122,7 @@ function App() {
               path="/Admin/jobs/:id/candidates"
               element={<CandidatesList />}
             />
+            <Route path="/Admin/clients" element={<ClientsManager />} />
             <Route path="/Admin/candidates" element={<AdminCandidates />} />
           </Route>
           {/* recruiter */}

@@ -153,6 +153,7 @@ export default function UserManagement() {
       userManagement: isAdmin || r === "admin",
     };
   };
+  console.log(users, "users")
 
   // Helper for role styling
   const getRoleStyle = (role: string) => {

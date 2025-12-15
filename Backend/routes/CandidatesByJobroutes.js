@@ -1,9 +1,117 @@
 const express = require("express");
 const Candidate = require("../models/CandidatesByJob");
 const Job = require("../models/Jobs");
+const User = require("../models/Users");
 const upload = require("../middleware/upload");
 const router = express.Router();
 const logActivity = require("./logactivity");
+const nodemailer = require("nodemailer");
+
+// Helper function to send email notification to reporter
+async function sendUpdateNotificationToReporter(updatingUserId, candidateName, jobTitle, changes) {
+  try {
+    console.log('📧 Attempting to send email notification...', {
+      updatingUserId,
+      candidateName,
+      jobTitle,
+      changesCount: changes.length
+    });
+
+    // Get the updating user with reporter populated
+    const updatingUser = await User.findById(updatingUserId).populate('reporter', 'name email appPassword');
+
+    console.log('👤 Updating user found:', {
+      userId: updatingUser?._id,
+      userName: updatingUser?.name,
+      hasReporter: !!updatingUser?.reporter,
+      reporterEmail: updatingUser?.reporter?.email,
+      reporterHasAppPassword: !!updatingUser?.reporter?.appPassword
+    });
+
+    if (!updatingUser || !updatingUser.reporter || !updatingUser.reporter.email) {
+      console.log('⚠️ No reporter found or reporter has no email');
+      return;
+    }
+
+    const reporter = updatingUser.reporter;
+
+    // Check if reporter has appPassword configured
+    if (!reporter.appPassword) {
+      console.log('⚠️ Reporter has no app password configured');
+      return;
+    }
+
+    // Create email transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: reporter.email,
+        pass: reporter.appPassword,
+      },
+    });
+
+    // Build changes table
+    let changesHtml = '';
+    changes.forEach(change => {
+      changesHtml += `
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: 500;">${change.field}</td>
+          <td style="padding: 10px; border: 1px solid #ddd; color: #dc3545;">${change.oldValue || 'N/A'}</td>
+          <td style="padding: 10px; border: 1px solid #ddd; color: #28a745;">${change.newValue || 'N/A'}</td>
+        </tr>
+      `;
+    });
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h2 style="color: #2c3e50; margin-bottom: 20px; border-bottom: 3px solid #3498db; padding-bottom: 10px;">
+            📝 Candidate Update Notification
+          </h2>
+          
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 5px 0;"><strong>Updated By:</strong> ${updatingUser.name}</p>
+            <p style="margin: 5px 0;"><strong>Candidate:</strong> ${candidateName}</p>
+            <p style="margin: 5px 0;"><strong>Job Position:</strong> ${jobTitle}</p>
+          </div>
+
+          <h3 style="color: #34495e; margin-top: 25px; margin-bottom: 15px;">Changes Made:</h3>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+              <tr style="background-color: #f8f9fa;">
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left; color: #495057;">Field</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left; color: #495057;">Previous Value</th>
+                <th style="padding: 12px; border: 1px solid #ddd; text-align: left; color: #495057;">New Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${changesHtml}
+            </tbody>
+          </table>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+            <p>This is an automated notification. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: reporter.email,
+      to: reporter.email,
+      subject: `Candidate Updated: ${candidateName} - ${jobTitle}`,
+      html: htmlContent,
+    };
+
+    console.log('📨 Sending email to:', reporter.email);
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Email notification sent successfully to ${reporter.email}`);
+  } catch (error) {
+    console.error('❌ Error sending email notification:', error);
+    // Don't throw error - we don't want email failures to block the update
+  }
+}
 
 // 🔵 Get all candidates
 router.get("/", async (req, res) => {
@@ -206,12 +314,192 @@ router.get("/job/:jobId", async (req, res) => {
   }
 });
 
+// 🟡 Update candidate details
+router.put("/:id", upload.single("resume"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const parsedFields = req.body.dynamicFields
+      ? JSON.parse(req.body.dynamicFields)
+      : {};
+
+    // 1️⃣ Check if candidate exists and populate jobId for email
+    const existingCandidate = await Candidate.findById(id).populate('jobId', 'title');
+    if (!existingCandidate) {
+      return res.status(404).json({
+        success: false,
+        message: "Candidate not found",
+      });
+    }
+
+    const { jobId } = req.body;
+
+    // 2️⃣ Check for duplicate candidate (same email or phone for this job, excluding current candidate)
+    const email = parsedFields.Email || parsedFields.email;
+    const phone = parsedFields.Phone || parsedFields.phone;
+
+    if (email || phone) {
+      const duplicateQuery = {
+        jobId: jobId,
+        _id: { $ne: id }, // Exclude the current candidate
+        $or: [],
+      };
+
+      if (email) {
+        duplicateQuery.$or.push({
+          $or: [
+            { "dynamicFields.Email": email },
+            { "dynamicFields.email": email },
+          ],
+        });
+      }
+
+      if (phone) {
+        duplicateQuery.$or.push({
+          $or: [
+            { "dynamicFields.Phone": phone },
+            { "dynamicFields.phone": phone },
+          ],
+        });
+      }
+
+      const duplicateCandidate = await Candidate.findOne(duplicateQuery);
+
+      if (duplicateCandidate) {
+        const duplicateField = [];
+        if (email && (duplicateCandidate.dynamicFields?.Email === email || duplicateCandidate.dynamicFields?.email === email)) {
+          duplicateField.push("email");
+        }
+        if (phone && (duplicateCandidate.dynamicFields?.Phone === phone || duplicateCandidate.dynamicFields?.phone === phone)) {
+          duplicateField.push("phone");
+        }
+
+        return res.status(400).json({
+          success: false,
+          message: `Another candidate with the same ${duplicateField.join(" and ")} already exists for this job.`,
+          duplicateCandidate: {
+            name: duplicateCandidate.dynamicFields?.candidateName || duplicateCandidate.dynamicFields?.CandidateName,
+            email: duplicateCandidate.dynamicFields?.Email || duplicateCandidate.dynamicFields?.email,
+            phone: duplicateCandidate.dynamicFields?.Phone || duplicateCandidate.dynamicFields?.phone,
+          },
+        });
+      }
+    }
+
+    // 3️⃣ Detect changes for email notification
+    const changes = [];
+
+    // Check dynamic fields changes
+    const oldFields = existingCandidate.dynamicFields || {};
+    for (const [key, newValue] of Object.entries(parsedFields)) {
+      const oldValue = oldFields[key];
+      if (oldValue !== newValue) {
+        changes.push({
+          field: key,
+          oldValue: oldValue,
+          newValue: newValue
+        });
+      }
+    }
+
+    // Check other fields
+    if (req.body.linkedinUrl !== existingCandidate.linkedinUrl) {
+      changes.push({
+        field: 'LinkedIn URL',
+        oldValue: existingCandidate.linkedinUrl,
+        newValue: req.body.linkedinUrl
+      });
+    }
+
+    if (req.body.portfolioUrl !== existingCandidate.portfolioUrl) {
+      changes.push({
+        field: 'Portfolio URL',
+        oldValue: existingCandidate.portfolioUrl,
+        newValue: req.body.portfolioUrl
+      });
+    }
+
+    if (req.body.notes !== existingCandidate.notes) {
+      changes.push({
+        field: 'Notes',
+        oldValue: existingCandidate.notes,
+        newValue: req.body.notes
+      });
+    }
+
+    if (req.file) {
+      changes.push({
+        field: 'Resume',
+        oldValue: existingCandidate.resumeUrl ? 'Previous resume' : 'No resume',
+        newValue: 'New resume uploaded'
+      });
+    }
+
+    // 4️⃣ Update the candidate if no duplicates found
+    const resumePath = req.file
+      ? `/uploads/resumes/${req.file.filename}`
+      : existingCandidate.resumeUrl; // Keep existing resume if no new file
+
+    const updateData = {
+      jobId: req.body.jobId,
+      createdBy: req.body.createdBy,
+      linkedinUrl: req.body.linkedinUrl,
+      portfolioUrl: req.body.portfolioUrl,
+      notes: req.body.notes,
+      dynamicFields: parsedFields,
+      resumeUrl: resumePath,
+    };
+
+    const updatedCandidate = await Candidate.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true }
+    ).populate('jobId', 'title');
+
+    // Activity Log
+    logActivity(
+      req.body.createdBy,
+      "updated",
+      "candidate",
+      `Updated candidate details`,
+      id,
+      "CandidateByJob"
+    );
+
+    // 5️⃣ Send email notification if there are changes
+    if (changes.length > 0) {
+      const candidateName = parsedFields.candidateName || parsedFields.CandidateName || 'Unknown Candidate';
+      const jobTitle = updatedCandidate.jobId?.title || 'Unknown Position';
+
+      // Send email notification (async, don't wait for it)
+      sendUpdateNotificationToReporter(req.body.createdBy, candidateName, jobTitle, changes)
+        .catch(err => console.error('Email notification failed:', err));
+    }
+
+    res.json({ success: true, candidate: updatedCandidate });
+  } catch (error) {
+    console.error("Error updating candidate:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update candidate",
+    });
+  }
+});
+
 // ... existing update route ...
 
 // 🔁 Update candidate status only
 router.patch("/:id/status", async (req, res) => {
   try {
     const { status, role, interviewStage, stageStatus, stageNotes } = req.body;
+
+    // Get existing candidate to detect changes
+    const existingCandidate = await Candidate.findById(req.params.id).populate('jobId', 'title');
+    if (!existingCandidate) {
+      return res.status(404).json({
+        success: false,
+        message: "Candidate not found",
+      });
+    }
 
     // Debug logging
     console.log('📋 Status Update Request:', {
@@ -222,6 +510,41 @@ router.patch("/:id/status", async (req, res) => {
       stageNotes,
       willAddToHistory: status === "Interviewed" && interviewStage && stageStatus
     });
+
+    // Detect changes for email notification
+    const changes = [];
+
+    if (existingCandidate.status !== status) {
+      changes.push({
+        field: 'Status',
+        oldValue: existingCandidate.status,
+        newValue: status
+      });
+    }
+
+    if (interviewStage && existingCandidate.interviewStage !== interviewStage) {
+      changes.push({
+        field: 'Interview Stage',
+        oldValue: existingCandidate.interviewStage || 'Not set',
+        newValue: interviewStage
+      });
+    }
+
+    if (stageStatus) {
+      changes.push({
+        field: 'Stage Status',
+        oldValue: 'N/A',
+        newValue: stageStatus
+      });
+    }
+
+    if (stageNotes) {
+      changes.push({
+        field: 'Stage Notes',
+        oldValue: 'N/A',
+        newValue: stageNotes
+      });
+    }
 
     const updateData = { status, UpdatedStatusBy: role };
 
@@ -251,7 +574,7 @@ router.patch("/:id/status", async (req, res) => {
       req.params.id,
       updateData,
       { new: true }
-    );
+    ).populate('jobId', 'title');
 
     // Activity Log
     logActivity(
@@ -262,6 +585,18 @@ router.patch("/:id/status", async (req, res) => {
       req.params.id,
       "CandidateByJob"
     );
+
+    // Send email notification if there are changes
+    if (changes.length > 0) {
+      const candidateName = existingCandidate.dynamicFields?.candidateName ||
+        existingCandidate.dynamicFields?.CandidateName ||
+        'Unknown Candidate';
+      const jobTitle = updatedCandidate.jobId?.title || 'Unknown Position';
+
+      // Send email notification (async, don't wait for it)
+      sendUpdateNotificationToReporter(role, candidateName, jobTitle, changes)
+        .catch(err => console.error('Email notification failed:', err));
+    }
 
     res.json({ success: true, candidate: updatedCandidate });
   } catch (error) {

@@ -165,12 +165,24 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
         setCandidates((prev) =>
           prev.map((c) => (c._id === id ? data.candidate : c))
         );
+        toast.success("Candidate updated successfully!");
         return data.candidate;
       }
-      throw new Error("Failed to update");
+
+      return null;
     } catch (err: any) {
       console.error("Error updating candidate:", err);
-      setError(err.message);
+
+      // Extract error message from backend response
+      const errorMessage = err.response?.data?.message || "Failed to update candidate";
+      toast.error(errorMessage);
+
+      // If there's duplicate candidate info, show additional details
+      if (err.response?.data?.duplicateCandidate) {
+        const duplicate = err.response.data.duplicateCandidate;
+        toast.info(`Existing candidate: ${duplicate.name || 'Unknown'}`);
+      }
+
       return null;
     }
   };
