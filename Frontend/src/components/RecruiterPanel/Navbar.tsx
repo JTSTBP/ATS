@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
+import { formatDate } from '../../utils/dateUtils';
 
 interface NavbarProps {
   toggleSidebar: () => void;
@@ -124,7 +125,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hour${Math.floor(diffInSeconds / 3600) > 1 ? 's' : ''} ago`;
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} day${Math.floor(diffInSeconds / 86400) > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
+    return formatDate(dateString);
   };
 
   // Get unread activities (newer than lastViewed)

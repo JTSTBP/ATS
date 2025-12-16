@@ -3,6 +3,7 @@ import axios from "axios";
 import { Plus, X, Trash2, Mail, RotateCcw } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
+import { formatDate } from "../../utils/dateUtils";
 
 interface Client {
     _id: string;
@@ -561,7 +562,7 @@ const Finance = () => {
                                             </span>
                                         </td>
                                         <td className="p-4">
-                                            {new Date(invoice.createdAt).toLocaleDateString()}
+                                            {formatDate(invoice.createdAt)}
                                         </td>
                                         <td className={`p-4 ${calculateTimeLeft(invoice.createdAt).color}`}>
                                             {calculateTimeLeft(invoice.createdAt).text}
@@ -687,7 +688,7 @@ const Finance = () => {
                                         </td>
                                         <td className="p-4 text-green-600 font-medium">₹{payment.amountReceived}</td>
                                         <td className="p-4">
-                                            {new Date(payment.receivedDate).toLocaleDateString()}
+                                            {formatDate(payment.receivedDate)}
                                         </td>
                                         <td className="p-4 text-gray-500">
                                             {payment.recordedBy?.name || "Unknown"}
@@ -775,7 +776,7 @@ const Finance = () => {
                                             </span>
                                         </td>
                                         <td className="p-4 text-red-600 font-medium">₹{expense.amount}</td>
-                                        <td className="p-4">{new Date(expense.date).toLocaleDateString()}</td>
+                                        <td className="p-4">{formatDate(expense.date)}</td>
                                         <td className="p-4 text-gray-500 text-sm max-w-xs truncate">{expense.description || "-"}</td>
                                         <td className="p-4 text-gray-500 text-sm">{expense.createdBy?.name || "Unknown"}</td>
                                         <td className="p-4">

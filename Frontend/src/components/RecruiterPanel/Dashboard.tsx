@@ -4,16 +4,17 @@ import { Users, FileCheck, Clock, Calendar, CheckCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { useCandidateContext } from "../../context/CandidatesProvider";
+import { formatDate } from "../../utils/dateUtils";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { candidates, fetchallCandidates } = useCandidateContext();
+  const { candidates, fetchCandidatesByUser } = useCandidateContext();
 
   useEffect(() => {
     if (user?._id) {
       // Fetch all candidates to ensure data visibility
-      fetchallCandidates();
+      fetchCandidatesByUser(user._id);
     }
   }, [user]);
 
@@ -175,7 +176,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     <span className="text-xs text-slate-400">
-                      {new Date(candidate.createdAt || Date.now()).toLocaleDateString()}
+                      {formatDate(candidate.createdAt || Date.now())}
                     </span>
                   </div>
                 );

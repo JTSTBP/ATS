@@ -15,7 +15,7 @@ const clientSchema = new mongoose.Schema(
         industry: { type: String },
         linkedinUrl: { type: String },
         companyInfo: { type: String },
-        logo: { type: String }, // Profile picture/logo path
+        logo: { type: String, required: true }, // Profile picture/logo path
         pocs: [pocSchema],
         jobCount: { type: Number, default: 0 },
         createdBy: {

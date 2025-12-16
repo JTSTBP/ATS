@@ -28,6 +28,7 @@ import { useCandidateContext } from "../../../../context/CandidatesProvider";
 import { useUserContext } from "../../../../context/UserProvider";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import { formatDate } from "../../../../utils/dateUtils";
 
 // interface Candidate {
 //   id: string;
@@ -641,8 +642,8 @@ const CandidatesList = () => {
                 setInterviewStageFilter("all");
               }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "all"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               All responses{" "}
@@ -658,8 +659,8 @@ const CandidatesList = () => {
                 setInterviewStageFilter("all");
               }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "New"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               New{" "}
@@ -675,8 +676,8 @@ const CandidatesList = () => {
                 setInterviewStageFilter("all");
               }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Shortlisted"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Shortlisted{" "}
@@ -692,8 +693,8 @@ const CandidatesList = () => {
                 setInterviewStageFilter("all");
               }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Interviewed"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Interviewed{" "}
@@ -709,8 +710,8 @@ const CandidatesList = () => {
                 setInterviewStageFilter("all");
               }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Selected"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Selected{" "}
@@ -726,8 +727,8 @@ const CandidatesList = () => {
                 setInterviewStageFilter("all");
               }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Joined"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Joined{" "}
@@ -743,8 +744,8 @@ const CandidatesList = () => {
                 setInterviewStageFilter("all");
               }}
               className={`px-1 py-4 text-sm font-medium ${statusFilter === "Rejected"
-                  ? "text-blue-600 border-b-2 border-blue-600"
-                  : "text-gray-600 hover:text-gray-900"
+                ? "text-blue-600 border-b-2 border-blue-600"
+                : "text-gray-600 hover:text-gray-900"
                 }`}
             >
               Rejected{" "}
@@ -763,8 +764,8 @@ const CandidatesList = () => {
             <button
               onClick={() => setInterviewStageFilter("all")}
               className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${interviewStageFilter === "all"
-                  ? "bg-blue-100 text-blue-700 border border-blue-200"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                ? "bg-blue-100 text-blue-700 border border-blue-200"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
                 }`}
             >
               All Stages
@@ -774,8 +775,8 @@ const CandidatesList = () => {
                 key={stage._id}
                 onClick={() => setInterviewStageFilter(stage.name)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-full transition ${interviewStageFilter === stage.name
-                    ? "bg-blue-100 text-blue-700 border border-blue-200"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
                   }`}
               >
                 {stage.name}
@@ -1149,7 +1150,7 @@ const CandidatesList = () => {
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-gray-400">
                           <span>posted by {candidate.createdBy.name}</span> |{" "}
-                          {new Date(candidate.createdAt).toLocaleDateString()}
+                          {formatDate(candidate.createdAt)}
                         </span>
 
                         {/* Status button */}
@@ -1413,8 +1414,8 @@ const CandidatesList = () => {
                           <div
                             key={index}
                             className={`p-4 rounded-xl border-l-4 shadow-sm ${history.status === "Selected"
-                                ? "bg-green-50 border-green-500"
-                                : "bg-red-50 border-red-500"
+                              ? "bg-green-50 border-green-500"
+                              : "bg-red-50 border-red-500"
                               }`}
                           >
                             <div className="flex items-start justify-between mb-2">
@@ -1425,8 +1426,8 @@ const CandidatesList = () => {
                                   </h4>
                                   <span
                                     className={`px-2 py-0.5 text-xs font-medium rounded-full ${history.status === "Selected"
-                                        ? "bg-green-100 text-green-700 border border-green-200"
-                                        : "bg-red-100 text-red-700 border border-red-200"
+                                      ? "bg-green-100 text-green-700 border border-green-200"
+                                      : "bg-red-100 text-red-700 border border-red-200"
                                       }`}
                                   >
                                     {history.status === "Selected"

@@ -14,11 +14,22 @@ export default function UploadCandidatePage() {
 
     // Utility function to format field names professionally
     const formatFieldName = (fieldName: string): string => {
-        // Convert camelCase to Title Case with spaces
-        return fieldName
+        // Handle special cases like CTC
+        if (fieldName.toLowerCase().includes('ctc')) {
+            return fieldName.replace(/ctc/i, 'CTC')
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, (str) => str.toUpperCase())
+                .trim();
+        }
+
+        // Convert camelCase/snake_case to Sentence Case
+        const result = fieldName
             .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+            .replace(/_/g, ' ') // Replace underscores with spaces
             .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
-            .trim(); // Remove leading/trailing spaces
+            .trim();
+
+        return result;
     };
 
     const [file, setFile] = useState<File | null>(null);
@@ -105,6 +116,30 @@ export default function UploadCandidatePage() {
         if (missingFields && missingFields.length > 0) {
             alert(`Please fill in all required fields: ${missingFields.map(f => f.name).join(", ")}`);
             return;
+        }
+
+        // Validate Email and Phone
+        for (const field of job.candidateFields || []) {
+            const value = formData[field.name];
+            if (value) {
+                // Email Validation
+                if (field.type === 'email' || field.name.toLowerCase().includes('email')) {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(value)) {
+                        alert(`Please enter a valid email address for ${formatFieldName(field.name)}`);
+                        return;
+                    }
+                }
+
+                // Phone Validation (10 digits)
+                if (field.type === 'tel' || field.name.toLowerCase().includes('phone') || field.name.toLowerCase().includes('mobile')) {
+                    const phoneRegex = /^\d{10}$/;
+                    if (!phoneRegex.test(value.replace(/\D/g, ''))) { // Allow formatting but check for 10 digits
+                        alert(`Please enter a valid 10-digit phone number for ${formatFieldName(field.name)}`);
+                        return;
+                    }
+                }
+            }
         }
 
         setUploading(true);
@@ -245,7 +280,7 @@ export default function UploadCandidatePage() {
                             <div className="space-y-4 mb-6">
                                 <h4 className="font-semibold text-slate-800 text-sm mb-3">CANDIDATE INFORMATION</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {job.candidateFields?.map((field) => (
+                                    {job.candidateFields?.filter(field => !field.name.toLowerCase().includes('current company')).map((field) => (
                                         <div key={field.id} className={field.type === 'textarea' ? 'md:col-span-2' : ''}>
                                             <label className="block text-xs font-medium text-slate-700 mb-1.5">
                                                 {formatFieldName(field.name)} {field.required && <span className="text-red-500">*</span>}
@@ -271,9 +306,21 @@ export default function UploadCandidatePage() {
                                                 />
                                             ) : (
                                                 <input
-                                                    type={field.type === 'number' ? 'number' : field.type === 'email' ? 'email' : field.type === 'tel' ? 'tel' : 'text'}
+                                                    type={
+                                                        field.name.toLowerCase().includes('ctc') ? 'text' :
+                                                            field.type === 'number' ? 'number' :
+                                                                field.type === 'email' ? 'email' :
+                                                                    field.type === 'tel' ? 'tel' : 'text'
+                                                    }
                                                     value={formData[field.name] || ""}
-                                                    onChange={(e) => handleInputChange(field.name, e.target.value)}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        if (field.name.toLowerCase().includes('ctc')) {
+                                                            // Remove non-numeric chars except comma
+                                                            val = val.replace(/[^0-9,]/g, '');
+                                                        }
+                                                        handleInputChange(field.name, val);
+                                                    }}
                                                     className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                                                     placeholder={`Enter ${formatFieldName(field.name)}`}
                                                 />

@@ -3,6 +3,7 @@ import { FileText, Users, BarChart3, AlertTriangle, X, ChevronRight } from "luci
 import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatDate } from "../../utils/dateUtils";
 
 export default function ReportsTab() {
   const { users, leaves, fetchUsers, fetchAllLeaves } = useUserContext();
@@ -27,7 +28,7 @@ export default function ReportsTab() {
       id: "candidates",
       name: "Candidate Summary",
       category: "Recruitment",
-      date: new Date().toLocaleDateString(),
+      date: formatDate(new Date()),
       status: "Available",
       count: stats.totalCandidates,
       icon: Users,
@@ -38,7 +39,7 @@ export default function ReportsTab() {
       id: "pending_leaves",
       name: "Pending Leave Requests",
       category: "HR Management",
-      date: new Date().toLocaleDateString(),
+      date: formatDate(new Date()),
       status: stats.pendingLeaves > 0 ? "Action Required" : "Clear",
       count: stats.pendingLeaves,
       icon: AlertTriangle,
@@ -49,7 +50,7 @@ export default function ReportsTab() {
       id: "users",
       name: "User Directory",
       category: "System",
-      date: new Date().toLocaleDateString(),
+      date: formatDate(new Date()),
       status: "Updated",
       count: stats.totalUsers,
       icon: FileText,
@@ -60,7 +61,7 @@ export default function ReportsTab() {
       id: "all_leaves",
       name: "Leave History Log",
       category: "HR Management",
-      date: new Date().toLocaleDateString(),
+      date: formatDate(new Date()),
       status: "Available",
       count: stats.totalLeaves,
       icon: BarChart3,
@@ -80,9 +81,9 @@ export default function ReportsTab() {
 
           return {
             col1: candidateName,
-            col2: typeof c.jobId === 'object' ? c.jobId.title : "Job ID: " + c.jobId,
+            col2: c.jobId ? (typeof c.jobId === 'object' ? c.jobId.title : "Job ID: " + c.jobId) : "No Job",
             col3: c.status || "New",
-            col4: new Date(c.createdAt || "").toLocaleDateString(),
+            col4: formatDate(c.createdAt),
           };
         });
       case "pending_leaves":
@@ -91,7 +92,7 @@ export default function ReportsTab() {
           .map((l) => ({
             col1: l.user?.name || "Unknown",
             col2: l.leaveType,
-            col3: `${new Date(l.fromDate).toLocaleDateString()} - ${new Date(l.toDate).toLocaleDateString()}`,
+            col3: `${formatDate(l.fromDate)} - ${formatDate(l.toDate)}`,
             col4: l.reason,
           }));
       case "users":
@@ -106,7 +107,7 @@ export default function ReportsTab() {
           col1: l.user?.name || "Unknown",
           col2: l.leaveType,
           col3: l.status,
-          col4: new Date(l.appliedDate).toLocaleDateString(),
+          col4: formatDate(l.appliedDate),
         }));
       default:
         return [];

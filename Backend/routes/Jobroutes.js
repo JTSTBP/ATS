@@ -35,7 +35,7 @@ router.post("/", async (req, res) => {
     console.error("Error creating job:", error);
     res.status(500).json({
       success: false,
-      message: `${error._message} Please fill all feilds`,
+      message: error.message || "Failed to create job. Please check all required fields.",
     });
   }
 });

@@ -458,16 +458,16 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.jobId.title || "-"}
+                    {candidate.jobId?.title || "-"}
                     {candidate.jobId?.clientId?.companyName && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Client: {candidate.jobId.clientId.companyName}
+                        Client: {candidate.jobId?.clientId?.companyName}
                       </p>
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.createdBy.name || "-"}-
-                    {candidate.createdBy.designation}
+                    {candidate.createdBy?.name || "-"}-
+                    {candidate.createdBy?.designation}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     {candidate.createdBy?.reporter?.name}

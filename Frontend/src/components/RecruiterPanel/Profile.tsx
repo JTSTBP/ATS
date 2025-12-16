@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Save, X, Camera, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthProvider';
+import { formatDate } from '../../utils/dateUtils';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -270,28 +271,7 @@ export default function Profile() {
                             </p>
                         </div>
 
-                        {/* Industry */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <MapPin size={16} className="text-slate-400" />
-                                    INDUSTRY
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="text"
-                                    value={formData.department}
-                                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="Enter Industry"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {formData.department || 'Not provided'}
-                                </p>
-                            )}
-                        </div>
+
 
                         {/* Join Date */}
                         <div>
@@ -302,7 +282,7 @@ export default function Profile() {
                                 </div>
                             </label>
                             <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                {formData.joinDate ? new Date(formData.joinDate).toLocaleDateString() : 'Not provided'}
+                                {formatDate(formData.joinDate)}
                             </p>
                         </div>
 

@@ -63,8 +63,33 @@ export default function CandidateModal({
 
 
 
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const validatePhone = (phone: string) => {
+    return /^\d{10,15}$/.test(phone);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate Dynamic Fields (Email and Phone)
+    if (job.candidateFields) {
+      for (const field of job.candidateFields) {
+        const value = formData.dynamicFields?.[field.name];
+        if (value) {
+          if (field.type === 'email' && !validateEmail(value)) {
+            toast.error(`Invalid email for ${field.name}`);
+            return;
+          }
+          if (field.type === 'tel' && !validatePhone(value)) {
+            toast.error(`Invalid phone number for ${field.name} (must be 10-15 digits)`);
+            return;
+          }
+        }
+      }
+    }
 
     let result;
     if (candidate?._id) {

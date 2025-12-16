@@ -21,6 +21,7 @@ export default function JobOpeningCard({
   job,
   onUploadCandidate,
   onPreview,
+  candidateCount,
   showUploadButton = true,
 }: JobOpeningCardProps) {
   return (
@@ -29,18 +30,18 @@ export default function JobOpeningCard({
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.2 }}
-      className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow"
+      className="relative bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow"
     >
-      {/* <div className="flex items-start justify-between mb-4">
-        <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
+      <div className="flex items-start justify-between mb-4">
+        {/* <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
           <Briefcase className="text-blue-600" size={24} />
-        </div>
+        </div> */}
         {candidateCount > 0 && (
-          <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+          <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full absolute right-6 top-6">
             {candidateCount} {candidateCount === 1 ? "Candidate" : "Candidates"}
           </span>
         )}
-      </div> */}
+      </div>
 
       <div className="flex justify-between items-start mb-4">
         <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center bg-white">

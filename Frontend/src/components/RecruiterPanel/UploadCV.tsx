@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useJobContext, Job } from "../../context/DataProvider";
 import { useAuth } from "../../context/AuthProvider";
+import { useCandidateContext } from "../../context/CandidatesProvider";
 import JobOpeningCard from "./JobOpeningCard";
 import { Search, Filter, Briefcase } from "lucide-react";
 
@@ -13,6 +14,7 @@ export type JobOpening = Job;
 
 export default function UploadCV() {
   const { assignedJobs, fetchAssignedJobs } = useJobContext();
+  const { candidates, fetchCandidatesByUser } = useCandidateContext();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,8 +23,17 @@ export default function UploadCV() {
   useEffect(() => {
     if (user?._id) {
       fetchAssignedJobs(user._id);
+      fetchCandidatesByUser(user._id);
     }
   }, [user]);
+
+  const getCandidateCount = (jobId: string) => {
+    if (!candidates) return 0;
+    return candidates.filter(
+      (c) => (typeof c.jobId === 'object' ? c.jobId._id : c.jobId) === jobId &&
+        (typeof c.createdBy === 'object' ? c.createdBy._id : c.createdBy) === user?._id
+    ).length;
+  };
 
   const filteredJobs = assignedJobs.filter((job) => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,7 +112,7 @@ export default function UploadCV() {
               job={job}
               onPreview={handlePreview}
               onUploadCandidate={handleUpload}
-              candidateCount={0} // You might want to fetch this real count later
+              candidateCount={getCandidateCount(job._id)}
               showUploadButton={true}
             />
           ))}

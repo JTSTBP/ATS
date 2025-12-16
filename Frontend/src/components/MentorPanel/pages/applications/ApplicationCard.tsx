@@ -1,12 +1,13 @@
-import { Edit, User, Briefcase, Mail, Phone, ChevronDown } from "lucide-react";
+import { Edit, User, Briefcase, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import { toast } from "react-toastify";
 import { useCandidateContext } from "../../../../context/CandidatesProvider";
+import { formatDate } from "../../../../utils/dateUtils";
 
 export const ApplicationCard = ({
   application,
-  fetchCandidatesByJob,
+
   user,
 }: any) => {
   const [editing, setEditing] = useState(false);
@@ -78,7 +79,7 @@ export const ApplicationCard = ({
         </span>
         {application.createdAt && (
           <span className="text-xs text-gray-500">
-            {new Date(application.createdAt).toLocaleDateString()}
+            {formatDate(application.createdAt)}
           </span>
         )}
       </div>

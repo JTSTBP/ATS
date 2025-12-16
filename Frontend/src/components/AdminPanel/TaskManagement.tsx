@@ -12,6 +12,7 @@ import {
     Clock,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { formatDate } from "../../utils/dateUtils";
 
 export default function TaskManagement() {
     const { sessions, loading, fetchSessions, createSession, updateSession, deleteSession } =
@@ -240,7 +241,7 @@ export default function TaskManagement() {
                                 filteredSessions.map((session) => (
                                     <tr key={session._id} className="hover:bg-slate-50 transition-colors">
                                         <td className="py-4 px-6 text-sm text-slate-800">
-                                            {new Date(session.date).toLocaleDateString()}
+                                            {formatDate(session.date)}
                                         </td>
                                         <td className="py-4 px-6">
                                             <div>

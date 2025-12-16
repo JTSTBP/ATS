@@ -31,7 +31,7 @@ export default function Candidates() {
     }
   }, [user]);
 
-  const [companyFilter, setCompanyFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
 
   // Get status from URL query parameter or default to "All Status"
   const urlStatus = searchParams.get('status');
@@ -69,23 +69,10 @@ export default function Candidates() {
         jobTitleFilter === "All" ||
         candidate.jobId?.title === jobTitleFilter;
 
-      // Company Filter (checking multiple potential fields)
-      // Company Filter (checking multiple potential fields)
-      const matchesCompany =
-        companyFilter === "" ||
-        (() => {
-          // Check currentCompany
-          if (candidate.currentCompany?.toLowerCase().includes(companyFilter.toLowerCase())) return true;
-
-          // Check dynamic fields
-          if (candidate.dynamicFields) {
-            return Object.keys(candidate.dynamicFields).some(key =>
-              key.toLowerCase().includes('company') &&
-              candidate.dynamicFields[key]?.toLowerCase().includes(companyFilter.toLowerCase())
-            );
-          }
-          return false;
-        })();
+      // Client Filter
+      const matchesClient =
+        clientFilter === "" ||
+        candidate.jobId?.clientId?.companyName === clientFilter;
 
       // Status Filter
       const matchesStatus =
@@ -95,9 +82,9 @@ export default function Candidates() {
         (statusFilter === "Interview" && (candidate.status === "Interview" || candidate.status === "Interviewed")) ||
         (statusFilter === "Hired" && (candidate.status === "Hired" || candidate.status === "Joined" || candidate.status === "Offer" || candidate.status === "Selected"));
 
-      return matchesJobTitle && matchesCompany && matchesStatus;
+      return matchesJobTitle && matchesClient && matchesStatus;
     });
-  }, [candidates, jobTitleFilter, companyFilter, statusFilter]);
+  }, [candidates, jobTitleFilter, clientFilter, statusFilter]);
 
   // 📋 Get Unique Job Titles for Dropdown
   const uniqueJobTitles = useMemo(() => {
@@ -108,25 +95,15 @@ export default function Candidates() {
     return Array.from(titles);
   }, [candidates]);
 
-  // 🏢 Get Unique Companies for Dropdown
-  const uniqueCompanies = useMemo(() => {
-    const companies = new Set<string>();
+  // 🏢 Get Unique Clients for Dropdown
+  const uniqueClients = useMemo(() => {
+    const clients = new Set<string>();
     candidates.forEach((c: any) => {
-      // Check currentCompany field
-      if (c.currentCompany) {
-        companies.add(c.currentCompany);
-      }
-
-      // Check dynamicFields for any field containing "company"
-      if (c.dynamicFields) {
-        Object.keys(c.dynamicFields).forEach((key) => {
-          if (key.toLowerCase().includes('company') && c.dynamicFields[key]) {
-            companies.add(c.dynamicFields[key]);
-          }
-        });
+      if (c.jobId?.clientId?.companyName) {
+        clients.add(c.jobId.clientId.companyName);
       }
     });
-    return Array.from(companies).sort();
+    return Array.from(clients).sort();
   }, [candidates]);
 
   if (loading) return <p>Loading...</p>;
@@ -184,14 +161,14 @@ export default function Candidates() {
                 <div className="relative flex-1">
                   <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <select
-                    value={companyFilter}
-                    onChange={(e) => setCompanyFilter(e.target.value)}
+                    value={clientFilter}
+                    onChange={(e) => setClientFilter(e.target.value)}
                     className="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm text-sm appearance-none cursor-pointer"
                   >
-                    <option value="">All Companies</option>
-                    {uniqueCompanies.map((company) => (
-                      <option key={company} value={company}>
-                        {company}
+                    <option value="">All Clients</option>
+                    {uniqueClients.map((client) => (
+                      <option key={client} value={client}>
+                        {client}
                       </option>
                     ))}
                   </select>
@@ -375,7 +352,7 @@ export default function Candidates() {
             onSave={() => {
               setIsModalOpen(false);
               setSelectedCandidate(null);
-              fetchallCandidates(); // Refresh list
+              if (user?._id) fetchCandidatesByUser(user._id);
             }}
           />
         )}

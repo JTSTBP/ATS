@@ -268,6 +268,24 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
 
   if (!isOpen) return null;
 
+  // Utility function to format field names professionally
+  const formatFieldName = (fieldName) => {
+    // Handle special cases like CTC
+    if (fieldName.toLowerCase().includes('ctc')) {
+      return fieldName.replace(/ctc/i, 'CTC')
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, (str) => str.toUpperCase())
+        .trim();
+    }
+
+    // Convert camelCase/snake_case to Sentence Case
+    return fieldName
+      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+      .replace(/_/g, ' ') // Replace underscores with spaces
+      .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
+      .trim();
+  };
+
   return (
     <>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"></div>
@@ -314,7 +332,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
                   {selectedJob.candidateFields.map((field) => (
                     <div key={field.id || field.name}>
                       <label className="block mb-1 text-sm font-medium">
-                        {field.name}{" "}
+                        {formatFieldName(field.name)}{" "}
                         {field.required && (
                           <span className="text-red-500">*</span>
                         )}

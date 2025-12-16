@@ -7,17 +7,10 @@ interface JobPreviewModalProps {
     onClose: () => void;
 }
 
+import { formatDate } from "../../utils/dateUtils";
+
 export default function JobPreviewModal({ job, onClose }: JobPreviewModalProps) {
     if (!job) return null;
-
-    const formatDate = (dateString?: string) => {
-        if (!dateString) return "N/A";
-        return new Date(dateString).toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-        });
-    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -241,22 +234,11 @@ export default function JobPreviewModal({ job, onClose }: JobPreviewModalProps) 
                                 <FileText className="text-yellow-500" size={20} />
                                 <h3 className="text-lg font-bold text-slate-800">Candidate Fields</h3>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                                 {job.candidateFields.map((field, index) => (
-                                    <div key={index} className="bg-white p-4 rounded-xl border border-slate-200">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h4 className="font-bold text-slate-800">{field.name}</h4>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <p className="text-xs text-slate-500">
-                                                Type: <span className="font-medium text-slate-700">{field.type}</span>
-                                            </p>
-                                            <p className="text-xs text-slate-500">
-                                                Required: <span className={`font-medium ${field.required ? 'text-red-600' : 'text-slate-700'}`}>
-                                                    {field.required ? 'Yes' : 'No'}
-                                                </span>
-                                            </p>
-                                        </div>
+                                    <div key={index} className="flex items-start gap-2 text-sm text-slate-700">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1" />
+                                        <span className="font-medium">{field.name}</span>
                                     </div>
                                 ))}
                             </div>

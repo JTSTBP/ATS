@@ -344,9 +344,15 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
   const validateForm = () => {
     if (!formData.title.trim()) return "Job Title is required";
+    if (!formData.description?.trim()) return "Job Description is required";
     if (!formData.salary?.min) return "Minimum Salary is required";
     if (!formData.salary?.max) return "Maximum Salary is required";
     if (!formData.salary?.currency) return "Currency is required";
+    if (!formData.requirements?.trim()) return "Requirements are required";
+    if (!formData.keySkills || formData.keySkills.length === 0) return "At least one Key Skill is required";
+    if (!formData.assignedRecruiters || formData.assignedRecruiters.length === 0) return "At least one Recruiter must be assigned";
+    if (!formData.stages || formData.stages.length === 0) return "At least one Interview Stage is required";
+    if (formData.stages.some(stage => !stage.name.trim())) return "All Interview Stages must have a name";
     return null;
   };
 
@@ -448,7 +454,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Description
+                    Job Description <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     placeholder="Describe the role..."
@@ -618,7 +624,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
           {step === 3 && (
             <>
               <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                Skills & Requirements
+                Skills & Requirements <span className="text-red-500">*</span>
               </h4>
               <textarea
                 placeholder="Requirements"
@@ -630,7 +636,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 rows={3}
               />
               <h4 className="text-lg font-semibold text-gray-800 mb-3">
-                Key Skills
+                Key Skills <span className="text-red-500">*</span>
               </h4>
               <p className="text-sm text-gray-600 mb-2">
                 Press Enter after each skill to add it.
@@ -698,7 +704,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               <Grid item xs={12}>
                 <FormControl fullWidth>
                   <InputLabel id="assignedRecruiters-label">
-                    Assigned Recruiters
+                    Assigned Recruiters <span className="text-red-500">*</span>
                   </InputLabel>
                   <Select
                     labelId="assignedRecruiters-label"
@@ -818,7 +824,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   variant="h6"
                   sx={{ fontWeight: 600, mb: 3, mt: 3, color: "#1e293b" }}
                 >
-                  Interview Stages Setup
+                  Interview Stages Setup <span className="text-red-500">*</span>
                 </Typography>
               </Grid>
 
@@ -1253,83 +1259,102 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                         {key.replace(/([A-Z])/g, " $1")}
                       </div>
 
-                      {/* Primitive values */}
-                      {typeof value !== "object" || value === null ? (
-                        <div className="text-gray-800">
-                          {value === "" || value === null ? "—" : String(value)}
-                        </div>
-                      ) : null}
-
-                      {/* Arrays */}
-                      {Array.isArray(value) && (
+                      {/* Candidate Fields - Custom Render */}
+                      {key === "candidateFields" && Array.isArray(value) ? (
                         <div className="ml-4 space-y-1">
                           {value.length === 0 ? (
                             <div className="text-gray-500">—</div>
                           ) : (
-                            value.map((item, index) => (
-                              <div
-                                key={index}
-                                className="border p-2 rounded bg-white"
-                              >
-                                {typeof item === "object" ? (
-                                  Object.entries(item)
-                                    .filter(
-                                      ([k]) =>
-                                        ![
-                                          "_id",
-                                          "id",
-                                          "CreatedBy",
-                                          "UpdatedBy",
-                                          "__v",
-                                        ].includes(k)
-                                    )
-                                    .map(([k, v]) => (
-                                      <div key={k} className="flex">
-                                        <span className="w-32 font-medium capitalize">
-                                          {k.replace(/([A-Z])/g, " $1")}:
-                                        </span>
-                                        <span>{String(v)}</span>
-                                      </div>
-                                    ))
-                                ) : (
-                                  <span>{String(item)}</span>
-                                )}
+                            value.map((field: any, index: number) => (
+                              <div key={index} className="flex items-center gap-2 text-gray-700">
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                                <span>{field.name}</span>
                               </div>
                             ))
                           )}
                         </div>
-                      )}
+                      ) : (
+                        /* Default Rendering for other fields */
+                        <>
+                          {/* Primitive values */}
+                          {typeof value !== "object" || value === null ? (
+                            <div className="text-gray-800">
+                              {value === "" || value === null ? "—" : String(value)}
+                            </div>
+                          ) : null}
 
-                      {/* Nested Objects */}
-                      {!Array.isArray(value) &&
-                        typeof value === "object" &&
-                        value !== null && (
-                          <div className="ml-4 space-y-1">
-                            {Object.entries(value)
-                              .filter(
-                                ([subKey]) =>
-                                  ![
-                                    "_id",
-                                    "id",
-                                    "CreatedBy",
-                                    "UpdatedBy",
-                                    "__v",
-                                  ].includes(subKey)
-                              )
-                              .map(([subKey, subValue]) => (
-                                <div key={subKey} className="flex">
-                                  <span className="w-32 font-medium capitalize">
-                                    {subKey.replace(/([A-Z])/g, " $1")}:
-                                  </span>
-                                  <span>
-                                    {subValue === "" || subValue === null
-                                      ? "—"
-                                      : String(subValue)}
-                                  </span>
-                                </div>
-                              ))}
-                          </div>
-                        )}
+                          {/* Arrays */}
+                          {Array.isArray(value) && (
+                            <div className="ml-4 space-y-1">
+                              {value.length === 0 ? (
+                                <div className="text-gray-500">—</div>
+                              ) : (
+                                value.map((item, index) => (
+                                  <div
+                                    key={index}
+                                    className="border p-2 rounded bg-white"
+                                  >
+                                    {typeof item === "object" ? (
+                                      Object.entries(item)
+                                        .filter(
+                                          ([k]) =>
+                                            ![
+                                              "_id",
+                                              "id",
+                                              "CreatedBy",
+                                              "UpdatedBy",
+                                              "__v",
+                                            ].includes(k)
+                                        )
+                                        .map(([k, v]) => (
+                                          <div key={k} className="flex">
+                                            <span className="w-32 font-medium capitalize">
+                                              {k.replace(/([A-Z])/g, " $1")}:
+                                            </span>
+                                            <span>{String(v)}</span>
+                                          </div>
+                                        ))
+                                    ) : (
+                                      <span>{String(item)}</span>
+                                    )}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+
+                          {/* Nested Objects */}
+                          {!Array.isArray(value) &&
+                            typeof value === "object" &&
+                            value !== null && (
+                              <div className="ml-4 space-y-1">
+                                {Object.entries(value)
+                                  .filter(
+                                    ([subKey]) =>
+                                      ![
+                                        "_id",
+                                        "id",
+                                        "CreatedBy",
+                                        "UpdatedBy",
+                                        "__v",
+                                      ].includes(subKey)
+                                  )
+                                  .map(([subKey, subValue]) => (
+                                    <div key={subKey} className="flex">
+                                      <span className="w-32 font-medium capitalize">
+                                        {subKey.replace(/([A-Z])/g, " $1")}:
+                                      </span>
+                                      <span>
+                                        {subValue === "" || subValue === null
+                                          ? "—"
+                                          : String(subValue)}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                        </>
+                      )}
                     </div>
                   ))}
               </div>

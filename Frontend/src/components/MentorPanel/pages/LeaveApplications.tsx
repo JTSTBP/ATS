@@ -29,10 +29,7 @@ export default function MentorLeaveApplications() {
   const leaveTypes = [
     "Sick Leave",
     "Casual Leave",
-    "Earned Leave",
-    "Maternity Leave",
-    "Paternity Leave",
-    "Unpaid Leave",
+
   ];
 
   useEffect(() => {
@@ -173,8 +170,8 @@ export default function MentorLeaveApplications() {
           <button
             onClick={() => setActiveTab("team")}
             className={`px-4 py-2 rounded-lg font-medium ${activeTab === "team"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-200 text-slate-700"
+              ? "bg-blue-600 text-white"
+              : "bg-slate-200 text-slate-700"
               }`}
           >
             Team
@@ -184,8 +181,8 @@ export default function MentorLeaveApplications() {
             <button
               onClick={() => setActiveTab("mine")}
               className={`px-4 py-2 rounded-lg font-medium ${activeTab === "mine"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-200 text-slate-700"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-200 text-slate-700"
                 }`}
             >
               My Leaves
@@ -452,35 +449,7 @@ export default function MentorLeaveApplications() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Apply To (Reporting Person)
-                  </label>
-                  {user?.reporter?._id ? (
-                    <input
-                      type="text"
-                      value={user.reporter.name}
-                      readOnly
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-700"
-                    />
-                  ) : (
-                    <select
-                      value={formData.reporter || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, reporter: e.target.value })
-                      }
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg"
-                      required
-                    >
-                      <option value="">Select Reporting Person</option>
-                      {users.map((u) => (
-                        <option key={u._id} value={u._id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
+
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -526,8 +495,8 @@ export default function MentorLeaveApplications() {
       {toast && (
         <div
           className={`fixed right-6 bottom-6 p-4 rounded-md ${toast.type === "success"
-              ? "bg-green-600 text-white"
-              : "bg-red-600 text-white"
+            ? "bg-green-600 text-white"
+            : "bg-red-600 text-white"
             }`}
         >
           <div className="flex items-center justify-between gap-4">

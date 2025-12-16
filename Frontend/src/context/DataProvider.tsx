@@ -1,5 +1,6 @@
 import axios from "axios";
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { toast } from "react-toastify";
 
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL;
@@ -98,9 +99,11 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to create job");
       setJobs((prev) => [data.job, ...prev]);
+      toast.success("Job created successfully!");
       return data.job;
     } catch (err: any) {
       setError(err.message);
+      toast.error(err.message || "Failed to create job");
       return null;
     }
   };
@@ -116,9 +119,11 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update job");
       setJobs((prev) => prev.map((job) => (job._id === id ? data.job : job)));
+      toast.success("Job updated successfully!");
       return data.job;
     } catch (err: any) {
       setError(err.message);
+      toast.error(err.message || "Failed to update job");
       return null;
     }
   };
@@ -130,9 +135,11 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to delete job");
       setJobs((prev) => prev.filter((job) => job._id !== id));
+      toast.success(data.message || "Job deleted successfully!");
       return true;
     } catch (err: any) {
       setError(err.message);
+      toast.error(err.message || "Failed to delete job");
       return false;
     }
   };

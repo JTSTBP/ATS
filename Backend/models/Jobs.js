@@ -21,13 +21,13 @@ const jobSchema = new mongoose.Schema(
     UpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     clientId: { type: mongoose.Schema.Types.ObjectId, ref: "Client" },
     title: { type: String, required: true },
-    description: { type: String },
+    description: { type: String, required: true },
     department: { type: String },
     location: [{ name: String, tier: String }],
     employmentType: { type: String, default: "Full-time" },
     status: { type: String, default: "Open" },
 
-    keySkills: [String],
+    keySkills: { type: [String], required: true },
 
     salary: {
       min: { type: String },
@@ -44,14 +44,14 @@ const jobSchema = new mongoose.Schema(
     industry: { type: String },
     functionalArea: { type: String },
     education: [String],
-    requirements: { type: String },
+    requirements: { type: String, required: true },
     candidateCount: { type: Number, default: 0 },
 
-    stages: [stageSchema],
+    stages: { type: [stageSchema], required: true },
     screeningQuestions: [String],
     teamMembers: [String],
 
-    assignedRecruiters: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    assignedRecruiters: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], required: true },
     leadRecruiter: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
     candidateFields: [candidateFieldSchema],

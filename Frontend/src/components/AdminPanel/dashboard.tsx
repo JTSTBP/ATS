@@ -1,6 +1,7 @@
 import { Users, ShieldCheck, Briefcase, CalendarCheck } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
+import { formatDate } from "../../utils/dateUtils";
 import { useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
@@ -178,7 +179,7 @@ export default function AdminDashboard() {
 
                       <td className="px-6 py-4 text-slate-500">
                         {job.createdAt
-                          ? new Date(job.createdAt).toLocaleDateString()
+                          ? formatDate(job.createdAt)
                           : "N/A"}
                       </td>
                       <td className="px-6 py-4 text-slate-600">

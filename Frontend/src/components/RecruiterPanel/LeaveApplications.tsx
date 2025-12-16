@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Toast from "../RecruiterPanel/Toast";
 import { useUserContext } from "../../context/UserProvider";
 import { useAuth } from "../../context/AuthProvider";
+import { formatDate } from "../../utils/dateUtils";
 
 export default function LeaveApplications() {
   const { leaves, applyLeave, fetchAllLeaves, users } = useUserContext();
@@ -27,10 +28,7 @@ export default function LeaveApplications() {
   const leaveTypes = [
     "Sick Leave",
     "Casual Leave",
-    "Earned Leave",
-    "Maternity Leave",
-    "Paternity Leave",
-    "Unpaid Leave",
+
   ];
 
   // 🔹 Load ALL leaves from backend (Recruiter View)
@@ -93,14 +91,7 @@ export default function LeaveApplications() {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+
 
   // Filter to show only current user's leaves
   const userLeaves = leaves.filter((l) => {
@@ -454,21 +445,7 @@ export default function LeaveApplications() {
                     ))}
                   </select>
                 </div> */}
-                <select
-                  value={typeof formData.reporter === "object" ? formData.reporter?._id : formData.reporter}
-                  onChange={(e) =>
-                    setFormData({ ...formData, reporter: e.target.value })
-                  }
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-lg"
-                  required
-                >
-                  <option value="">Select Reporting Person</option>
-                  {users.map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
+
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">

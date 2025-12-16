@@ -7,13 +7,15 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Reports() {
   const { user } = useAuth();
-  const { candidates, fetchallCandidates, loading } = useCandidateContext();
+  const { candidates, fetchCandidatesByUser, loading } = useCandidateContext();
   const navigate = useNavigate();
 
   // Fetch data on component mount
   useEffect(() => {
-    fetchallCandidates();
-  }, []);
+    if (user?._id) {
+      fetchCandidatesByUser(user._id);
+    }
+  }, [user]);
 
   // Calculate statistics from real data
   const stats = useMemo(() => {
@@ -29,22 +31,10 @@ export default function Reports() {
       rejected: 0,
     };
 
-    // 🚨 Relaxed Filter: Show ALL candidates to match Candidates.tsx behavior
-    // The previous strict filter by createdBy was causing "0" reports if the user didn't create the candidates themselves.
+    // Candidates are already filtered by user on the backend via fetchCandidatesByUser
     const userCandidates = candidates;
 
-    /* 
-    // Old Strict Filter
-    const userCandidates = candidates.filter(
-      (c) => {
-        const creatorId = typeof c.createdBy === 'string' ? c.createdBy : c.createdBy?._id;
-        // Loose comparison for ID to handle potential type mismatches (string vs objectId)
-        return creatorId == user._id;
-      }
-    );
-    */
-
-    console.log("Reports Debug - Using All Candidates:", userCandidates);
+    console.log("Reports Debug - User Candidates:", userCandidates);
 
     const totalApplications = userCandidates.length;
     // Match both 'Interview' (new) and 'Interviewed' (old/backend)
@@ -73,15 +63,8 @@ export default function Reports() {
 
   // Calculate top positions
   const topPositions = useMemo(() => {
+    // Candidates are already filtered by user
     const userCandidates = candidates;
-    /*
-    const userCandidates = candidates.filter(
-      (c) => {
-        const creatorId = typeof c.createdBy === 'string' ? c.createdBy : c.createdBy?._id;
-        return creatorId === user?._id;
-      }
-    );
-    */
 
     const jobCounts = userCandidates.reduce((acc, candidate) => {
       const jobTitle = typeof candidate.jobId === 'string' ? 'Unknown Position' : (candidate.jobId?.title || 'Unknown Position');
@@ -104,15 +87,8 @@ export default function Reports() {
 
   // Calculate recent activity
   const recentActivity = useMemo(() => {
+    // Candidates are already filtered by user
     const userCandidates = candidates;
-    /*
-    const userCandidates = candidates.filter(
-      (c) => {
-        const creatorId = typeof c.createdBy === 'string' ? c.createdBy : c.createdBy?._id;
-        return creatorId === user?._id;
-      }
-    );
-    */
 
     // Group by date
     const last7Days = new Date();

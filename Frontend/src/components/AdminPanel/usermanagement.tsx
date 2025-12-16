@@ -3,6 +3,7 @@ import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIco
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserContext } from "../../context/UserProvider";
 import { useSearchParams } from "react-router-dom";
+import { formatDate } from "../../utils/dateUtils";
 
 export default function UserManagement() {
   const { users, addUser, updateUser, deleteUser } = useUserContext();
@@ -437,11 +438,7 @@ export default function UserManagement() {
                           <div>
                             <p className="text-xs text-slate-500 font-medium">Date of Joining</p>
                             <p className="text-sm text-slate-800 font-semibold">
-                              {new Date(selectedUser.dateOfJoining).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
+                              {formatDate(selectedUser.dateOfJoining)}
                             </p>
                           </div>
                         </div>
@@ -452,11 +449,7 @@ export default function UserManagement() {
                           <div>
                             <p className="text-xs text-slate-500 font-medium">Date of Birth</p>
                             <p className="text-sm text-slate-800 font-semibold">
-                              {new Date(selectedUser.dateOfBirth).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
+                              {formatDate(selectedUser.dateOfBirth)}
                             </p>
                           </div>
                         </div>

@@ -93,11 +93,26 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
         setLogoPreview(null);
     };
 
+    const validateEmail = (email: string) => {
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    };
+
+    const validatePhone = (phone: string) => {
+        return /^\d{10,15}$/.test(phone);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
 
         try {
+            // Validate Logo
+            if (!logoFile && !logoPreview) {
+                toast.error('Company Logo is required');
+                setLoading(false);
+                return;
+            }
+
             // Validate that at least one POC has required fields (name and email)
             const validPOCs = formData.pocs?.filter(poc => poc.name.trim() && poc.email.trim());
 
@@ -105,6 +120,20 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                 toast.error('At least one Point of Contact with Name and Email is required');
                 setLoading(false);
                 return;
+            }
+
+            // Validate POC Email and Phone
+            for (const poc of validPOCs) {
+                if (!validateEmail(poc.email)) {
+                    toast.error(`Invalid email for POC ${poc.name}`);
+                    setLoading(false);
+                    return;
+                }
+                if (poc.phone && !validatePhone(poc.phone)) {
+                    toast.error(`Invalid phone number for POC ${poc.name} (must be 10-15 digits)`);
+                    setLoading(false);
+                    return;
+                }
             }
 
             // Check for duplicate phone numbers among POCs
@@ -163,7 +192,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                 <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
                     {/* Logo Upload Section */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-700">Company Logo</h3>
+                        <h3 className="text-lg font-semibold text-gray-700">Company Logo <span className="text-red-500">*</span></h3>
                         <div className="flex items-center gap-4">
                             {logoPreview ? (
                                 <div className="relative">

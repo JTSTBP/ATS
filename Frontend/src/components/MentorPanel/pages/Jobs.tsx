@@ -17,6 +17,7 @@ import { useAuth } from "../../../context/AuthProvider";
 import JobCard from "./Job/listjobs";
 
 import { useUserContext } from "../../../context/UserProvider";
+import { formatDate } from "../../../utils/dateUtils";
 
 interface JobType {
   _id: string;
@@ -352,7 +353,7 @@ export const JobsManager = ({
             postedBy={job.CreatedBy?.name || "You"}
             postedDate={
               job.createdAt
-                ? new Date(job.createdAt).toLocaleDateString()
+                ? formatDate(job.createdAt)
                 : "N/A"
             }
             onView={() => setSelectedJob(job)}
