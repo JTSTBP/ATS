@@ -89,13 +89,15 @@ export default function JobOpeningCard({
           <Users size={16} />
           <span>{job.employmentType}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <Target size={16} />
-          <span>
-            {job.openPositions}{" "}
-            {job.openPositions === 1 ? "position" : "positions"}
-          </span>
-        </div>
+        {(job.noOfPositions || job.openPositions) > 0 && (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Target size={16} />
+            <span>
+              {job.noOfPositions || job.openPositions}{" "}
+              {(job.noOfPositions || job.openPositions) === 1 ? "position" : "positions"}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-3">

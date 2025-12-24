@@ -25,7 +25,7 @@ const jobSchema = new mongoose.Schema(
     department: { type: String },
     location: [{ name: String, tier: String }],
     employmentType: { type: String, default: "Full-time" },
-    noOfPositions: { type: Number, default: 1 },
+    noOfPositions: { type: Number, default: 0 },
     status: { type: String, default: "Open" },
 
     keySkills: { type: [String], required: true },

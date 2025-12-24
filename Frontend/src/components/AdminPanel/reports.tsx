@@ -407,6 +407,12 @@ export default function ReportsTab() {
                     options={Array.from(new Set(jobs.map(j => j.title))).sort()}
                   />
                 </th>
+                <th className="py-3 px-6 min-w-[100px]">
+                  <span>Positions</span>
+                </th>
+                <th className="py-3 px-6 min-w-[100px]">
+                  <span>Positions</span>
+                </th>
                 <th className="py-3 px-6 min-w-[200px] relative">
                   <div className="flex items-center justify-between">
                     <span>Assigned Recruiters</span>
@@ -507,6 +513,7 @@ export default function ReportsTab() {
                     <td className="py-4 px-6 text-slate-600">{row.dateReceived}</td>
                     <td className="py-4 px-6 font-medium text-slate-800">{row.clientName}</td>
                     <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
+                    <td className="py-4 px-6 text-slate-600 text-center">{row.job.noOfPositions || '-'}</td>
                     <td className="py-4 px-6 text-slate-600">
                       <div className="flex flex-wrap gap-1">
                         {row.recruitersInvolved.map((r: string) => (
@@ -662,6 +669,9 @@ export default function ReportsTab() {
                     options={Array.from(new Set(jobs.map(j => j.title))).sort()}
                   />
                 </th>
+                <th className="py-3 px-6 min-w-[100px]">
+                  <span>Positions</span>
+                </th>
                 <th className="py-3 px-4 text-center min-w-[120px] relative">
                   <div className="flex items-center justify-center gap-2">
                     <span>Total Uploads</span>
@@ -755,6 +765,7 @@ export default function ReportsTab() {
                     <td className="py-4 px-6 font-medium text-slate-800">{row.recruiter.name}</td>
                     <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
                     <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
+                    <td className="py-4 px-6 text-slate-600 text-center">{row.job.noOfPositions || '-'}</td>
                     <td className="py-4 px-4 text-center">
                       <button
                         onClick={() => openCandidatePopup(row.job.title, row.clientName, "Uploaded", row.jobCandidates)}

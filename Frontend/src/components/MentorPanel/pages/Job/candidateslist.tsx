@@ -2,6 +2,17 @@ import {
   Users,
   Eye,
   UserCheck,
+  ChevronLeft,
+  ChevronRight,
+  Briefcase,
+  Download,
+  X,
+  Trash2,
+  Share2,
+  Mail,
+  Phone,
+  Link,
+  MessageSquare,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
