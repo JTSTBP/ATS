@@ -66,6 +66,27 @@ const candidateSchema = new mongoose.Schema(
         },
       },
     ],
+    statusHistory: [
+      {
+        status: {
+          type: String,
+          required: true,
+        },
+        comment: {
+          type: String,
+          default: "",
+        },
+        updatedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -10,6 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { CandidateForm } from "./CandidatesForm";
+import { StatusUpdateModal } from "../../Common/StatusUpdateModal";
 import { useCandidateContext } from "../../../context/CandidatesProvider";
 import { useUserContext } from "../../../context/UserProvider";
 import { useJobContext } from "../../../context/DataProvider";
@@ -44,6 +45,36 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
   const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
   const [filterStage, setFilterStage] = useState("all");
   const [clients, setClients] = useState<any[]>([]);
+
+  // Status Change Modal State
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    candidateId: string;
+    newStatus: string;
+  } | null>(null);
+
+  const handleStatusChange = (candidateId: string, newStatus: string) => {
+    setPendingStatusChange({ candidateId, newStatus });
+    setStatusModalOpen(true);
+  };
+
+  const confirmStatusChange = async (comment: string) => {
+    if (!pendingStatusChange) return;
+
+    await updateStatus(
+      pendingStatusChange.candidateId,
+      pendingStatusChange.newStatus,
+      user?._id,
+      undefined, // interviewStage
+      undefined, // stageStatus
+      undefined, // stageNotes
+      comment // comment
+    );
+    await fetchallCandidates();
+
+    setStatusModalOpen(false);
+    setPendingStatusChange(null);
+  };
 
   useEffect(() => {
     const jobTitleFromUrl = searchParams.get("jobTitle");
@@ -475,14 +506,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                   <td className="px-6 py-4 text-sm text-gray-700">
                     <select
                       value={candidate.status || "New"}
-                      onChange={async (e) => {
-                        await updateStatus(
-                          candidate._id,
-                          e.target.value,
-                          user?._id
-                        );
-                        await fetchallCandidates();
-                      }}
+                      onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="New">New</option>
@@ -537,6 +561,18 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         isOpen={showForm}
         onClose={handleCloseForm}
         candidate={editingCandidate}
+      />
+
+      {/* Status Update Modal */}
+      <StatusUpdateModal
+        isOpen={statusModalOpen}
+        onClose={() => {
+          setStatusModalOpen(false);
+          setPendingStatusChange(null);
+        }}
+        onConfirm={confirmStatusChange}
+        newStatus={pendingStatusChange?.newStatus || ""}
+        candidateName={searchedCandidates.find((c) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
       />
     </div>
   );

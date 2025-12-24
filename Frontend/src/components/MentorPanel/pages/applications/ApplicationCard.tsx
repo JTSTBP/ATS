@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { useCandidateContext } from "../../../../context/CandidatesProvider";
 import { formatDate } from "../../../../utils/dateUtils";
+import { StatusUpdateModal } from "../../../Common/StatusUpdateModal";
 
 export const ApplicationCard = ({
   application,
@@ -15,26 +16,42 @@ export const ApplicationCard = ({
   const { updateStatus, fetchallCandidates } = useCandidateContext();
   const [showNotes, setShowNotes] = useState(false);
 
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<string | null>(null);
+
   const statuses = [
     "New",
     "Shortlisted",
-    "Shortlisted",
     "Interviewed",
-    "Selected",
     "Selected",
     "Joined",
     "Rejected",
   ];
   const toggleNotes = () => setShowNotes(!showNotes);
 
-  const handleStatusChange = async (e: any) => {
-    const newStatus = e.target.value;
+  const handleStatusChangeClick = (e: any) => {
+    setPendingStatusChange(e.target.value);
+    setStatusModalOpen(true);
+  };
+
+  const confirmStatusChange = async (comment: string) => {
+    if (!pendingStatusChange) return;
     setLoading(true);
-    const success = await updateStatus(application._id, newStatus, user?._id);
+    const success = await updateStatus(
+      application._id,
+      pendingStatusChange,
+      user?._id,
+      undefined,
+      undefined,
+      undefined,
+      comment
+    );
     setLoading(false);
     fetchallCandidates();
     success ? toast.success("Status updated") : toast.error("Failed to update");
     setEditing(false);
+    setStatusModalOpen(false);
+    setPendingStatusChange(null);
   };
 
   return (
@@ -101,7 +118,7 @@ export const ApplicationCard = ({
           </div>
         ) : (
           <select
-            onChange={handleStatusChange}
+            onChange={handleStatusChangeClick}
             defaultValue={application.status}
             disabled={loading}
             className="w-full mt-2 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
@@ -121,6 +138,17 @@ export const ApplicationCard = ({
           {application.notes}
         </p>
       )}
+
+      <StatusUpdateModal
+        isOpen={statusModalOpen}
+        onClose={() => {
+          setStatusModalOpen(false);
+          setPendingStatusChange(null);
+        }}
+        onConfirm={confirmStatusChange}
+        newStatus={pendingStatusChange || ""}
+        candidateName={application.dynamicFields?.candidateName}
+      />
     </div>
   );
 };

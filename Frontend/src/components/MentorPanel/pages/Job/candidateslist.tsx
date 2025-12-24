@@ -1,22 +1,4 @@
 import {
-  Mail,
-  Share2,
-  Trash2,
-  Grid,
-  List,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
-  MessageSquare,
-  Phone,
-  X,
-  MapPin,
-  Calendar,
-  Briefcase,
-  GraduationCap,
-  Download,
-  Star,
-  Link,
   Users,
   Eye,
   UserCheck,
@@ -29,6 +11,7 @@ import { useUserContext } from "../../../../context/UserProvider";
 import { useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { formatDate } from "../../../../utils/dateUtils";
+import { StatusUpdateModal } from "../../../Common/StatusUpdateModal";
 
 // interface Candidate {
 //   id: string;
@@ -46,9 +29,9 @@ import { formatDate } from "../../../../utils/dateUtils";
 
 const CandidatesList = () => {
   const { id } = useParams();
-  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
+  // const [viewMode, setViewMode] = useState<"grid" | "list">("list"); // Unused
   const [sortBy, setSortBy] = useState("Relevance");
-  const [showCount, setShowCount] = useState("40");
+  const [showCount] = useState("40"); // setShowCount unused
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [filteredList, setFilteredList] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
@@ -63,6 +46,14 @@ const CandidatesList = () => {
   const [selectedPocs, setSelectedPocs] = useState<string[]>([]);
   const [emailCandidates, setEmailCandidates] = useState<any[]>([]);
 
+  // Status Modal State
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<{
+    type: 'reject' | 'statusChange' | 'shortlist';
+    candidateId: string;
+    newStatus: string;
+  } | null>(null);
+
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
   const { user } = useAuth();
@@ -70,7 +61,7 @@ const CandidatesList = () => {
     updateStatus,
     candidates,
     fetchCandidatesByJob,
-    loading,
+    // loading, // Unused
     deleteCandidate,
   } = useCandidateContext();
   const { users } = useUserContext();
@@ -90,14 +81,15 @@ const CandidatesList = () => {
       filtered = candidates.filter((c) => c.jobId?._id === id);
     } else {
       // Other roles see candidates created by them or their reporting users
-      const reportingUsers = users.filter((u) => u?.reporter?._id === user._id);
+      // Other roles see candidates created by them or their reporting users
+      const reportingUsers = users.filter((u) => (u?.reporter as any)?._id === user._id);
       const reportingUserIds = reportingUsers.map((u) => u._id);
 
       filtered = candidates.filter(
         (c) =>
-          (c.createdBy?._id === user._id ||
-            reportingUserIds.includes(c.createdBy?._id)) &&
-          c.jobId?._id === id
+          ((c.createdBy as any)?._id === user._id ||
+            reportingUserIds.includes((c.createdBy as any)?._id)) &&
+          (c.jobId as any)?._id === id
       );
     }
 
@@ -113,7 +105,7 @@ const CandidatesList = () => {
     // Interview Stage Filter
     if (statusFilter === "Interviewed" && interviewStageFilter !== "all") {
       filtered = filtered.filter(
-        (c) => c.interviewStage === interviewStageFilter
+        (c) => (c as any).interviewStage === interviewStageFilter
       );
     }
 
@@ -207,22 +199,47 @@ const CandidatesList = () => {
     }
   };
 
-  const handleRejectCandidate = async (candidateId: string) => {
+  const handleRejectCandidate = (candidateId: string) => {
     if (!user?._id) return;
-    const confirmReject = window.confirm(
-      "Are you sure you want to reject this candidate?"
-    );
-    if (!confirmReject) return;
+    setPendingAction({ type: 'reject', candidateId, newStatus: 'Rejected' });
+    setStatusModalOpen(true);
+  };
 
-    const success = await updateStatus(candidateId, "Rejected", user._id);
+  const confirmStatusAction = async (comment: string) => {
+    if (!pendingAction) return;
 
-    if (success) {
-      toast.success("Candidate rejected successfully");
-      if (id) fetchCandidatesByJob(id);
-      setSelectedCandidate(null);
-    } else {
-      toast.error("Failed to reject candidate");
+    if (pendingAction.type === 'reject' || pendingAction.type === 'statusChange') {
+      const success = await updateStatus(
+        pendingAction.candidateId,
+        pendingAction.newStatus,
+        user?._id,
+        undefined,
+        undefined,
+        undefined,
+        comment
+      );
+
+      if (success) {
+        toast.success(`Candidate status updated to ${pendingAction.newStatus}`);
+        if (id) fetchCandidatesByJob(id);
+        if (selectedCandidate && selectedCandidate._id === pendingAction.candidateId) {
+          setSelectedCandidate(null);
+        }
+      } else {
+        toast.error("Failed to update status");
+      }
+    } else if (pendingAction.type === 'shortlist') {
+      // Handle bulk shortlist if needed, or single
+      // For now assuming single for consistency with other parts or loop in the caller
+      // But wait, the shortlist button was bulk. The dropdown is single.
+      // Let's keep shortlist button as is for now if it's bulk, or update it to loop?
+      // The user said "not asking the commant after changing status".
+      // The shortlist button is a bulk action. Bulk actions with comments are tricky.
+      // Let's focus on the single status change dropdown first.
     }
+
+    setStatusModalOpen(false);
+    setPendingAction(null);
   };
 
   const onMoveToNextClick = () => {
@@ -238,8 +255,8 @@ const CandidatesList = () => {
 
   // Extract stages from the first candidate (assuming all are for the same job)
   const jobStages =
-    candidates && candidates.length > 0 && candidates[0].jobId?.stages
-      ? candidates[0].jobId.stages
+    candidates && candidates.length > 0 && (candidates[0].jobId as any)?.stages
+      ? (candidates[0].jobId as any).stages
       : [];
 
   return (
@@ -1156,19 +1173,15 @@ const CandidatesList = () => {
                         {/* Status button */}
                         <select
                           value={candidate.status}
-                          onChange={async (e) => {
+                          onChange={(e) => {
                             if (!user?._id) return;
                             const newStatus = e.target.value;
-                            const success = await updateStatus(
-                              candidate._id,
-                              newStatus,
-                              user._id
-                            );
-                            if (id) fetchCandidatesByJob(id);
-
-                            success
-                              ? toast.success("Status updated")
-                              : toast.error("Failed to update");
+                            setPendingAction({
+                              type: 'statusChange',
+                              candidateId: candidate._id,
+                              newStatus: newStatus
+                            });
+                            setStatusModalOpen(true);
                           }}
                           className="px-4 py-2 text-sm rounded-xl border border-gray-300 bg-gray-50
                focus:ring-2 focus:ring-blue-500 focus:border-blue-500
@@ -1455,6 +1468,48 @@ const CandidatesList = () => {
                   </div>
                 )}
 
+              {/* Status History */}
+              {selectedCandidate.statusHistory &&
+                selectedCandidate.statusHistory.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <span className="text-blue-600">📜</span>
+                      Status History
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedCandidate.statusHistory.slice().reverse().map(
+                        (history: any, index: number) => (
+                          <div
+                            key={index}
+                            className="p-4 rounded-xl border-l-4 shadow-sm bg-gray-50 border-blue-500"
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                                    {history.status}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {history.updatedBy?.name || "Unknown"} •{" "}
+                                  {new Date(history.timestamp).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                            {history.comment && (
+                              <div className="mt-2 p-3 bg-white rounded-lg border border-gray-200">
+                                <p className="text-sm text-gray-700 italic">
+                                  "{history.comment}"
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
               {/* Notes */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
@@ -1501,6 +1556,20 @@ const CandidatesList = () => {
           </div>
         </div>
       )}
+      <StatusUpdateModal
+        isOpen={statusModalOpen}
+        onClose={() => {
+          setStatusModalOpen(false);
+          setPendingAction(null);
+        }}
+        onConfirm={confirmStatusAction}
+        newStatus={pendingAction?.newStatus || ""}
+        candidateName={
+          pendingAction?.candidateId
+            ? (fullFilteredList.find((c: any) => c._id === pendingAction.candidateId) as any)?.dynamicFields?.candidateName
+            : ""
+        }
+      />
     </div>
   );
 };

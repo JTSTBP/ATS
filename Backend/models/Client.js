@@ -16,6 +16,10 @@ const clientSchema = new mongoose.Schema(
         linkedinUrl: { type: String },
         companyInfo: { type: String },
         logo: { type: String, required: true }, // Profile picture/logo path
+        address: { type: String },
+        state: { type: String },
+        agreementPercentage: { type: Number },
+        gstNumber: { type: String },
         pocs: [pocSchema],
         jobCount: { type: Number, default: 0 },
         createdBy: {

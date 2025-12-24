@@ -20,11 +20,9 @@ import AdminLayout from "./pages/AdminPanel";
 import UserManagement from "./components/AdminPanel/usermanagement";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import AdminRoleSettings from "./components/AdminPanel/setting";
 import AdminDashboard from "./components/AdminPanel/dashboard";
 import ReportsTab from "./components/AdminPanel/reports";
 import AnalyticsTab from "./components/AdminPanel/analytics";
-import SettingsTab from "./components/AdminPanel/setting";
 import MentorLayout from "./pages/mentor";
 import { JobsManager } from "./components/MentorPanel/pages/Jobs";
 import { CandidatesManager } from "./components/MentorPanel/pages/Candidates";
@@ -34,14 +32,10 @@ import { ApplicationsManager } from "./components/MentorPanel/pages/applications
 import { ActivityLog } from "./components/MentorPanel/pages/ActivityLog";
 import MentorLeaveApplications from "./components/MentorPanel/pages/LeaveApplications";
 import { ClientsManager } from "./components/MentorPanel/pages/Clients/ClientsManager";
-import RolesAndPermissions from "./components/AdminPanel/roles&permission";
 
 import CandidatesList from "./components/MentorPanel/pages/Job/candidateslist";
 import ManagerDashboard from "./components/ManagerPanel/Dashboard";
-import ManagerLeaveAppl from "./components/ManagerPanel/LeaveApplications";
-import ManagerApplication from "./components/ManagerPanel/Applications";
 import ManagerReports from "./components/ManagerPanel/Reports";
-import { ManagerCandidates } from "./components/ManagerPanel/Candidates";
 import { MentorReports } from "./components/MentorPanel/pages/Reports";
 
 import TaskManagement from "./components/AdminPanel/TaskManagement";
@@ -118,12 +112,11 @@ function App() {
             <Route path="/Admin/reports" element={<ReportsTab />} />
             <Route path="/Admin/analytics" element={<AnalyticsTab />} />
             <Route path="/Admin/jobs" element={<JobsManager />} />
-            <Route
-              path="/Admin/jobs/:id/candidates"
-              element={<CandidatesList />}
-            />
+            <Route path="/Admin/jobs/:id/candidates" element={<CandidatesList />} />
             <Route path="/Admin/clients" element={<ClientsManager />} />
+            <Route path="/Admin/clients/add" element={<ClientsManager initialFormOpen={true} />} />
             <Route path="/Admin/candidates" element={<AdminCandidates />} />
+            <Route path="/Admin/candidates/add" element={<AdminCandidates initialFormOpen={true} />} />
           </Route>
           {/* recruiter */}
           <Route

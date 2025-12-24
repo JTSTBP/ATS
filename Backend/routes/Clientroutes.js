@@ -69,7 +69,7 @@ router.post('/', clientUpload.single('logo'), async (req, res) => {
 
         const newClient = new Client(clientData);
         const savedClient = await newClient.save();
-        res.status(201).json(savedClient);
+        res.status(201).json({ success: true, client: savedClient });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -147,7 +147,7 @@ router.put('/:id', clientUpload.single('logo'), async (req, res) => {
             { $set: updateData },
             { new: true }
         );
-        res.json(updatedClient);
+        res.json({ success: true, client: updatedClient });
     } catch (err) {
         res.status(400).json({ message: err.message });
     }
@@ -157,7 +157,7 @@ router.put('/:id', clientUpload.single('logo'), async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         await Client.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Client deleted' });
+        res.json({ success: true, message: 'Client deleted' });
     } catch (err) {
         res.status(500).json({ message: err.message });
     }

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Invoice = require('../models/Invoice');
+const Client = require('../models/Client');
 const Payment = require('../models/Payment');
 const Expense = require('../models/Expense');
 
@@ -53,13 +54,37 @@ router.get('/summary', async (req, res) => {
 // Create a new invoice
 router.post('/create', async (req, res) => {
     try {
-        const { client, candidate, agreementPercentage, amount, createdBy } = req.body;
+        const { client: clientId, candidates, agreementPercentage, createdBy } = req.body;
+
+        // Fetch client details to check for Karnataka state
+        const clientDetails = await Client.findById(clientId);
+        if (!clientDetails) {
+            return res.status(404).json({ message: "Client not found" });
+        }
+
+        // Calculate Total Amount from candidates
+        const totalAmount = candidates.reduce((sum, candidate) => sum + (parseFloat(candidate.amount) || 0), 0);
+
+        let igst = 0;
+        let cgst = 0;
+        let sgst = 0;
+
+        // Apply taxes based on state
+        if (clientDetails.state && clientDetails.state.toLowerCase() === 'karnataka') {
+            cgst = Math.round(totalAmount * 0.09);
+            sgst = Math.round(totalAmount * 0.09);
+        } else {
+            igst = Math.round(totalAmount * 0.18);
+        }
 
         const newInvoice = new Invoice({
-            client,
-            candidate,
+            client: clientId,
+            candidates,
             agreementPercentage,
-            amount,
+            gstNumber: clientDetails.gstNumber,
+            igst,
+            cgst,
+            sgst,
             createdBy
         });
 
@@ -78,7 +103,9 @@ router.get('/all', async (req, res) => {
         let query = {};
 
         if (client) query.client = client;
-        if (candidate) query.candidate = candidate;
+        if (candidate) {
+            query['candidates.candidateId'] = candidate;
+        }
         if (status) query.status = status;
         if (startDate || endDate) {
             query.createdAt = {};
@@ -91,8 +118,8 @@ router.get('/all', async (req, res) => {
         }
 
         const invoices = await Invoice.find(query)
-            .populate('client', 'companyName')
-            .populate('candidate', 'dynamicFields')
+            .populate('client')
+            .populate('candidates.candidateId', 'dynamicFields')
             .populate('createdBy', 'name')
             .sort({ createdAt: -1 });
         res.status(200).json(invoices);
@@ -198,12 +225,12 @@ const path = require('path');
 // Send Invoice Email
 router.post('/send-email', async (req, res) => {
     try {
-        const { invoiceId, emailBody, senderEmail, senderPassword } = req.body;
+        const { invoiceId, emailBody, senderEmail, senderPassword, recipients, cc } = req.body;
 
         const invoice = await Invoice.findById(invoiceId)
             .populate('client')
             .populate({
-                path: 'candidate',
+                path: 'candidates.candidateId',
                 populate: { path: 'jobId', select: 'title' }
             });
 
@@ -211,9 +238,9 @@ router.post('/send-email', async (req, res) => {
             return res.status(404).json({ message: "Invoice not found" });
         }
 
-        const clientEmail = invoice.client.pocs[0]?.email;
+        const clientEmail = recipients || invoice.client.pocs[0]?.email;
         if (!clientEmail) {
-            return res.status(400).json({ message: "Client POC email not found" });
+            return res.status(400).json({ message: "No recipients provided and no client POC email found" });
         }
 
         // Generate PDF
@@ -249,6 +276,7 @@ router.post('/send-email', async (req, res) => {
         const mailOptions = {
             from: emailUser,
             to: clientEmail,
+            cc: cc,
             subject: `Invoice - ${invoice.client.companyName}`,
             text: emailBody || `Hi,\n\nKindly find the attached invoice soft copy.\n\nKarthika\nFinance\nM: 9686116232\nE: sarun@jobsterritory.com\nW: www.jobsterritory.com`,
             attachments: [

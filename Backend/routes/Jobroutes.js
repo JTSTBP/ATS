@@ -134,7 +134,12 @@ router.put("/:id", async (req, res) => {
 
     const updatedJob = await Job.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-    });
+    })
+      .populate("assignedRecruiters", "name email")
+      .populate("leadRecruiter", "name email")
+      .populate("CreatedBy", "name email")
+      .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo");
+
     // Handle Client Job Count Update
     if (req.body.clientId && req.body.clientId !== (oldJob.clientId?.toString())) {
       // Decrement count for old client
@@ -163,7 +168,7 @@ router.put("/:id", async (req, res) => {
     );
     res.json({ success: true, job: updatedJob });
   } catch (error) {
-    console.error("Error creating job:", error);
+    console.error("Error updating job:", error);
     res.status(500).json({ success: false, message: "Failed to update job" });
   }
 });

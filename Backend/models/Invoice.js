@@ -6,18 +6,33 @@ const invoiceSchema = new mongoose.Schema({
         ref: 'Client',
         required: true
     },
-    candidate: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'CandidateByJob',
-        required: true
-    },
-    agreementPercentage: {
+    candidates: [{
+        candidateId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'CandidateByJob',
+            required: true
+        },
+        designation: String,
+        doj: Date,
+        ctc: Number,
+        amount: {
+            type: Number,
+            required: true
+        }
+    }],
+    agreementPercentage: Number,
+    gstNumber: String,
+    igst: {
         type: Number,
-        required: true
+        default: 0
     },
-    amount: {
+    cgst: {
         type: Number,
-        required: true
+        default: 0
+    },
+    sgst: {
+        type: Number,
+        default: 0
     },
     status: {
         type: String,

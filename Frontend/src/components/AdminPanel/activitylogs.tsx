@@ -12,6 +12,10 @@ const ActivityLogs = () => {
   const [filteredlogs, setFilteredLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Date filter state
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   useEffect(() => {
     fetchallCandidates();
   }, [user]);
@@ -71,12 +75,27 @@ const ActivityLogs = () => {
     }
 
     // STEP 5: Always include user's own logs and remove duplicates
-    const finalLogs = [...allowedLogs, ...myLogs].filter(
+    let finalLogs = [...allowedLogs, ...myLogs].filter(
       (v, i, arr) => arr.findIndex((x) => x._id === v._id) === i
     );
 
+    // STEP 6: Date Filtering
+    if (startDate) {
+      finalLogs = finalLogs.filter(
+        (log) => new Date(log.createdAt) >= new Date(startDate)
+      );
+    }
+    if (endDate) {
+      // Set end date to end of day for inclusive comparison
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      finalLogs = finalLogs.filter(
+        (log) => new Date(log.createdAt) <= end
+      );
+    }
+
     setFilteredLogs(finalLogs);
-  }, [logs, users, user]);
+  }, [logs, users, user, startDate, endDate]);
 
   console.log(filteredlogs, "filteredlogs", logs, "logs");
   if (loading)
@@ -84,7 +103,42 @@ const ActivityLogs = () => {
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen mt-3">
-      <h2 className="text-2xl font-bold mb-4">Activity Logs</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">Activity Logs</h2>
+
+        {/* Date Filter Inputs */}
+        <div className="flex gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Start Date:</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="border rounded p-2 text-sm"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">End Date:</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="border rounded p-2 text-sm"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={() => {
+                setStartDate("");
+                setEndDate("");
+              }}
+              className="text-sm text-red-600 hover:text-red-800 underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="overflow-auto shadow-lg rounded-lg bg-white">
         <table className="min-w-full text-sm">
@@ -99,47 +153,55 @@ const ActivityLogs = () => {
           </thead>
 
           <tbody>
-            {filteredlogs.map((log) => (
-              <tr key={log._id} className="border-b hover:bg-gray-50">
-                {/* USER */}
-                <td className="p-3">{log.userId?.name || "Unknown User"}</td>
+            {filteredlogs.length > 0 ? (
+              filteredlogs.map((log) => (
+                <tr key={log._id} className="border-b hover:bg-gray-50">
+                  {/* USER */}
+                  <td className="p-3">{log.userId?.name || "Unknown User"}</td>
 
-                {/* ACTION */}
-                <td className="p-3">{log.action}</td>
+                  {/* ACTION */}
+                  <td className="p-3">{log.action}</td>
 
-                {/* DESCRIPTION */}
-                <td className="p-3">{log.description}</td>
+                  {/* DESCRIPTION */}
+                  <td className="p-3">{log.description}</td>
 
-                {/* TARGET MODEL */}
-                <td className="p-3">
-                  {log.targetModel === "CandidateByJob" && (
-                    <span className="text-blue-700 font-semibold">
-                      {log.targetId?.dynamicFields?.candidateName ||
-                        "Candidate"}
-                    </span>
-                  )}
+                  {/* TARGET MODEL */}
+                  <td className="p-3">
+                    {log.targetModel === "CandidateByJob" && (
+                      <span className="text-blue-700 font-semibold">
+                        {log.targetId?.dynamicFields?.candidateName ||
+                          "Candidate"}
+                      </span>
+                    )}
 
-                  {log.targetModel === "Job" && (
-                    <span className="text-green-700 font-semibold">
-                      {log.targetId?.title || "Job"}
-                    </span>
-                  )}
+                    {log.targetModel === "Job" && (
+                      <span className="text-green-700 font-semibold">
+                        {log.targetId?.title || "Job"}
+                      </span>
+                    )}
 
-                  {log.targetModel === "LeaveApplication" && (
-                    <span className="text-purple-700 font-semibold">
-                      Leave Request ({log.targetId?.leaveType})
-                    </span>
-                  )}
+                    {log.targetModel === "LeaveApplication" && (
+                      <span className="text-purple-700 font-semibold">
+                        Leave Request ({log.targetId?.leaveType})
+                      </span>
+                    )}
 
-                  {!log.targetModel && "—"}
-                </td>
+                    {!log.targetModel && "—"}
+                  </td>
 
-                {/* DATE */}
-                <td className="p-3 text-gray-600">
-                  {new Date(log.createdAt).toLocaleString()}
+                  {/* DATE */}
+                  <td className="p-3 text-gray-600">
+                    {new Date(log.createdAt).toLocaleString()}
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={5} className="p-5 text-center text-gray-500">
+                  No activity logs found for the selected criteria.
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>

@@ -18,12 +18,15 @@ interface JobCardProps {
     shortlisted?: number;
     postedBy?: string;
     postedDate?: string;
+    status?: string;
+    onStatusChange?: (newStatus: string) => void;
     // action handlers (optional)
     onView?: (id?: string | number) => void;
     onEdit?: (id?: string | number) => void;
     onDelete?: (id?: string | number) => void;
     onRefresh?: (id?: string | number) => void;
     onNavigateToCandidates?: (jobTitle: string) => void;
+    onMore?: (id?: string | number) => void;
 }
 
 
@@ -38,24 +41,31 @@ const JobCard: React.FC<JobCardProps> = ({
     shortlisted = 0,
     postedBy = "You",
     postedDate = "N/A",
+    status,
+    onStatusChange,
     onView,
     onEdit,
     onDelete,
     onRefresh,
     onNavigateToCandidates,
+    onMore,
 }) => {
     const { user } = useAuth(); // Assuming useAuth is available or imported
     const navigate = useNavigate();
     const handleTitleClick = () => {
         if (id) {
-            const basePath =
-                user?.designation === "Admin"
-                    ? "/Admin"
-                    : user?.designation === "Manager"
-                        ? "/Manager"
-                        : "/Mentor";
+            if (onNavigateToCandidates) {
+                onNavigateToCandidates(title);
+            } else {
+                const basePath =
+                    user?.designation === "Admin"
+                        ? "/Admin"
+                        : user?.designation === "Manager"
+                            ? "/Manager"
+                            : "/Mentor";
 
-            navigate(`${basePath}/jobs/${id}/candidates`);
+                navigate(`${basePath}/jobs/${id}/candidates`);
+            }
         }
     };
     return (
@@ -89,12 +99,33 @@ const JobCard: React.FC<JobCardProps> = ({
                         <p className="text-sm text-gray-500 mt-1">{client.companyName}</p>
                     )}
 
-                    {/* Tags */}
-                    <div className="flex gap-2 mt-2 flex-wrap">
+                    {/* Tags & Status */}
+                    <div className="flex gap-2 mt-2 items-center flex-wrap">
+                        {status && (
+                            <div className="relative group">
+                                <select
+                                    value={status}
+                                    onChange={(e) => onStatusChange?.(e.target.value)}
+                                    className={`appearance-none px-3 py-1 text-[10px] font-bold rounded-full border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 ${status === 'Open'
+                                        ? 'bg-green-100 text-green-700 border-green-200 focus:ring-green-500'
+                                        : status === 'Closed'
+                                            ? 'bg-red-100 text-red-700 border-red-200 focus:ring-red-500'
+                                            : 'bg-yellow-100 text-yellow-700 border-yellow-200 focus:ring-yellow-500'
+                                        }`}
+                                >
+                                    <option value="Open">Open</option>
+                                    <option value="Closed">Closed</option>
+                                    <option value="On Hold">On Hold</option>
+                                </select>
+                                <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <div className="w-0 h-0 border-l-[3px] border-l-transparent border-r-[3px] border-r-transparent border-t-[4px] border-t-current opacity-60"></div>
+                                </div>
+                            </div>
+                        )}
                         {tags.map((tag, i) => (
                             <span
                                 key={i}
-                                className="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-600"
+                                className="px-3 py-1 text-[10px] font-bold rounded-full bg-slate-100 text-slate-600 border border-slate-200"
                             >
                                 {tag}
                             </span>
@@ -164,6 +195,15 @@ const JobCard: React.FC<JobCardProps> = ({
                     >
                         <Trash2 className="w-5 h-5 cursor-pointer" />
                     </button>
+
+                    {/* <button
+                        aria-label="More"
+                        onClick={() => onMore?.(id)}
+                        className="p-1 rounded hover:bg-gray-100"
+                        title="More Options"
+                    >
+                        <RefreshCcw className="w-5 h-5 cursor-pointer rotate-90" />
+                    </button> */}
 
 
                 </div>

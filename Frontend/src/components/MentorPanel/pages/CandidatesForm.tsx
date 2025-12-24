@@ -11,9 +11,9 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
   const { user } = useAuth();
   const { users } = useUserContext();
   const { createCandidate, updateCandidate } = useCandidateContext();
-  const fileInputRef = useRef(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJob, setSelectedJob] = useState<any>(null);
   const [resumeFile, setResumeFile] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -37,7 +37,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
     if (candidate) {
       // Find the full job object from jobs list
       const jobObj = jobs.find(
-        (j) => j._id === candidate.jobId._id || j._id === candidate.jobId
+        (j: any) => (j._id === candidate.jobId?._id || j._id === candidate.jobId)
       );
       setSelectedJob(jobObj || null);
 
@@ -133,14 +133,14 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
 
   const handleJobChange = (e) => {
     const jobId = e.target.value;
-    const jobObj = jobs.find((j) => j._id === jobId) || null;
+    const jobObj = jobs.find((j: any) => j._id === jobId) || null;
     setSelectedJob(jobObj);
 
     setFormData((prev) => ({
       ...prev,
       jobId,
-      dynamicFields: jobObj
-        ? jobObj.candidateFields.reduce((acc, field) => {
+      dynamicFields: jobObj?.candidateFields
+        ? jobObj.candidateFields.reduce((acc: any, field: any) => {
           if (field.name) {
             // Keep existing value if editing, else initialize empty
             acc[field.name] = candidate?.dynamicFields?.[field.name] || "";
@@ -416,6 +416,39 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
                 </div>
               </div>
             </div>
+
+            {/* Status History Section */}
+            {candidate?.statusHistory && candidate.statusHistory.length > 0 && (
+              <div className="border p-4 rounded-lg">
+                <h3 className="font-semibold text-lg mb-3">Status History</h3>
+                <div className="space-y-4">
+                  <div className="relative border-l-2 border-slate-200 ml-3 space-y-6">
+                    {candidate.statusHistory.slice().reverse().map((history: any, index: number) => (
+                      <div key={index} className="relative pl-6">
+                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                          <div>
+                            <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 mb-1">
+                              {history.status}
+                            </span>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {history.comment || <span className="italic text-slate-400">No comment provided</span>}
+                            </p>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1 sm:mt-0 text-right">
+                            <p>{new Date(history.timestamp).toLocaleDateString()}</p>
+                            <p>{new Date(history.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-slate-500 font-medium mt-0.5">
+                              by {history.updatedBy?.name || "Unknown"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               type="submit"

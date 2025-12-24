@@ -7,6 +7,7 @@ import { useSearchParams } from "react-router-dom";
 import { useJobContext } from "../../context/DataProvider";
 import * as XLSX from "xlsx";
 import CandidateModal from "./CandidateModal";
+import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 
 export default function Candidates() {
   const { candidates, fetchCandidatesByUser, updateStatus, loading } = useCandidateContext();
@@ -20,6 +21,36 @@ export default function Candidates() {
   // Modal State
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Status Change Modal State
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    candidateId: string;
+    newStatus: string;
+  } | null>(null);
+
+  const handleStatusChange = (candidateId: string, newStatus: string) => {
+    setPendingStatusChange({ candidateId, newStatus });
+    setStatusModalOpen(true);
+  };
+
+  const confirmStatusChange = async (comment: string) => {
+    if (!pendingStatusChange) return;
+
+    await updateStatus(
+      pendingStatusChange.candidateId,
+      pendingStatusChange.newStatus,
+      user?._id,
+      undefined,
+      undefined,
+      undefined,
+      comment
+    );
+    if (user?._id) await fetchCandidatesByUser(user._id);
+
+    setStatusModalOpen(false);
+    setPendingStatusChange(null);
+  };
 
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -305,11 +336,13 @@ export default function Candidates() {
                         </div>
 
                         {/* Col 5: Status (Span 2) - Read Only */}
-                        <div className="col-span-12 md:col-span-2 min-w-0">
-                          <span
-                            className={`inline-block px-3 py-1.5 rounded-full text-xs font-medium border ${candidate.status === "New"
+                        <div className="col-span-12 md:col-span-2 min-w-0" onClick={(e) => e.stopPropagation()}>
+                          <select
+                            value={candidate.status || "New"}
+                            onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
+                            className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium border outline-none cursor-pointer appearance-none ${candidate.status === "New"
                               ? "bg-blue-50 text-blue-700 border-blue-200"
-                              : candidate.status === "Interview"
+                              : (candidate.status === "Interview" || candidate.status === "Interviewed")
                                 ? "bg-purple-50 text-purple-700 border-purple-200"
                                 : candidate.status === "Shortlisted"
                                   ? "bg-green-50 text-green-700 border-green-200"
@@ -317,13 +350,18 @@ export default function Candidates() {
                                     ? "bg-red-50 text-red-700 border-red-200"
                                     : candidate.status === "Selected"
                                       ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                                      : candidate.status === "Hired"
+                                      : (candidate.status === "Hired" || candidate.status === "Joined")
                                         ? "bg-teal-50 text-teal-700 border-teal-200"
                                         : "bg-amber-50 text-amber-700 border-amber-200"
                               }`}
                           >
-                            {candidate.status || "New"}
-                          </span>
+                            <option value="New">New</option>
+                            <option value="Shortlisted">Shortlisted</option>
+                            <option value="Interviewed">Interviewed</option>
+                            <option value="Selected">Selected</option>
+                            <option value="Joined">Joined</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
                         </div>
 
                       </div>
@@ -357,6 +395,18 @@ export default function Candidates() {
           />
         )}
       </AnimatePresence>
+
+      {/* Status Update Modal */}
+      <StatusUpdateModal
+        isOpen={statusModalOpen}
+        onClose={() => {
+          setStatusModalOpen(false);
+          setPendingStatusChange(null);
+        }}
+        onConfirm={confirmStatusChange}
+        newStatus={pendingStatusChange?.newStatus || ""}
+        candidateName={filteredCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+      />
     </>
   );
 }

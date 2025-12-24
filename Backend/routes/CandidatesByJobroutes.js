@@ -137,6 +137,10 @@ router.get("/", async (req, res) => {
         path: "interviewStageHistory.updatedBy",
         select: "name email designation",
       })
+      .populate({
+        path: "statusHistory.updatedBy",
+        select: "name email designation",
+      })
       .sort({ createdAt: -1 });
 
     res.json({ success: true, candidates });
@@ -280,6 +284,10 @@ router.get("/user/:userId", async (req, res) => {
         path: "interviewStageHistory.updatedBy",
         select: "name email designation",
       })
+      .populate({
+        path: "statusHistory.updatedBy",
+        select: "name email designation",
+      })
       .sort({ createdAt: -1 });
     res.json({ success: true, candidates });
   } catch (err) {
@@ -302,6 +310,10 @@ router.get("/job/:jobId", async (req, res) => {
       })
       .populate({
         path: "interviewStageHistory.updatedBy",
+        select: "name email designation",
+      })
+      .populate({
+        path: "statusHistory.updatedBy",
         select: "name email designation",
       })
       .sort({ createdAt: -1 });
@@ -570,11 +582,26 @@ router.patch("/:id/status", async (req, res) => {
       };
     }
 
+    // Always add to statusHistory
+    const statusHistoryEntry = {
+      status,
+      comment: req.body.comment || "",
+      updatedBy: role,
+      timestamp: new Date(),
+    };
+
+    if (!updateData.$push) {
+      updateData.$push = {};
+    }
+    updateData.$push.statusHistory = statusHistoryEntry;
+
     const updatedCandidate = await Candidate.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
-    ).populate('jobId', 'title');
+    )
+      .populate("jobId", "title")
+      .populate("statusHistory.updatedBy", "name email");
 
     // Activity Log
     logActivity(

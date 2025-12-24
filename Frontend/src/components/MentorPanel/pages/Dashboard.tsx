@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, Users, FileText, TrendingUp, Clock, CheckCircle, Plus, UserPlus, Calendar } from 'lucide-react';
 import { useAuth } from '../../../context/AuthProvider';
@@ -6,6 +6,15 @@ import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
 import { useJobContext } from '../../../context/DataProvider';
 import ActivityLogs from '../../AdminPanel/activitylogs';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 type Stats = {
   totalJobs: number;
@@ -97,7 +106,63 @@ export const Dashboard = () => {
 
     setStats(newStats);
 
+    setStats(newStats);
+
   }, [user, jobs, candidates, users]);
+
+  // --- 4. Identify Team Members ---
+  const teamMemberIds = useMemo(() => {
+    if (!user || !users) return [];
+
+    const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
+    let allReporteeIds = directReportees.map((u: any) => u._id);
+
+    if (user.designation === "Manager") {
+      directReportees.forEach((mentor: any) => {
+        const mentorReportees = users.filter(
+          (u: any) => u?.reporter?._id === mentor._id
+        );
+        allReporteeIds = [
+          ...allReporteeIds,
+          ...mentorReportees.map((u: any) => u._id),
+        ];
+      });
+    }
+
+    // Include self
+    return [user._id, ...allReporteeIds];
+  }, [user, users]);
+
+  // --- 5. Prepare Recruiter Performance Data ---
+  const recruiterPerformanceData = useMemo(() => {
+    const recruiterStats: Record<string, { name: string; uploaded: number; shortlisted: number; joined: number }> = {};
+
+    // Initialize with all team members
+    users.forEach(u => {
+      if (teamMemberIds.includes(u._id)) {
+        recruiterStats[u._id] = { name: u.name, uploaded: 0, shortlisted: 0, joined: 0 };
+      }
+    });
+
+    filteredCandidates.forEach((c) => {
+      const creator = c.createdBy;
+      if (!creator) return;
+
+      const creatorId = typeof creator === 'object' && '_id' in creator ? (creator as any)._id : String(creator);
+      const creatorName = typeof creator === 'object' && 'name' in creator ? (creator as any).name : "Unknown";
+
+      if (!recruiterStats[creatorId]) {
+        recruiterStats[creatorId] = { name: creatorName, uploaded: 0, shortlisted: 0, joined: 0 };
+      }
+
+      recruiterStats[creatorId].uploaded += 1;
+      if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
+      if (c.status === "Joined" || c.status === "Selected") recruiterStats[creatorId].joined += 1;
+    });
+
+    return Object.values(recruiterStats)
+      .sort((a, b) => b.uploaded - a.uploaded);
+  }, [filteredCandidates, users, teamMemberIds]);
 
   const statCards: Array<{ label: string; value: number; subValue?: string; icon: any; color: string; bgColor: string; path: string }> = [
     {
@@ -185,6 +250,67 @@ export const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
+          {/* Recruiter Performance Chart */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                  <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+                  Recruiter Performance
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">Candidates uploaded, shortlisted, and joined by your team</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
+                  <span className="text-gray-600">Uploaded</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm bg-orange-500"></div>
+                  <span className="text-gray-600">Shortlisted</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-sm bg-emerald-500"></div>
+                  <span className="text-gray-600">Joined</span>
+                </div>
+              </div>
+            </div>
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={recruiterPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                    interval={0}
+                  />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                    cursor={{ fill: '#f8fafc' }}
+                  />
+                  <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-6 p-4 bg-blue-50/50 rounded-xl border border-blue-100/50">
+              <p className="text-xs text-blue-800 leading-relaxed font-medium">
+                <span className="font-bold uppercase mr-2">Note:</span>
+                This chart shows performance metrics for you and your direct/indirect reportees.
+                <span className="mx-2">|</span>
+                <span className="text-blue-600 font-bold">Blue</span>: Uploads
+                <span className="mx-2">•</span>
+                <span className="text-orange-600 font-bold">Orange</span>: Shortlisted
+                <span className="mx-2">•</span>
+                <span className="text-emerald-600 font-bold">Green</span>: Joined/Selected
+              </p>
+            </div>
+          </div>
+
           {/* Quick Actions */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">

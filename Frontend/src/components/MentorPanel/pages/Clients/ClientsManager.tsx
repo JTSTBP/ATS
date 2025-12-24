@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Building2, Globe, Linkedin, Phone, Mail, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Building2, Globe, Linkedin, Phone, Mail, Pencil, Trash2, MapPin, FileText, Hash } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useAuth } from '../../../../context/AuthProvider';
 import { ClientForm } from './ClientForm';
 
 interface Client {
@@ -11,6 +12,10 @@ interface Client {
     linkedinUrl: string;
     companyInfo: string;
     logo?: string;
+    address?: string;
+    state?: string;
+    agreementPercentage?: number;
+    gstNumber?: string;
     pocs: {
         name: string;
         email: string;
@@ -26,10 +31,11 @@ interface Client {
     };
 }
 
-export const ClientsManager = () => {
+export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: boolean }) => {
+    const { user } = useAuth();
     const [clients, setClients] = useState<Client[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showForm, setShowForm] = useState(false);
+    const [showForm, setShowForm] = useState(initialFormOpen);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
@@ -204,6 +210,47 @@ export const ClientsManager = () => {
                                     </div>
 
                                     <p className="text-gray-600 mb-6 text-sm">{client.companyInfo}</p>
+
+                                    {(user?.isAdmin || user?.designation === 'Admin') && (
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                                            {client.address && (
+                                                <div className="flex items-start gap-2">
+                                                    <MapPin className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase">Address</p>
+                                                        <p className="text-sm text-slate-700">{client.address}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {client.state && (
+                                                <div className="flex items-start gap-2">
+                                                    <MapPin className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase">State</p>
+                                                        <p className="text-sm text-slate-700">{client.state}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {client.agreementPercentage !== undefined && (
+                                                <div className="flex items-start gap-2">
+                                                    <FileText className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase">Agreement %</p>
+                                                        <p className="text-sm text-slate-700">{client.agreementPercentage}%</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {client.gstNumber && (
+                                                <div className="flex items-start gap-2">
+                                                    <Hash className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-500 uppercase">GST Number</p>
+                                                        <p className="text-sm text-slate-700">{client.gstNumber}</p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Only show POC section if there are POCs */}
                                     {client.pocs && client.pocs.length > 0 && (

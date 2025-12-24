@@ -10,7 +10,7 @@ function generateInvoicePDF(invoice, payment, path) {
 
         // Helper to format currency
         const formatCurrency = (amount) => {
-            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount).replace('₹', '');
+            return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(amount || 0).replace('₹', '');
         };
 
         // Helper to convert number to words
@@ -19,43 +19,57 @@ function generateInvoicePDF(invoice, payment, path) {
             const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 
             const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-            if (!n) return; var str = '';
+            if (!n) return ''; var str = '';
             str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
             str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
             str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
             str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
             str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) + 'Only' : '';
-            return str;
+            return str || 'Zero Only';
         };
 
         // --- Header Section ---
-        // Add Logo
         const logoPath = 'c:\\MyProjects\\OfficeProjects\\ATS\\Frontend\\src\\images\\logo.png';
         if (fs.existsSync(logoPath)) {
             doc.image(logoPath, 50, 45, { width: 100 });
         }
 
         doc.fontSize(10).text(`Invoice No. JT/RO/25-26/${invoice._id.toString().substr(-4)}`, { align: 'right' });
-        doc.text(`Date: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`, { align: 'right' });
+        doc.text(`Date: ${new Date(invoice.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`, { align: 'right' });
 
-        doc.moveDown(4); // Increased moveDown to accommodate logo
+        doc.moveDown(4);
 
         // "To" Address
         doc.fontSize(12).font('Helvetica').text('To,', 50);
         doc.moveDown(0.5);
         doc.fontSize(14).font('Helvetica-Bold').text(invoice.client.companyName, 50);
 
-        if (invoice.client.companyInfo) {
+        // Display address and state if available
+        if (invoice.client.address || invoice.client.state) {
+            let addressText = '';
+            if (invoice.client.address) addressText += invoice.client.address;
+            if (invoice.client.state) {
+                if (addressText) addressText += ', ';
+                addressText += invoice.client.state;
+            }
+            doc.fontSize(10).font('Helvetica').text(addressText, 50, doc.y, { width: 300, align: 'left' });
+        } else if (invoice.client.companyInfo) {
+            // Fallback to companyInfo if address is not available
             doc.fontSize(10).font('Helvetica').text(invoice.client.companyInfo, 50, doc.y, { width: 300, align: 'left' });
         }
 
-        // SAC Code (Positioned absolutely to avoid overlap with address if it's long)
+        // Display client's GST Number if available
+        const clientGst = invoice.gstNumber || invoice.client.gstNumber;
+        if (clientGst) {
+            doc.fontSize(10).font('Helvetica-Bold').text(`GST No: ${clientGst}`, 50);
+        }
+
         doc.text('SAC Code: 998512', 400, 110, { align: 'right' });
 
         doc.moveDown(2);
 
         // --- Table Section ---
-        const tableTop = 200; // Fixed top position for table to ensure consistency
+        const tableTop = 200;
         const itemCodeX = 50;
         const descriptionX = 100;
         const dojX = 260;
@@ -74,87 +88,104 @@ function generateInvoicePDF(invoice, payment, path) {
         // Header Line
         doc.moveTo(50, tableTop + 15).lineTo(550, tableTop + 15).stroke();
 
-        // Table Row
-        const rowTop = tableTop + 25;
-        doc.font('Helvetica').fontSize(10);
+        let currentY = tableTop + 25;
+        let totalAmount = 0;
 
-        doc.text('1', itemCodeX, rowTop);
+        invoice.candidates.forEach((c, index) => {
+            doc.font('Helvetica').fontSize(10);
+            doc.text((index + 1).toString(), itemCodeX, currentY);
 
-        // Candidate Name (Wrapped)
-        doc.text(
-            invoice.candidate?.dynamicFields?.candidateName || invoice.candidate?.dynamicFields?.Name || 'N/A',
-            descriptionX,
-            rowTop,
-            { width: 150 }
-        );
+            const candidateName = c.candidateId?.dynamicFields?.candidateName || c.candidateId?.dynamicFields?.Name || 'N/A';
+            doc.text(candidateName, descriptionX, currentY, { width: 150 });
 
-        doc.text(new Date().toLocaleDateString('en-GB'), dojX, rowTop); // DOJ
+            const doj = c.doj ? new Date(c.doj).toLocaleDateString('en-GB') : 'N/A';
+            doc.text(doj, dojX, currentY);
 
-        // Designation (Wrapped)
-        doc.text(
-            invoice.candidate?.jobId?.title || 'N/A',
-            designationX,
-            rowTop,
-            { width: 90 }
-        );
+            const designation = c.designation || c.candidateId?.jobId?.title || 'N/A';
+            doc.text(designation, designationX, currentY, { width: 90 });
 
-        doc.text('N/A', ctcX, rowTop); // CTC
-        doc.text(formatCurrency(invoice.amount), amountX, rowTop);
+            const ctc = c.ctc ? formatCurrency(c.ctc) : 'N/A';
+            doc.text(ctc, ctcX, currentY);
+
+            doc.font('Helvetica-Bold').text(formatCurrency(c.amount), amountX, currentY);
+
+            totalAmount += (c.amount || 0);
+            currentY += 30; // Adjust spacing based on content if needed
+        });
 
         // Row Line
-        doc.moveTo(50, rowTop + 30).lineTo(550, rowTop + 30).stroke();
+        doc.moveTo(50, currentY).lineTo(550, currentY).stroke();
 
         // --- Totals Section ---
-        const totalTop = rowTop + 45;
-        const amount = invoice.amount || 0;
-        const igst = amount * 0.18;
-        const grandTotal = amount + igst;
+        const totalTop = currentY + 15;
+        const isKarnataka = invoice.client.state?.toLowerCase() === 'karnataka';
+        let grandTotal = totalAmount;
 
-        // Align totals to the right side
         const labelX = 350;
         const valueX = 500;
 
-        doc.text('Total', labelX, totalTop, { align: 'right', width: 100 });
-        doc.text(formatCurrency(amount), valueX, totalTop);
+        doc.font('Helvetica').text('Sub Total', labelX, totalTop, { align: 'right', width: 100 });
+        doc.font('Helvetica-Bold').text(formatCurrency(totalAmount), valueX, totalTop);
 
-        doc.text('IGST @ 18%', labelX, totalTop + 15, { align: 'right', width: 100 });
-        doc.text(formatCurrency(igst), valueX, totalTop + 15);
+        if (isKarnataka) {
+            const cgst = Math.round(totalAmount * 0.09);
+            const sgst = Math.round(totalAmount * 0.09);
+            grandTotal = totalAmount + cgst + sgst;
 
-        doc.font('Helvetica-Bold');
-        doc.text('Grand Total', labelX, totalTop + 35, { align: 'right', width: 100 });
-        doc.text(formatCurrency(grandTotal), valueX, totalTop + 35);
+            doc.font('Helvetica').text('CGST @ 9%', labelX, totalTop + 15, { align: 'right', width: 100 });
+            doc.text(formatCurrency(cgst), valueX, totalTop + 15);
+
+            doc.text('SGST @ 9%', labelX, totalTop + 30, { align: 'right', width: 100 });
+            doc.text(formatCurrency(sgst), valueX, totalTop + 30);
+
+            doc.moveTo(labelX + 20, totalTop + 45).lineTo(550, totalTop + 45).stroke();
+            doc.font('Helvetica-Bold').fontSize(12).text('Grand Total', labelX, totalTop + 55, { align: 'right', width: 100 });
+            doc.text(formatCurrency(grandTotal), valueX, totalTop + 55);
+        } else {
+            const igst = Math.round(totalAmount * 0.18);
+            grandTotal = totalAmount + igst;
+
+            doc.font('Helvetica').text('IGST @ 18%', labelX, totalTop + 15, { align: 'right', width: 100 });
+            doc.text(formatCurrency(igst), valueX, totalTop + 15);
+
+            doc.moveTo(labelX + 20, totalTop + 30).lineTo(550, totalTop + 30).stroke();
+            doc.font('Helvetica-Bold').fontSize(12).text('Grand Total', labelX, totalTop + 40, { align: 'right', width: 100 });
+            doc.text(formatCurrency(grandTotal), valueX, totalTop + 40);
+        }
 
         // Amount in Words
-        doc.font('Helvetica').fontSize(10);
-        doc.text(`Amount in words -- ${numberToWords(Math.round(grandTotal))}`, 50, totalTop + 60, { width: 500 });
+        const amountInWordsY = isKarnataka ? totalTop + 85 : totalTop + 70;
+        doc.font('Helvetica-Oblique').fontSize(10);
+        doc.text(`Amount in words -- ${numberToWords(Math.round(grandTotal))}`, 50, amountInWordsY, { width: 500 });
 
         // --- Bank Details Section ---
-        const bankTop = totalTop + 90;
-        doc.font('Helvetica-Bold').text('Bank Details', 50, bankTop);
-        doc.font('Helvetica');
+        const bankTop = amountInWordsY + 40;
+        doc.font('Helvetica-Bold').fontSize(11).text('Bank Details:', 50, bankTop);
+        doc.font('Helvetica').fontSize(10);
 
         const bankDetails = [
-            'Name : Jobs Territory',
-            'Bank Name : HDFC Bank',
-            'Account Number : 59207259123253',
-            'Branch Name : Cambridge Road',
-            'IFSC Code : HDFC0001298',
-            'PAN : AOBPR6552H',
-            'GST No : 29AOBPR6552H1ZL'
+            ['Account Name:', 'JT STRATEGIC BUSINESS PARTNER'],
+            ['Bank:', 'ICICI BANK'],
+            ['Account No:', '000205030235'],
+            ['IFSC Code:', 'ICIC0000002'],
+            ['Branch:', 'RPC LAYOUT']
         ];
 
-        let currentBankY = bankTop + 15;
-        bankDetails.forEach(detail => {
-            doc.text(detail, 50, currentBankY);
+        let currentBankY = bankTop + 18;
+        bankDetails.forEach(([label, value]) => {
+            doc.font('Helvetica-Bold').text(label, 50, currentBankY);
+            doc.font('Helvetica').text(value, 130, currentBankY);
             currentBankY += 15;
         });
 
-        // --- Footer Section ---
-        const footerTop = 700;
-        doc.fontSize(9).text('Note:', 50, footerTop);
-        doc.text('Address: 15/45, Cambridge Road, halasuru, Bengaluru (Bangalore) Rural, Karnataka, 560008', 50, footerTop + 15, { width: 500 });
-        doc.fillColor('blue').text('www.jobsterritory.com', 50, footerTop + 30, { link: 'http://www.jobsterritory.com', underline: true });
-        doc.fillColor('black'); // Reset color
+        // Computer generated note
+        doc.fontSize(8).font('Helvetica-Oblique').text('Note: This is a computer generated invoice and does not require a physical signature unless specified.', 50, currentBankY + 10);
+
+        // --- Signature Section ---
+        const sigTop = bankTop + 18;
+        doc.font('Helvetica-Bold').fontSize(10).text('For JT STRATEGIC BUSINESS PARTNER', 350, sigTop, { align: 'center', width: 200 });
+        doc.moveTo(370, sigTop + 65).lineTo(530, sigTop + 65).stroke();
+        doc.text('Authorised Signatory', 350, sigTop + 75, { align: 'center', width: 200 });
 
         doc.end();
 

@@ -1,17 +1,11 @@
 import { useEffect, useState } from "react";
 import {
   Plus,
-  Edit,
-  Trash2,
   Briefcase,
-  MapPin,
-  Building,
-  DollarSign,
   Search,
-  Eye,
 } from "lucide-react";
 import { JobForm } from "./JobForm";
-import { useJobContext } from "../../../context/DataProvider";
+import { useJobContext, Job } from "../../../context/DataProvider";
 import { JobDetailsModal } from "./JobDetailedView";
 import { useAuth } from "../../../context/AuthProvider";
 import JobCard from "./Job/listjobs";
@@ -19,21 +13,6 @@ import JobCard from "./Job/listjobs";
 import { useUserContext } from "../../../context/UserProvider";
 import { formatDate } from "../../../utils/dateUtils";
 
-interface JobType {
-  _id: string;
-  title: string;
-  description?: string;
-  department?: string;
-  location?: string | { name: string }[];
-  employmentType?: string;
-  status?: string;
-  candidateCount?: number;
-  newResponses?: number;
-  shortlisted?: number;
-  createdAt?: string;
-  CreatedBy?: { _id: string; name: string } | string;
-  clientId?: { _id: string; companyName: string; logo?: string };
-}
 
 import { useNavigate } from "react-router-dom";
 
@@ -78,7 +57,7 @@ export const JobsManager = ({
     }
   }, [initialSearchTerm]);
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [selectedJob, setSelectedJob] = useState<JobType | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   // Simulated user permissions (you can adjust or remove)
   const canManageJobs = true;
@@ -90,10 +69,9 @@ export const JobsManager = ({
   useEffect(() => {
     if (initialFormOpen) setShowForm(true);
   }, [initialFormOpen]);
-
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this job?")) return;
-    await deleteJob(id, user?._id);
+    await deleteJob(id, user?.designation || "Admin");
   };
 
   const handleEdit = (job: any) => {
@@ -105,6 +83,17 @@ export const JobsManager = ({
     setShowForm(false);
     setEditingJob(null);
     if (onFormClose) onFormClose();
+  };
+
+  const handleStatusChange = async (jobId: string, newStatus: string) => {
+    const job = jobs.find((j) => j._id === jobId);
+    if (!job) return;
+
+    try {
+      await updateJob(jobId, { ...job, status: newStatus });
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
   };
 
   // const filteredJobs = jobs.filter((job) => {
@@ -201,12 +190,13 @@ export const JobsManager = ({
      *  - own jobs
      *  - reportees jobs
      *  ============================ */
-    else if (designation === "manager") {
+    else if (designation === "manager" && user?._id) {
       // Manager + all users reporting to this manager
-      let allowedUserIds = [user._id];
+      const managerId = user._id;
+      let allowedUserIds = [managerId];
 
       const reportees = users.filter(
-        (u) => u?.reporter?._id === user._id
+        (u) => u?.reporter?._id === managerId
       );
 
       allowedUserIds.push(...reportees.map((u) => u._id));
@@ -219,17 +209,18 @@ export const JobsManager = ({
      *  - jobs created by mentor
      *  - jobs created by manager **IF assigned recruiter is the mentor**
      *  ===================================================== */
-    else if (designation === "mentor") {
+    else if (designation === "mentor" && user?._id) {
+      const mentorId = user._id;
 
       // 1️⃣ Get all users reporting to this mentor
       const mentorReportees = users.filter(
-        (u) => u?.reporter?._id === user._id
+        (u) => u?.reporter?._id === mentorId
       );
 
       const mentorReporteeIds = mentorReportees.map((u) => u._id);
 
       // 2️⃣ Mentor created this job
-      const isCreatedByMentor = createdById === user._id;
+      const isCreatedByMentor = createdById === mentorId;
 
       // 3️⃣ Job assigned to any of the mentor's reportees
       const isJobAssignedToMentorTeam =
@@ -263,11 +254,6 @@ export const JobsManager = ({
   });
 
 
-  const statusColors: Record<string, string> = {
-    Open: "bg-green-100 text-green-700",
-    Closed: "bg-red-100 text-red-700",
-    "On Hold": "bg-yellow-100 text-yellow-700",
-  };
 
   if (loading) {
     return (
@@ -344,9 +330,11 @@ export const JobsManager = ({
                 }
                 : undefined
             }
-            tags={[job.department, job.employmentType, job.status].filter(
+            tags={[job.department, job.employmentType].filter(
               Boolean
             )}
+            status={job.status}
+            onStatusChange={(newStatus) => job._id && handleStatusChange(job._id, newStatus)}
             totalResponses={job.candidateCount || 0}
             newResponses={job.newResponses || 0}
             shortlisted={job.shortlisted || 0}
@@ -358,12 +346,9 @@ export const JobsManager = ({
             }
             onView={() => setSelectedJob(job)}
             onEdit={() => handleEdit(job)}
-            onDelete={() => handleDelete(job._id)}
-            onRefresh={() => fetchJobs()}
+            onDelete={() => job._id && handleDelete(job._id)}
+            onRefresh={() => job._id && fetchJobs()}
             onNavigateToCandidates={handleNavigateToCandidates}
-            onMore={(id) => {
-              /* optional: open dropdown / context menu */
-            }}
           />
         ))}
       </div>

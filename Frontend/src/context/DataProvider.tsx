@@ -11,8 +11,9 @@ export type Job = {
   title: string;
   description: string;
   department: string;
-  location: string;
+  location: any[];
   employmentType: string;
+  noOfPositions?: number;
   status: string;
   keySkills?: string[];
   salary?: { min: string; max: string; currency: string };
@@ -31,6 +32,10 @@ export type Job = {
   clientId?: any;
   CreatedBy?: any;
   candidateFields?: any[];
+  stages?: any[];
+  candidateCount?: number;
+  newResponses?: number;
+  shortlisted?: number;
 };
 
 type JobContextType = {
@@ -39,9 +44,9 @@ type JobContextType = {
   error: string | null;
   fetchJobs: () => Promise<void>;
   fetchJobById: (id: string) => Promise<Job | null>;
-  createJob: (jobData: Job) => Promise<Job | null>;
-  updateJob: (id: string, jobData: Job) => Promise<Job | null>;
-  deleteJob: (id: string) => Promise<boolean>;
+  createJob: (job: any) => Promise<void>;
+  updateJob: (id: string, job: Partial<Job>) => Promise<void>;
+  deleteJob: (id: string, role: string) => Promise<void>;
   jobsByUser: Job[];
   fetchJobsByCreator: (userId: string) => Promise<void>;
   assignedJobs: Job[];
@@ -88,10 +93,11 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // 🔹 Create a job
-  const createJob = async (jobData: Job) => {
+  // 🔹 Create a new job
+  const createJob = async (jobData: any): Promise<void> => {
     try {
-      const res = await fetch(API_URL, {
+      setLoading(true);
+      const res = await fetch(`${API_URL}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(jobData),
@@ -100,17 +106,18 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!res.ok) throw new Error(data.message || "Failed to create job");
       setJobs((prev) => [data.job, ...prev]);
       toast.success("Job created successfully!");
-      return data.job;
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message || "Failed to create job");
-      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
   // 🔹 Update a job
-  const updateJob = async (id: string, jobData: Job) => {
+  const updateJob = async (id: string, jobData: Partial<Job>): Promise<void> => {
     try {
+      setLoading(true);
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -120,40 +127,41 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!res.ok) throw new Error(data.message || "Failed to update job");
       setJobs((prev) => prev.map((job) => (job._id === id ? data.job : job)));
       toast.success("Job updated successfully!");
-      return data.job;
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message || "Failed to update job");
-      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
   // 🔹 Delete a job
-  const deleteJob = async (id: string, role: string) => {
+  const deleteJob = async (id: string, role: string): Promise<void> => {
     try {
+      setLoading(true);
       const res = await fetch(`${API_URL}/${id}/${role}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to delete job");
       setJobs((prev) => prev.filter((job) => job._id !== id));
       toast.success(data.message || "Job deleted successfully!");
-      return true;
     } catch (err: any) {
       setError(err.message);
       toast.error(err.message || "Failed to delete job");
-      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const fetchJobsByCreator = async (userId) => {
+  const fetchJobsByCreator = async (userId: string) => {
     try {
       setLoading(true);
       const { data } = await axios.get(`${API_URL}/createdby/${userId}`);
       setJobsByUser(data.jobs || []);
-    } catch (err) {
+    } catch (err: any) {
       if (err.response?.status === 404) {
         setJobsByUser([]);
       } else {
-        setError("Failed to fetch jobs by user");
+        setError(err.message || "Failed to fetch jobs by user");
         console.error(err);
       }
     } finally {

@@ -40,7 +40,8 @@ type CandidateContextType = {
     role: string,
     interviewStage?: string,
     stageStatus?: "Selected" | "Rejected",
-    stageNotes?: string
+    stageNotes?: string,
+    comment?: string
   ) => Promise<Candidate | null>;
 };
 
@@ -210,7 +211,8 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     role: string,
     interviewStage?: string,
     stageStatus?: "Selected" | "Rejected",
-    stageNotes?: string
+    stageNotes?: string,
+    comment?: string
   ) => {
     try {
       const { data } = await axios.patch(`${API_URL}/${id}/status`, {
@@ -219,6 +221,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
         interviewStage,
         stageStatus,
         stageNotes,
+        comment,
       });
       if (data.success) {
         toast.success("Candidate status updated successfully");

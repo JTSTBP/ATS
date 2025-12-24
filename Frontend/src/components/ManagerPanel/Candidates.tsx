@@ -13,6 +13,7 @@ import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useUserContext } from "../../context/UserProvider";
 import { useAuth } from "../../context/AuthProvider";
+import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 
 export const ManagerCandidates = () => {
   const { user } = useAuth();
@@ -28,6 +29,36 @@ export const ManagerCandidates = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  // Status Change Modal State
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    candidateId: string;
+    newStatus: string;
+  } | null>(null);
+
+  const handleStatusChange = (candidateId: string, newStatus: string) => {
+    setPendingStatusChange({ candidateId, newStatus });
+    setStatusModalOpen(true);
+  };
+
+  const confirmStatusChange = async (comment: string) => {
+    if (!pendingStatusChange) return;
+
+    await updateStatus(
+      pendingStatusChange.candidateId,
+      pendingStatusChange.newStatus,
+      user?._id || "",
+      undefined, // interviewStage
+      undefined, // stageStatus
+      undefined, // stageNotes
+      comment // comment
+    );
+
+    if (user?._id) await fetchCandidatesByUser(user._id);
+    setStatusModalOpen(false);
+    setPendingStatusChange(null);
+  };
 
   // 1️⃣ Fetch all candidates on load
   useEffect(() => {
@@ -269,7 +300,7 @@ export const ManagerCandidates = () => {
                     <select
                       value={candidate.status || "New"}
                       onChange={(e) =>
-                        updateStatus(candidate._id, e.target.value, user?._id)
+                        handleStatusChange(candidate._id, e.target.value)
                       }
                       className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                     >
@@ -320,6 +351,18 @@ export const ManagerCandidates = () => {
         isOpen={showForm}
         onClose={handleCloseForm}
         candidate={editingCandidate}
+      />
+
+      {/* Status Update Modal */}
+      <StatusUpdateModal
+        isOpen={statusModalOpen}
+        onClose={() => {
+          setStatusModalOpen(false);
+          setPendingStatusChange(null);
+        }}
+        onConfirm={confirmStatusChange}
+        newStatus={pendingStatusChange?.newStatus || ""}
+        candidateName={searchedCandidates.find((c) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
       />
     </div>
   );

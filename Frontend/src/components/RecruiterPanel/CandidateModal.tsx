@@ -36,6 +36,7 @@ export default function CandidateModal({
     education: false,
     certifications: false,
     additional: false,
+    history: false,
   });
   const { user } = useAuth();
   const { createCandidate, updateCandidate } = useCandidateContext();
@@ -359,6 +360,46 @@ export default function CandidateModal({
                     </span>
                   )}
                 </div>
+              </div>
+            </Section>
+
+            {/* ---------- Status History Section ---------- */}
+            <Section
+              title="Status History"
+              expanded={expandedSections.history}
+              onToggle={() => toggleSection("history")}
+            >
+              <div className="space-y-4">
+                {candidate?.statusHistory && candidate.statusHistory.length > 0 ? (
+                  <div className="relative border-l-2 border-slate-200 ml-3 space-y-6">
+                    {candidate.statusHistory.slice().reverse().map((history: any, index: number) => (
+                      <div key={index} className="relative pl-6">
+                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                          <div>
+                            <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 mb-1">
+                              {history.status}
+                            </span>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {history.comment || <span className="italic text-slate-400">No comment provided</span>}
+                            </p>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1 sm:mt-0 text-right">
+                            <p>{new Date(history.timestamp).toLocaleDateString()}</p>
+                            <p>{new Date(history.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-slate-500 font-medium mt-0.5">
+                              by {history.updatedBy?.name || "Unknown"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500 italic text-center py-4">
+                    No status history available.
+                  </p>
+                )}
               </div>
             </Section>
 

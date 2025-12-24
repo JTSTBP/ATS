@@ -43,8 +43,9 @@ type Job = {
   title: string;
   description: string;
   department: string;
-  location: string[];
+  location: any[];
   employmentType: string;
+  noOfPositions?: number;
   status: string;
   keySkills?: string[];
   salary?: { min: string; max: string; currency: string };
@@ -90,21 +91,22 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     title: "",
     description: "",
     department: "",
-    location: [],
+    location: [] as any[],
     employmentType: "Full-time",
+    noOfPositions: 1,
     status: "Open",
-    keySkills: [],
+    keySkills: [] as string[],
     salary: { min: "", max: "", currency: "INR" },
     experience: { min: "", max: "", unit: "years" },
     industry: "",
     functionalArea: "",
-    education: [],
+    education: [] as string[],
     requirements: "",
 
     stages: [{ name: "", responsible: "Recruiter", mandatory: true }],
-    screeningQuestions: [],
-    teamMembers: [],
-    assignedRecruiters: [],
+    screeningQuestions: [] as string[],
+    teamMembers: [] as string[],
+    assignedRecruiters: [] as any[],
     leadRecruiter: "",
     candidateFields: [
       {
@@ -184,7 +186,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
   });
 
   // Filter only users whose designation is 'Recruiter'
-  const getAllowedRecruiters = (loggedUser, allUsers) => {
+  const getAllowedRecruiters = (loggedUser: any, allUsers: any[]) => {
     const designation = loggedUser?.designation?.toLowerCase();
 
     // 1️⃣ ADMIN → all recruiters
@@ -257,14 +259,14 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     }));
   };
 
-  const removeStage = (index) => {
+  const removeStage = (index: number) => {
     setFormData((prev) => ({
       ...prev,
       stages: prev.stages.filter((_, i) => i !== index),
     }));
   };
 
-  const updateStage = (index, field, value) => {
+  const updateStage = (index: number, field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       stages: prev.stages.map((stage, i) =>
@@ -309,7 +311,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     }));
   };
 
-  const removeCandidateField = (fieldId) => {
+  const removeCandidateField = (fieldId: string) => {
     setFormData((prev) => ({
       ...prev,
       candidateFields: prev.candidateFields.filter(
@@ -318,7 +320,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     }));
   };
 
-  const updateCandidateField = (id, key, value) => {
+  const updateCandidateField = (id: string, key: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       candidateFields: prev.candidateFields.map((f) =>
@@ -478,7 +480,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 <div className="grid grid-cols-2 gap-4">
                   <IndustryInput
                     value={formData.department} // string now
-                    onChange={(newIndustry) =>
+                    onChange={(newIndustry: any) =>
                       setFormData((prev) => ({
                         ...prev,
                         department: newIndustry,
@@ -486,19 +488,31 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     }
                   />
 
-                  <Grid item xs={12}>
+                  <Grid size={{ xs: 12 }}>
                     <LocationInput
-                      value={formData.location}
-                      onChange={(newLocation) =>
+                      value={formData.location as any}
+                      onChange={(newLocation: any) => {
                         setFormData((prev) => ({
                           ...prev,
                           location: newLocation,
                         }))
-                      }
+                      }}
                       label="Location"
                       placeholder="Type city name to search..."
                     />
                   </Grid>
+                </div>
+                <div className="mt-4">
+                  <TextField
+                    fullWidth
+                    type="number"
+                    label="No. of Positions"
+                    variant="outlined"
+                    value={formData.noOfPositions}
+                    onChange={(e) =>
+                      setFormData({ ...formData, noOfPositions: parseInt(e.target.value) || 0 })
+                    }
+                  />
                 </div>
               </div>
             </>
@@ -655,9 +669,9 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       onClick={() =>
                         setFormData((prev) => ({
                           ...prev,
-                          keySkills: prev.keySkills.filter(
-                            (_, i) => i !== index
-                          ),
+                          keySkills: (prev.keySkills || []).includes(skill)
+                            ? (prev.keySkills || []).filter((s) => s !== skill)
+                            : [...(prev.keySkills || []), skill],
                         }))
                       }
                     >
@@ -691,7 +705,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
           {/* Step 4 - Recruiter & Branding */}
           {step === 4 && (
             <>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography
                   variant="h6"
                   sx={{ fontWeight: 600, mb: 3, mt: 3, color: "#1e293b" }}
@@ -701,7 +715,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               </Grid>
 
               {/* Assign Multiple Recruiters */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <FormControl fullWidth>
                   <InputLabel id="assignedRecruiters-label">
                     Assigned Recruiters <span className="text-red-500">*</span>
@@ -717,8 +731,8 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     onChange={(e) => {
                       const value = e.target.value;
                       // Always store only the IDs (strings)
-                      const selectedIds = value.map((v: any) =>
-                        typeof v === "object" ? v._id : v
+                      const selectedIds = (value as any[]).map((v: any) =>
+                        typeof v === "object" ? v?._id : v
                       );
                       setFormData((prev) => ({
                         ...prev,
@@ -775,8 +789,8 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               </Grid>
 
               {/* Lead Recruiter */}
-              <Grid item xs={12}>
-                < FormControl
+              <Grid size={12}>
+                <FormControl
                   fullWidth
                   disabled={(formData.assignedRecruiters || []).length === 0
                   }
@@ -793,7 +807,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                         ...prev,
                         leadRecruiter:
                           typeof e.target.value === "object"
-                            ? e.target.value._id
+                            ? (e.target.value as any)?._id
                             : e.target.value,
                       }))
                     }
@@ -801,7 +815,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     {(formData.assignedRecruiters || []).map((r) => {
                       const id = typeof r === "object" ? r._id : r;
                       const recruiter = recruiterUsers?.find(
-                        (u) => u._id === id
+                        (u: any) => u?._id === id
                       ) || users?.find((u) => u._id === id);
                       return (
                         <MenuItem key={id} value={id}>
@@ -819,7 +833,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
           {step === 5 && (
             <>
               {/* Interview Stages */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography
                   variant="h6"
                   sx={{ fontWeight: 600, mb: 3, mt: 3, color: "#1e293b" }}
@@ -829,7 +843,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               </Grid>
 
               {formData.stages.map((stage, index) => (
-                <Grid item xs={12} key={index}>
+                <Grid size={12} key={index}>
                   <Card
                     sx={{
                       p: 2,
@@ -840,7 +854,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   >
                     <Grid container spacing={2} alignItems="center">
                       {/* Drag and Move Buttons */}
-                      <Grid item xs={12} sm={1}>
+                      <Grid size={{ xs: 12, sm: 1 }}>
                         <Box
                           sx={{
                             display: "flex",
@@ -882,7 +896,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       </Grid>
 
                       {/* Stage Name */}
-                      <Grid item xs={12} sm={4}>
+                      <Grid size={{ xs: 12, sm: 4 }}>
                         <TextField
                           fullWidth
                           label={`Stage ${index + 1} Name`}
@@ -895,7 +909,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       </Grid>
 
                       {/* Responsible Dropdown */}
-                      <Grid item xs={12} sm={3}>
+                      <Grid size={{ xs: 12, sm: 3 }}>
                         <FormControl fullWidth>
                           <InputLabel>Responsible</InputLabel>
                           <Select
@@ -912,7 +926,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       </Grid>
 
                       {/* Mandatory Switch */}
-                      <Grid item xs={12} sm={3}>
+                      <Grid size={{ xs: 12, sm: 3 }}>
                         <FormControlLabel
                           control={
                             <Switch
@@ -932,7 +946,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       </Grid>
 
                       {/* Delete Button */}
-                      <Grid item xs={12} sm={1}>
+                      <Grid size={{ xs: 12, sm: 1 }}>
                         <Tooltip title="Delete Stage">
                           <IconButton
                             color="error"
@@ -949,7 +963,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               ))}
 
               {/* Add New Stage Button */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon />}
@@ -965,7 +979,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
           {step === 6 && (
             <>
               {/* Candidate Form Setup */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Typography
                   variant="h6"
                   sx={{ fontWeight: 600, mb: 3, mt: 3, color: "#1e293b" }}
@@ -979,7 +993,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               </Grid>
 
               {formData.candidateFields.map((field, index) => (
-                <Grid item xs={12} key={index}>
+                <Grid size={12} key={index}>
                   <Card
                     sx={{
                       p: 2,
@@ -992,7 +1006,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   >
                     <Grid container spacing={2} alignItems="center">
                       {/* Field Name */}
-                      <Grid item xs={12} sm={4}>
+                      <Grid size={{ xs: 12, sm: 4 }}>
                         <TextField
                           fullWidth
                           label="Field Name"
@@ -1010,7 +1024,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       </Grid>
 
                       {/* Field Type */}
-                      <Grid item xs={12} sm={3}>
+                      <Grid size={{ xs: 12, sm: 3 }}>
                         <FormControl fullWidth disabled={field.fixed}>
                           <InputLabel>Field Type</InputLabel>
                           <Select
@@ -1037,7 +1051,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       </Grid>
 
                       {/* Required Checkbox */}
-                      <Grid item xs={12} sm={3}>
+                      <Grid size={{ xs: 12, sm: 3 }}>
                         <FormControlLabel
                           control={
                             <Checkbox
@@ -1057,7 +1071,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       </Grid>
 
                       {/* Delete / Fixed Label */}
-                      <Grid item xs={12} sm={2}>
+                      <Grid size={{ xs: 12, sm: 2 }}>
                         {!field.fixed && (
                           <IconButton
                             color="error"
@@ -1079,7 +1093,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
                     {/* Dropdown Options if type = select */}
                     {field.type === "select" && (
-                      <Grid item xs={12} sx={{ mt: 2 }}>
+                      <Grid size={12} sx={{ mt: 2 }}>
                         <TextField
                           fullWidth
                           label="Dropdown Options (comma separated)"
@@ -1099,7 +1113,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               ))}
 
               {/* Add Field Button */}
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon />}
@@ -1140,15 +1154,12 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     <input
                       type="checkbox"
                       checked={formData.screeningQuestions?.includes(q)}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
+                      onChange={() => {
                         setFormData((prev) => ({
                           ...prev,
-                          screeningQuestions: checked
-                            ? [...(prev.screeningQuestions || []), q]
-                            : prev.screeningQuestions.filter(
-                              (ques) => ques !== q
-                            ),
+                          screeningQuestions: (prev.screeningQuestions || []).includes(q)
+                            ? (prev.screeningQuestions || []).filter((ques) => ques !== q)
+                            : [...(prev.screeningQuestions || []), q],
                         }));
                       }}
                     />
@@ -1207,9 +1218,9 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
               {/* Display selected questions */}
               <div className="flex flex-wrap gap-2">
-                {formData.screeningQuestions?.map((q, i) => (
+                {formData.screeningQuestions?.map((q, index) => (
                   <div
-                    key={i}
+                    key={index}
                     className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-2"
                   >
                     <span>{q}</span>
@@ -1218,9 +1229,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       onClick={() =>
                         setFormData((prev) => ({
                           ...prev,
-                          screeningQuestions: prev.screeningQuestions.filter(
-                            (item) => item !== q
-                          ),
+                          screeningQuestions: (prev.screeningQuestions || []).filter((_, i) => i !== index),
                         }))
                       }
                       className="text-red-500 hover:text-red-700"

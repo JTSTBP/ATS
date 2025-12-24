@@ -20,6 +20,10 @@ export interface Client {
     linkedinUrl: string;
     companyInfo: string;
     logo?: string;
+    address?: string;
+    state?: string;
+    agreementPercentage?: number | string;
+    gstNumber?: string;
     pocs: POC[];
     createdBy?: string;
 }
@@ -92,6 +96,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 formData.append('industry', clientData.industry);
                 formData.append('linkedinUrl', clientData.linkedinUrl);
                 formData.append('companyInfo', clientData.companyInfo);
+                if (clientData.address) formData.append('address', clientData.address);
+                if (clientData.state) formData.append('state', clientData.state);
+                if (clientData.agreementPercentage) formData.append('agreementPercentage', String(clientData.agreementPercentage));
+                if (clientData.gstNumber) formData.append('gstNumber', clientData.gstNumber);
                 formData.append('pocs', JSON.stringify(clientData.pocs));
                 formData.append('logo', logoFile);
 
@@ -145,6 +153,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 formData.append('industry', clientData.industry);
                 formData.append('linkedinUrl', clientData.linkedinUrl);
                 formData.append('companyInfo', clientData.companyInfo);
+                if (clientData.address) formData.append('address', clientData.address);
+                if (clientData.state) formData.append('state', clientData.state);
+                if (clientData.agreementPercentage) formData.append('agreementPercentage', String(clientData.agreementPercentage));
+                if (clientData.gstNumber) formData.append('gstNumber', clientData.gstNumber);
                 formData.append('pocs', JSON.stringify(clientData.pocs));
                 formData.append('logo', logoFile);
 

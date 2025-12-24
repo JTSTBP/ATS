@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, X, Trash2, Mail, RotateCcw } from "lucide-react";
+import { Plus, X, Trash2, Mail, RotateCcw, RefreshCw } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../utils/dateUtils";
@@ -8,10 +8,20 @@ import { formatDate } from "../../utils/dateUtils";
 interface Client {
     _id: string;
     companyName: string;
+    address?: string;
+    state?: string;
+    companyInfo?: string;
+    agreementPercentage?: number;
+    gstNumber?: string;
+    pocs?: { name: string; email: string; phone?: string }[];
 }
 
 interface Candidate {
     _id: string;
+    jobId?: {
+        _id: string;
+        title: string;
+    };
     dynamicFields: {
         Name?: string;
         candidateName?: string;
@@ -19,12 +29,23 @@ interface Candidate {
     };
 }
 
+interface InvoiceCandidate {
+    candidateId: Candidate;
+    designation: string;
+    doj: string;
+    ctc: number;
+    amount: number;
+}
+
 interface Invoice {
     _id: string;
     client: Client;
-    candidate: Candidate;
+    candidates: InvoiceCandidate[];
     agreementPercentage: number;
-    amount?: number;
+    gstNumber?: string;
+    igst?: number;
+    cgst?: number;
+    sgst?: number;
     status: string;
     createdAt: string;
 }
@@ -48,13 +69,26 @@ const Finance = () => {
     const [expenses, setExpenses] = useState<any[]>([]);
     const [payments, setPayments] = useState<Payment[]>([]);
     const [activeTab, setActiveTab] = useState<'invoices' | 'payments' | 'expenses'>('invoices');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCreatingInvoice, setIsCreatingInvoice] = useState(false);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+    const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+    const [emailRecipients, setEmailRecipients] = useState<string[]>([]);
+    const [customEmails, setCustomEmails] = useState<string>("");
+    const [emailCc, setEmailCc] = useState("");
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [clients, setClients] = useState<Client[]>([]);
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [loading, setLoading] = useState(false);
+
+    const [invoiceFormData, setInvoiceFormData] = useState({
+        client: "",
+        agreementPercentage: "",
+        gstNumber: "",
+        candidates: [
+            { candidateId: "", designation: "", doj: "", ctc: "", amount: "" }
+        ]
+    });
 
     // Filter states for Invoices
     const [filterInvoiceClient, setFilterInvoiceClient] = useState('');
@@ -74,12 +108,6 @@ const Finance = () => {
     const [filterExpenseStartDate, setFilterExpenseStartDate] = useState('');
     const [filterExpenseEndDate, setFilterExpenseEndDate] = useState('');
 
-    const [formData, setFormData] = useState({
-        client: "",
-        candidate: "",
-        agreementPercentage: "",
-        amount: "",
-    });
 
     const [paymentData, setPaymentData] = useState({
         amountReceived: "",
@@ -230,6 +258,7 @@ const Finance = () => {
     };
 
     const fetchClients = async () => {
+        setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/clients`);
             if (response.data.success) {
@@ -237,10 +266,13 @@ const Finance = () => {
             }
         } catch (error) {
             console.error("Error fetching clients:", error);
+        } finally {
+            setLoading(false);
         }
     };
 
     const fetchCandidates = async () => {
+        setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/CandidatesJob`);
             if (response.data.success) {
@@ -248,28 +280,32 @@ const Finance = () => {
             }
         } catch (error) {
             console.error("Error fetching candidates:", error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value });
-    };
 
     const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setPaymentData({ ...paymentData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleInvoiceSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
             await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/create`, {
-                ...formData,
+                ...invoiceFormData,
                 createdBy: user?._id,
             });
             toast.success("Invoice created successfully");
-            setIsModalOpen(false);
-            setFormData({ client: "", candidate: "", agreementPercentage: "", amount: "" });
+            setIsCreatingInvoice(false);
+            setInvoiceFormData({
+                client: "",
+                agreementPercentage: "",
+                gstNumber: "",
+                candidates: [{ candidateId: "", designation: "", doj: "", ctc: "", amount: "" }]
+            });
             fetchInvoices();
         } catch (error) {
             console.error("Error creating invoice:", error);
@@ -277,6 +313,48 @@ const Finance = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const addCandidateRow = () => {
+        setInvoiceFormData({
+            ...invoiceFormData,
+            candidates: [...invoiceFormData.candidates, { candidateId: "", designation: "", doj: "", ctc: "", amount: "" }]
+        });
+    };
+
+    const removeCandidateRow = (index: number) => {
+        const newCandidates = invoiceFormData.candidates.filter((_, i) => i !== index);
+        setInvoiceFormData({ ...invoiceFormData, candidates: newCandidates });
+    };
+
+    const handleCandidateChange = (index: number, field: string, value: string) => {
+        const newCandidates = [...invoiceFormData.candidates];
+        (newCandidates[index] as any)[field] = value;
+
+        // Auto-fill designation if candidate is selected
+        if (field === 'candidateId') {
+            const selectedCandidate = candidates.find(c => c._id === value);
+            if (selectedCandidate) {
+                newCandidates[index].designation = selectedCandidate.jobId?.title || "";
+            }
+        }
+
+        setInvoiceFormData({ ...invoiceFormData, candidates: newCandidates });
+    };
+
+    const numberToWords = (num: number) => {
+        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
+        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+        const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!n) return '';
+        let str = '';
+        str += (parseInt(n[1]) !== 0) ? (a[Number(n[1])] || b[parseInt(n[1][0])] + ' ' + a[parseInt(n[1][1])]) + 'Crore ' : '';
+        str += (parseInt(n[2]) !== 0) ? (a[Number(n[2])] || b[parseInt(n[2][0])] + ' ' + a[parseInt(n[2][1])]) + 'Lakh ' : '';
+        str += (parseInt(n[3]) !== 0) ? (a[Number(n[3])] || b[parseInt(n[3][0])] + ' ' + a[parseInt(n[3][1])]) + 'Thousand ' : '';
+        str += (parseInt(n[4]) !== 0) ? (a[Number(n[4])] || b[parseInt(n[4][0])] + ' ' + a[parseInt(n[4][1])]) + 'Hundred ' : '';
+        str += (parseInt(n[5]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[parseInt(n[5][0])] + ' ' + a[parseInt(n[5][1])]) + 'Only' : '';
+        return str || 'Zero Only';
     };
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
@@ -321,21 +399,51 @@ const Finance = () => {
     };
 
     const handleSendEmail = async (id: string) => {
+        const invoice = invoices.find(inv => inv._id === id);
+        if (!invoice) return;
+
         if (!user?.email || !user?.appPassword) {
             toast.error("Please update your profile with Email and App Password to send invoices.");
             return;
         }
-        if (!window.confirm("Are you sure you want to send the invoice email to the client?")) return;
+
+        setSelectedInvoice(invoice);
+        const pocEmails = invoice.client?.pocs?.map(p => p.email).filter(Boolean) as string[] || [];
+        setEmailRecipients(pocEmails.length > 0 ? [pocEmails[0]] : []);
+        setCustomEmails("");
+        setEmailCc("");
+        setIsEmailModalOpen(true);
+    };
+
+    const confirmSendEmail = async () => {
+        if (!selectedInvoice) return;
+
+        const allRecipients = [
+            ...emailRecipients,
+            ...customEmails.split(',').map(e => e.trim()).filter(Boolean)
+        ].join(', ');
+
+        if (!allRecipients) {
+            toast.error("Please provide at least one recipient email.");
+            return;
+        }
+
+        setLoading(true);
         try {
             await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/send-email`, {
-                invoiceId: id,
-                senderEmail: user.email,
-                senderPassword: user.appPassword
+                invoiceId: selectedInvoice._id,
+                senderEmail: user?.email,
+                senderPassword: user?.appPassword,
+                recipients: allRecipients,
+                cc: emailCc
             });
-            toast.success("Email sent successfully");
+            toast.success("Invoice email sent successfully!");
+            setIsEmailModalOpen(false);
         } catch (error) {
             console.error("Error sending email:", error);
             toast.error("Failed to send email");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -354,7 +462,8 @@ const Finance = () => {
 
     const openPaymentModal = (invoice: Invoice) => {
         setSelectedInvoice(invoice);
-        setPaymentData({ amountReceived: invoice.amount?.toString() || "", receivedDate: new Date().toISOString().split('T')[0] });
+        const totalAmount = invoice.candidates?.reduce((sum, c) => sum + (c.amount || 0), 0) || 0;
+        setPaymentData({ amountReceived: totalAmount.toString(), receivedDate: new Date().toISOString().split('T')[0] });
         setIsPaymentModalOpen(true);
     };
 
@@ -451,7 +560,7 @@ const Finance = () => {
                         </button>
                     ) : (
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={() => setIsCreatingInvoice(true)}
                             className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
                         >
                             <Plus size={20} />
@@ -543,11 +652,12 @@ const Finance = () => {
                                     <tr key={invoice._id} className="hover:bg-gray-50">
                                         <td className="p-4">{invoice.client?.companyName || "N/A"}</td>
                                         <td className="p-4">
-                                            {invoice.candidate?.dynamicFields?.candidateName ||
-                                                invoice.candidate?.dynamicFields?.Name ||
+                                            {invoice.candidates?.[0]?.candidateId?.dynamicFields?.candidateName ||
+                                                invoice.candidates?.[0]?.candidateId?.dynamicFields?.Name ||
                                                 "N/A"}
+                                            {invoice.candidates?.length > 1 && ` (+${invoice.candidates.length - 1} more)`}
                                         </td>
-                                        <td className="p-4">₹{invoice.amount || 0}</td>
+                                        <td className="p-4">₹{(invoice.candidates?.reduce((sum, c) => sum + (c.amount || 0), 0) || 0).toLocaleString()}</td>
                                         <td className="p-4">{invoice.agreementPercentage}%</td>
                                         <td className="p-4">
                                             <span
@@ -803,100 +913,358 @@ const Finance = () => {
                 </>
             )}
 
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
-                        <button
-                            onClick={() => setIsModalOpen(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={24} />
-                        </button>
-                        <h2 className="text-xl font-bold mb-6">Create New Invoice</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Client
-                                </label>
-                                <select
-                                    name="client"
-                                    value={formData.client}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            {isCreatingInvoice && (
+                <div className="fixed inset-0 bg-slate-50 z-[60] overflow-y-auto">
+                    <div className="max-w-[1400px] mx-auto p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setIsCreatingInvoice(false)}
+                                    className="p-2 hover:bg-white rounded-lg transition-colors"
                                 >
-                                    <option value="">Select Client</option>
-                                    {clients.map((client) => (
-                                        <option key={client._id} value={client._id}>
-                                            {client.companyName}
-                                        </option>
-                                    ))}
-                                </select>
+                                    <X size={24} />
+                                </button>
+                                <h2 className="text-2xl font-bold text-slate-800">Create Multi-Candidate Invoice</h2>
                             </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Candidate
-                                </label>
-                                <select
-                                    name="candidate"
-                                    value={formData.candidate}
-                                    onChange={handleInputChange}
-                                    required
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setIsCreatingInvoice(false)}
+                                    className="px-6 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
                                 >
-                                    <option value="">Select Candidate</option>
-                                    {candidates.map((candidate) => (
-                                        <option key={candidate._id} value={candidate._id}>
-                                            {candidate.dynamicFields?.candidateName ||
-                                                candidate.dynamicFields?.Name ||
-                                                "Unknown Candidate"}
-                                        </option>
-                                    ))}
-                                </select>
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleInvoiceSubmit}
+                                    disabled={loading || !invoiceFormData.client || invoiceFormData.candidates.some(c => !c.candidateId || !c.amount)}
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 flex items-center gap-2"
+                                >
+                                    {loading ? "Creating..." : "Save & Generate Invoice"}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col md:flex-row gap-8 items-start">
+                            {/* Left Side: Form */}
+                            <div className="w-full md:w-1/2 space-y-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b pb-2 mb-4">Client Details</h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Client</label>
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    value={invoiceFormData.client}
+                                                    onChange={(e) => {
+                                                        const selectedClient = clients.find(c => c._id === e.target.value);
+                                                        setInvoiceFormData({
+                                                            ...invoiceFormData,
+                                                            client: e.target.value,
+                                                            agreementPercentage: selectedClient?.agreementPercentage?.toString() || "",
+                                                            gstNumber: selectedClient?.gstNumber || ""
+                                                        });
+                                                    }}
+                                                    className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                >
+                                                    <option value="">Select Client</option>
+                                                    {clients.map(c => <option key={c._id} value={c._id}>{c.companyName}</option>)}
+                                                </select>
+                                                <a
+                                                    href="/Admin/clients/add"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition shadow-sm"
+                                                    title="Add New Client"
+                                                >
+                                                    <Plus className="w-4 h-4" />
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={fetchClients}
+                                                    className="p-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition shadow-sm"
+                                                    title="Refresh Clients list"
+                                                >
+                                                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Agreement %</label>
+                                            <input
+                                                type="number"
+                                                value={invoiceFormData.agreementPercentage}
+                                                onChange={(e) => setInvoiceFormData({ ...invoiceFormData, agreementPercentage: e.target.value })}
+                                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g. 8.33"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GST Number</label>
+                                            <input
+                                                type="text"
+                                                value={invoiceFormData.gstNumber}
+                                                onChange={(e) => setInvoiceFormData({ ...invoiceFormData, gstNumber: e.target.value })}
+                                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Client GST Number"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                                    <div className="flex justify-between items-center border-b pb-2">
+                                        <h3 className="font-bold text-slate-800">Candidates List</h3>
+                                        <button
+                                            onClick={addCandidateRow}
+                                            className="text-blue-600 hover:text-blue-700 text-sm font-bold flex items-center gap-1"
+                                        >
+                                            <Plus size={16} /> Add Candidate
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-6">
+                                        {invoiceFormData.candidates.map((row, index) => (
+                                            <div key={index} className="p-4 bg-slate-50 rounded-lg border border-slate-200 relative group">
+                                                {invoiceFormData.candidates.length > 1 && (
+                                                    <button
+                                                        onClick={() => removeCandidateRow(index)}
+                                                        className="absolute -top-2 -right-2 bg-white border border-red-200 text-red-500 p-1 rounded-full shadow-sm hover:bg-red-50 transition-colors"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                )}
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Candidate</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <select
+                                                                value={row.candidateId}
+                                                                onChange={(e) => handleCandidateChange(index, 'candidateId', e.target.value)}
+                                                                className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                            >
+                                                                <option value="">Select Candidate</option>
+                                                                {candidates.map(c => (
+                                                                    <option key={c._id} value={c._id}>
+                                                                        {c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <a
+                                                                href="/Admin/candidates/add"
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="p-2 bg-orange-50 text-orange-600 rounded-lg hover:bg-orange-100 transition shadow-sm"
+                                                                title="Add New Candidate"
+                                                            >
+                                                                <Plus className="w-4 h-4" />
+                                                            </a>
+                                                            <button
+                                                                type="button"
+                                                                onClick={fetchCandidates}
+                                                                className="p-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-slate-100 transition shadow-sm"
+                                                                title="Refresh Candidates list"
+                                                            >
+                                                                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Designation</label>
+                                                        <input
+                                                            type="text"
+                                                            value={row.designation}
+                                                            onChange={(e) => handleCandidateChange(index, 'designation', e.target.value)}
+                                                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                            placeholder="e.g. Software Engineer"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">D.O.J</label>
+                                                        <input
+                                                            type="date"
+                                                            value={row.doj}
+                                                            onChange={(e) => handleCandidateChange(index, 'doj', e.target.value)}
+                                                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">CTC (₹)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={row.ctc}
+                                                            onChange={(e) => handleCandidateChange(index, 'ctc', e.target.value)}
+                                                            className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                            placeholder="e.g. 1200000"
+                                                        />
+                                                    </div>
+                                                    <div className="pt-2 border-t border-slate-100">
+                                                        <label className="block text-xs font-bold text-blue-600 uppercase mb-1">Invoice Amount (₹)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={row.amount}
+                                                            onChange={(e) => handleCandidateChange(index, 'amount', e.target.value)}
+                                                            className="w-full p-2 border-2 border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500 bg-blue-50"
+                                                            placeholder="e.g. 100000"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Agreement Percentage (%)
-                                </label>
-                                <input
-                                    type="number"
-                                    name="agreementPercentage"
-                                    value={formData.agreementPercentage}
-                                    onChange={handleInputChange}
-                                    required
-                                    min="0"
-                                    max="100"
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="e.g. 10"
-                                />
-                            </div>
+                            {/* Right Side: Preview */}
+                            <div className="w-full md:w-1/2 sticky top-6">
+                                <div className="bg-white shadow-xl rounded-xl border border-slate-200 overflow-hidden min-h-[800px] flex flex-col">
+                                    <div className="bg-slate-800 p-3 text-white text-center text-xs font-bold uppercase tracking-widest">
+                                        Live Invoice Preview
+                                    </div>
+                                    <div className="p-12 flex-1 flex flex-col text-[12px] leading-relaxed text-slate-800 font-serif">
+                                        {/* Header */}
+                                        <div className="flex justify-between items-start mb-12">
+                                            <img src="/src/images/logo.png" alt="Logo" className="w-32" />
+                                            <div className="text-right">
+                                                <p className="font-bold text-sm">Invoice No. JT/RO/25-26/XXXX</p>
+                                                <p>Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                            </div>
+                                        </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Amount (₹)
-                                </label>
-                                <input
-                                    type="number"
-                                    name="amount"
-                                    value={formData.amount}
-                                    onChange={handleInputChange}
-                                    required
-                                    min="0"
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="e.g. 5000"
-                                />
-                            </div>
+                                        {/* To Address */}
+                                        <div className="mb-8">
+                                            <p className="mb-1">To,</p>
+                                            <p className="font-bold text-lg mb-1">{clients.find(c => c._id === invoiceFormData.client)?.companyName || "[Client Name]"}</p>
+                                            <p className="text-slate-600 w-2/3">
+                                                {(() => {
+                                                    const selectedClient = clients.find(c => c._id === invoiceFormData.client);
+                                                    if (!selectedClient) return "Select a client to view address...";
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400"
-                            >
-                                {loading ? "Creating..." : "Create Invoice"}
-                            </button>
-                        </form>
+                                                    const addressParts = [];
+                                                    if (selectedClient.address) addressParts.push(selectedClient.address);
+                                                    if (selectedClient.state) addressParts.push(selectedClient.state);
+
+                                                    return addressParts.length > 0 ? addressParts.join(', ') : (selectedClient.companyInfo || "No address available");
+                                                })()}
+                                            </p>
+                                            <div className="mt-4 flex flex-col gap-1">
+                                                <p className="font-bold">SAC Code: 998512</p>
+                                                {(() => {
+                                                    const selectedClient = clients.find(c => c._id === invoiceFormData.client);
+                                                    const gst = invoiceFormData.gstNumber || selectedClient?.gstNumber;
+                                                    return gst ? <p className="font-bold">GST No: {gst}</p> : null;
+                                                })()}
+                                            </div>
+                                        </div>
+
+                                        {/* Table */}
+                                        <table className="w-full mb-8 border-collapse">
+                                            <thead>
+                                                <tr className="border-y-2 border-slate-800 font-bold">
+                                                    <td className="py-2 px-1">Sr. No.</td>
+                                                    <td className="py-2 px-1">Name Of the Candidate</td>
+                                                    <td className="py-2 px-1">D.O.J</td>
+                                                    <td className="py-2 px-1">Designation</td>
+                                                    <td className="py-2 px-1">CTC</td>
+                                                    <td className="py-2 px-1 text-right">Amount</td>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {invoiceFormData.candidates.map((c, i) => {
+                                                    const cand = candidates.find(cand => cand._id === c.candidateId);
+                                                    return (
+                                                        <tr key={i} className="border-b border-slate-200">
+                                                            <td className="py-3 px-1">{i + 1}</td>
+                                                            <td className="py-3 px-1 font-bold">{cand?.dynamicFields?.candidateName || cand?.dynamicFields?.Name || "[Candidate Name]"}</td>
+                                                            <td className="py-3 px-1">{c.doj ? new Date(c.doj).toLocaleDateString('en-GB') : "-"}</td>
+                                                            <td className="py-3 px-1">{c.designation || cand?.jobId?.title || "-"}</td>
+                                                            <td className="py-3 px-1">{c.ctc ? `₹${Number(c.ctc).toLocaleString()}` : "-"}</td>
+                                                            <td className="py-3 px-1 text-right font-bold">₹{Number(c.amount || 0).toLocaleString()}</td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+
+                                        {/* Totals Section */}
+                                        <div className="flex justify-end mb-8">
+                                            <div className="w-1/2 space-y-2 border-t-2 border-slate-800 pt-4">
+                                                <div className="flex justify-between text-sm">
+                                                    <span className="font-semibold">Sub Total</span>
+                                                    <span>₹{invoiceFormData.candidates.reduce((sum, c) => sum + Number(c.amount || 0), 0).toLocaleString()}</span>
+                                                </div>
+                                                {(() => {
+                                                    const selectedClient = clients.find(c => c._id === invoiceFormData.client);
+                                                    const isKarnataka = selectedClient?.state?.toLowerCase() === 'karnataka';
+                                                    const total = invoiceFormData.candidates.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+                                                    const tax = Math.round(total * 0.18);
+
+                                                    if (isKarnataka) {
+                                                        const halfTax = Math.round(total * 0.09);
+                                                        return (
+                                                            <>
+                                                                <div className="flex justify-between text-sm text-slate-600 italic">
+                                                                    <span>CGST @9%</span>
+                                                                    <span>₹{halfTax.toLocaleString()}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-sm text-slate-600 italic">
+                                                                    <span>SGST @9%</span>
+                                                                    <span>₹{halfTax.toLocaleString()}</span>
+                                                                </div>
+                                                                <div className="flex justify-between font-bold text-base border-t border-slate-200 pt-2 mt-2">
+                                                                    <span>Grand Total</span>
+                                                                    <span>₹{(total + (halfTax * 2)).toLocaleString()}</span>
+                                                                </div>
+                                                            </>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <>
+                                                            <div className="flex justify-between text-sm text-slate-600 italic">
+                                                                <span>IGST @18%</span>
+                                                                <span>₹{tax.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="flex justify-between font-bold text-base border-t border-slate-200 pt-2 mt-2">
+                                                                <span>Grand Total</span>
+                                                                <span>₹{(total + tax).toLocaleString()}</span>
+                                                            </div>
+                                                        </>
+                                                    );
+                                                })()}
+                                            </div>
+                                        </div>
+
+                                        <p className="mb-12 italic">
+                                            Amount in words -- {(() => {
+                                                const total = invoiceFormData.candidates.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+                                                const grandTotal = Math.round(total * 1.18);
+                                                return numberToWords(grandTotal);
+                                            })()}
+                                        </p>
+
+                                        {/* Bank Details & Signature Section */}
+                                        <div className="mt-auto pt-8 border-t border-slate-100 flex justify-between items-start gap-8">
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-800 mb-2">Bank Details:</p>
+                                                <div className="text-xs space-y-1 text-slate-600">
+                                                    <p><span className="font-semibold text-slate-800">Account Name:</span> JT STRATEGIC BUSINESS PARTNER</p>
+                                                    <p><span className="font-semibold text-slate-800">Bank:</span> ICICI BANK</p>
+                                                    <p><span className="font-semibold text-slate-800">Account No:</span> 000205030235</p>
+                                                    <p><span className="font-semibold text-slate-800">IFSC Code:</span> ICIC0000002</p>
+                                                    <p><span className="font-semibold text-slate-800">Branch:</span> RPC LAYOUT</p>
+                                                </div>
+                                                <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-100 italic text-[11px] text-slate-500">
+                                                    <p><span className="font-bold not-italic">Note:</span> This is a computer generated invoice and does not require a physical signature unless specified.</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col items-center">
+                                                <p className="font-bold text-slate-800 mb-16 text-xs uppercase tracking-wider">For JT STRATEGIC BUSINESS PARTNER</p>
+                                                <div className="w-48 border-t-2 border-slate-800 mb-2"></div>
+                                                <p className="font-bold text-xs text-slate-800 uppercase">Authorised Signatory</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1054,6 +1422,95 @@ const Finance = () => {
                                 {loading ? "Adding..." : "Add Expense"}
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+            {isEmailModalOpen && selectedInvoice && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative">
+                        <button
+                            onClick={() => setIsEmailModalOpen(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={24} />
+                        </button>
+                        <h2 className="text-xl font-bold mb-2">Send Invoice Email</h2>
+                        <p className="text-sm text-gray-500 mb-6">Select recipients for <span className="font-semibold">{selectedInvoice.client?.companyName}</span></p>
+
+                        <div className="space-y-6">
+                            {/* POC Emails */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Client POC Emails</label>
+                                <div className="space-y-2 max-h-40 overflow-y-auto p-1">
+                                    {selectedInvoice.client?.pocs?.length ? (
+                                        selectedInvoice.client.pocs.map((poc, idx) => (
+                                            <label key={idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-100 cursor-pointer transition-all">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={emailRecipients.includes(poc.email)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setEmailRecipients([...emailRecipients, poc.email]);
+                                                        } else {
+                                                            setEmailRecipients(emailRecipients.filter(email => email !== poc.email));
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                                />
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-medium text-slate-700">{poc.name}</span>
+                                                    <span className="text-xs text-slate-500">{poc.email}</span>
+                                                </div>
+                                            </label>
+                                        ))
+                                    ) : (
+                                        <p className="text-sm text-slate-400 italic">No POC emails found for this client.</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Custom Emails */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Custom Recipients (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={customEmails}
+                                    onChange={(e) => setCustomEmails(e.target.value)}
+                                    placeholder="e.g. finance@client.com, owner@client.com"
+                                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                />
+                                <p className="text-[10px] text-slate-400 mt-1 italic">Separate multiple emails with commas</p>
+                            </div>
+
+                            {/* CC Emails */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">CC (Optional)</label>
+                                <input
+                                    type="text"
+                                    value={emailCc}
+                                    onChange={(e) => setEmailCc(e.target.value)}
+                                    placeholder="e.g. manager@mycompany.com"
+                                    className="w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
+                                />
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setIsEmailModalOpen(false)}
+                                    className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors font-medium text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmSendEmail}
+                                    disabled={loading || (emailRecipients.length === 0 && !customEmails.trim())}
+                                    className="flex-[2] bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 font-bold text-sm shadow-md flex items-center justify-center gap-2"
+                                >
+                                    <Mail size={18} />
+                                    {loading ? "Sending..." : "Send Invoice Email"}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
