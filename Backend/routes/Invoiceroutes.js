@@ -54,7 +54,7 @@ router.get('/summary', async (req, res) => {
 // Create a new invoice
 router.post('/create', async (req, res) => {
     try {
-        const { client: clientId, candidates, agreementPercentage, createdBy } = req.body;
+        const { client: clientId, candidates, agreementPercentage, createdBy, invoiceNumber, invoiceDate } = req.body;
 
         // Fetch client details to check for Karnataka state
         const clientDetails = await Client.findById(clientId);
@@ -85,7 +85,10 @@ router.post('/create', async (req, res) => {
             igst,
             cgst,
             sgst,
-            createdBy
+            sgst,
+            createdBy,
+            invoiceNumber,
+            invoiceDate: invoiceDate || new Date()
         });
 
         const savedInvoice = await newInvoice.save();

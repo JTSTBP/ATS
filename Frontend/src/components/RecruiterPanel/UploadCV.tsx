@@ -30,8 +30,11 @@ export default function UploadCV() {
   const getCandidateCount = (jobId: string) => {
     if (!candidates) return 0;
     return candidates.filter(
-      (c) => (typeof c.jobId === 'object' ? c.jobId._id : c.jobId) === jobId &&
-        (typeof c.createdBy === 'object' ? c.createdBy._id : c.createdBy) === user?._id
+      (c) => {
+        const cJobId = c.jobId && typeof c.jobId === 'object' ? c.jobId._id : c.jobId;
+        const cCreatedBy = c.createdBy && typeof c.createdBy === 'object' ? c.createdBy._id : c.createdBy;
+        return cJobId === jobId && cCreatedBy === user?._id;
+      }
     ).length;
   };
 

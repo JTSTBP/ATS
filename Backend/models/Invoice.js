@@ -43,6 +43,14 @@ const invoiceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
+    },
+    invoiceNumber: {
+        type: String,
+        required: true
+    },
+    invoiceDate: {
+        type: Date,
+        default: Date.now
     }
 }, { timestamps: true });
 

@@ -48,6 +48,8 @@ interface Invoice {
     sgst?: number;
     status: string;
     createdAt: string;
+    invoiceNumber?: string;
+    invoiceDate?: string;
 }
 
 interface Payment {
@@ -83,6 +85,8 @@ const Finance = () => {
 
     const [invoiceFormData, setInvoiceFormData] = useState({
         client: "",
+        invoiceNumber: "",
+        invoiceDate: new Date().toISOString().split('T')[0],
         agreementPercentage: "",
         gstNumber: "",
         candidates: [
@@ -302,6 +306,8 @@ const Finance = () => {
             setIsCreatingInvoice(false);
             setInvoiceFormData({
                 client: "",
+                invoiceNumber: "",
+                invoiceDate: new Date().toISOString().split('T')[0],
                 agreementPercentage: "",
                 gstNumber: "",
                 candidates: [{ candidateId: "", designation: "", doj: "", ctc: "", amount: "" }]
@@ -651,6 +657,7 @@ const Finance = () => {
                                 {invoices.map((invoice) => (
                                     <tr key={invoice._id} className="hover:bg-gray-50">
                                         <td className="p-4">{invoice.client?.companyName || "N/A"}</td>
+                                        <td className="p-4 font-medium text-gray-800">{invoice.invoiceNumber || "-"}</td>
                                         <td className="p-4">
                                             {invoice.candidates?.[0]?.candidateId?.dynamicFields?.candidateName ||
                                                 invoice.candidates?.[0]?.candidateId?.dynamicFields?.Name ||
@@ -672,7 +679,7 @@ const Finance = () => {
                                             </span>
                                         </td>
                                         <td className="p-4">
-                                            {formatDate(invoice.createdAt)}
+                                            {invoice.invoiceDate ? formatDate(invoice.invoiceDate) : formatDate(invoice.createdAt)}
                                         </td>
                                         <td className={`p-4 ${calculateTimeLeft(invoice.createdAt).color}`}>
                                             {calculateTimeLeft(invoice.createdAt).text}
@@ -998,6 +1005,27 @@ const Finance = () => {
                                             />
                                         </div>
                                         <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Invoice Number</label>
+                                            <input
+                                                type="text"
+                                                value={invoiceFormData.invoiceNumber}
+                                                onChange={(e) => setInvoiceFormData({ ...invoiceFormData, invoiceNumber: e.target.value })}
+                                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                placeholder="e.g. JT/RO/25-26/001"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Invoice Date</label>
+                                            <input
+                                                type="date"
+                                                value={invoiceFormData.invoiceDate}
+                                                onChange={(e) => setInvoiceFormData({ ...invoiceFormData, invoiceDate: e.target.value })}
+                                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">GST Number</label>
                                             <input
                                                 type="text"
@@ -1122,10 +1150,12 @@ const Finance = () => {
                                     <div className="p-12 flex-1 flex flex-col text-[12px] leading-relaxed text-slate-800 font-serif">
                                         {/* Header */}
                                         <div className="flex justify-between items-start mb-12">
-                                            <img src="/src/images/logo.png" alt="Logo" className="w-32" />
+                                            <div>
+                                                <img src="/src/images/logo.png" alt="Logo" className="w-32 mb-2" />
+                                            </div>
                                             <div className="text-right">
-                                                <p className="font-bold text-sm">Invoice No. JT/RO/25-26/XXXX</p>
-                                                <p>Date: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                <p className="font-bold text-sm">Invoice No. {invoiceFormData.invoiceNumber || "JT/RO/25-26/XXXX"}</p>
+                                                <p>Date: {new Date(invoiceFormData.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
                                             </div>
                                         </div>
 
@@ -1241,24 +1271,31 @@ const Finance = () => {
                                         </p>
 
                                         {/* Bank Details & Signature Section */}
-                                        <div className="mt-auto pt-8 border-t border-slate-100 flex justify-between items-start gap-8">
-                                            <div className="flex-1">
-                                                <p className="font-bold text-slate-800 mb-2">Bank Details:</p>
-                                                <div className="text-xs space-y-1 text-slate-600">
-                                                    <p><span className="font-semibold text-slate-800">Account Name:</span> JT STRATEGIC BUSINESS PARTNER</p>
-                                                    <p><span className="font-semibold text-slate-800">Bank:</span> ICICI BANK</p>
-                                                    <p><span className="font-semibold text-slate-800">Account No:</span> 000205030235</p>
-                                                    <p><span className="font-semibold text-slate-800">IFSC Code:</span> ICIC0000002</p>
-                                                    <p><span className="font-semibold text-slate-800">Branch:</span> RPC LAYOUT</p>
+                                        <div className="mt-auto pt-8 border-t border-slate-100">
+                                            <div className="flex justify-between items-start gap-8 mb-8">
+                                                <div className="flex-1">
+                                                    <p className="font-bold text-slate-800 mb-2">Bank Details:</p>
+                                                    <div className="text-xs space-y-1 text-slate-600">
+                                                        <p><span className="font-semibold text-slate-800">Name:</span> Jobs Territory</p>
+                                                        <p><span className="font-semibold text-slate-800">Bank Name:</span> HDFC Bank</p>
+                                                        <p><span className="font-semibold text-slate-800">Account Number:</span> 59207259123253</p>
+                                                        <p><span className="font-semibold text-slate-800">Branch Name:</span> Cambridge Road</p>
+                                                        <p><span className="font-semibold text-slate-800">IFSC Code:</span> HDFC0001298</p>
+                                                    </div>
+                                                    <div className="mt-4 text-xs space-y-1 text-slate-600">
+                                                        <p><span className="font-semibold text-slate-800">PAN:</span> AOBPR6552H</p>
+                                                        <p><span className="font-semibold text-slate-800">GST No:</span> 29AOBPR6552H1ZL</p>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-4 p-3 bg-slate-50 rounded border border-slate-100 italic text-[11px] text-slate-500">
-                                                    <p><span className="font-bold not-italic">Note:</span> This is a computer generated invoice and does not require a physical signature unless specified.</p>
+                                                <div className="flex flex-col items-center">
+                                                    <p className="font-bold text-slate-800 mb-16 text-xs uppercase tracking-wider">For Jobs Territory</p>
+                                                    <div className="w-48 border-t-2 border-slate-800 mb-2"></div>
+                                                    <p className="font-bold text-xs text-slate-800 uppercase">Authorised Signatory</p>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col items-center">
-                                                <p className="font-bold text-slate-800 mb-16 text-xs uppercase tracking-wider">For JT STRATEGIC BUSINESS PARTNER</p>
-                                                <div className="w-48 border-t-2 border-slate-800 mb-2"></div>
-                                                <p className="font-bold text-xs text-slate-800 uppercase">Authorised Signatory</p>
+                                            <div className="text-xs text-slate-600 text-center border-t border-slate-100 pt-4">
+                                                <p className="font-bold text-slate-800">Jobs Territory</p>
+                                                <p>Lines 1 & 2, 1st Floor, RPC Layout, Vijayanagar, Bangalore - 560040</p>
                                             </div>
                                         </div>
                                     </div>
