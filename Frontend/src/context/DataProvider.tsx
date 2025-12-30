@@ -51,6 +51,24 @@ type JobContextType = {
   fetchJobsByCreator: (userId: string) => Promise<void>;
   assignedJobs: Job[];
   fetchAssignedJobs: (recruiterId: string) => Promise<void>;
+
+  // 🔹 Pagination
+  paginatedJobs: Job[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalJobs: number;
+  };
+  fetchPaginatedJobs: (
+    page: number,
+    limit: number,
+    filters?: {
+      search?: string;
+      status?: string;
+      userId?: string;
+      role?: string;
+    }
+  ) => Promise<void>;
 };
 
 const JobContext = createContext<JobContextType | undefined>(undefined);
@@ -63,6 +81,51 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
   const [error, setError] = useState<string | null>(null);
   const [jobsByUser, setJobsByUser] = useState<Job[]>([]);
   const [assignedJobs, setAssignedJobs] = useState<Job[]>([]);
+
+  // Pagination State
+  const [paginatedJobs, setPaginatedJobs] = useState<Job[]>([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalJobs: 0,
+  });
+
+  const fetchPaginatedJobs = async (
+    page: number,
+    limit: number,
+    filters: any = {}
+  ) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit,
+        ...filters
+      };
+
+      // Use standard fetch or axios. Assuming fetch here based on file style
+      // but query params need to be constructed.
+      const queryParams = new URLSearchParams(params as any).toString();
+      const res = await fetch(`${API_URL}?${queryParams}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setPaginatedJobs(data.jobs);
+        setPagination({
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalJobs: data.totalJobs
+        });
+      } else {
+        throw new Error(data.message || "Failed to load jobs");
+      }
+    } catch (err: any) {
+      setError(err.message);
+      toast.error("Failed to load jobs");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 🔹 Fetch all jobs
   const fetchJobs = async () => {
@@ -208,6 +271,9 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
         fetchJobsByCreator,
         assignedJobs,
         fetchAssignedJobs,
+        paginatedJobs,
+        pagination,
+        fetchPaginatedJobs,
       }}
     >
       {children}

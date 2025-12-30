@@ -25,14 +25,26 @@ export interface Client {
     agreementPercentage?: number | string;
     gstNumber?: string;
     pocs: POC[];
-    createdBy?: string;
+    createdBy?: string | {
+        _id: string;
+        name: string;
+        email: string;
+        designation: string;
+    };
 }
 
 interface ClientsContextType {
     clients: Client[];
+    paginatedClients: Client[]; // New
+    pagination: { // New
+        currentPage: number;
+        totalPages: number;
+        totalClients: number;
+    };
     loading: boolean;
     error: string | null;
     fetchClients: () => Promise<void>;
+    fetchPaginatedClients: (page: number, limit: number, search?: string) => Promise<void>; // New
     fetchClientById: (id: string) => Promise<Client | null>;
     createClient: (data: Client, logoFile?: File) => Promise<Client | null>;
     updateClient: (id: string, data: Client, logoFile?: File) => Promise<Client | null>;
@@ -43,10 +55,16 @@ const ClientsContext = createContext<ClientsContextType | undefined>(undefined);
 
 export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [clients, setClients] = useState<Client[]>([]);
+    const [paginatedClients, setPaginatedClients] = useState<Client[]>([]); // New State
+    const [pagination, setPagination] = useState({
+        currentPage: 1,
+        totalPages: 1,
+        totalClients: 0
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch all clients
+    // Fetch all clients (Backward compatibility)
     const fetchClients = async () => {
         setLoading(true);
         setError(null);
@@ -62,6 +80,38 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } catch (err: any) {
             setError(err.message);
             console.error('Error fetching clients:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // New: Fetch Paginated Clients
+    const fetchPaginatedClients = async (page: number, limit: number, search: string = '') => {
+        setLoading(true);
+        setError(null);
+        try {
+            const queryParams = new URLSearchParams({
+                page: page.toString(),
+                limit: limit.toString(),
+                search
+            }).toString();
+
+            const response = await fetch(`${API_URL}?${queryParams}`);
+            const data = await response.json();
+
+            if (data.success) {
+                setPaginatedClients(data.clients);
+                setPagination({
+                    currentPage: data.currentPage,
+                    totalPages: data.totalPages,
+                    totalClients: data.totalClients
+                });
+            } else {
+                throw new Error(data.message || 'Failed to fetch clients');
+            }
+        } catch (err: any) {
+            setError(err.message);
+            console.error('Error fetching paginated clients:', err);
         } finally {
             setLoading(false);
         }
@@ -104,7 +154,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 formData.append('logo', logoFile);
 
                 if (clientData.createdBy) {
-                    formData.append('createdBy', clientData.createdBy);
+                    const createdByValue = typeof clientData.createdBy === 'object'
+                        ? (clientData.createdBy as any)._id
+                        : clientData.createdBy;
+                    formData.append('createdBy', createdByValue);
                 }
 
                 response = await fetch(API_URL, {
@@ -226,9 +279,12 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         <ClientsContext.Provider
             value={{
                 clients,
+                paginatedClients, // New
+                pagination, // New
                 loading,
                 error,
                 fetchClients,
+                fetchPaginatedClients, // New
                 fetchClientById,
                 createClient,
                 updateClient,

@@ -1,64 +1,44 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Building2, Globe, Linkedin, Phone, Mail, Pencil, Trash2, MapPin, FileText, Hash } from 'lucide-react';
-import { toast } from 'react-toastify';
+// import { toast } from 'react-toastify'; // Not used in this component directly anymore if deleteClient handles toast
 import { useAuth } from '../../../../context/AuthProvider';
+import { useClientsContext, Client } from '../../../../context/ClientsProvider';
 import { ClientForm } from './ClientForm';
-
-interface Client {
-    _id: string;
-    companyName: string;
-    websiteUrl: string;
-    industry: string;
-    linkedinUrl: string;
-    companyInfo: string;
-    logo?: string;
-    address?: string;
-    state?: string;
-    agreementPercentage?: number;
-    gstNumber?: string;
-    pocs: {
-        name: string;
-        email: string;
-        phone: string;
-        altPhone: string;
-        linkedinUrl: string;
-    }[];
-    createdBy?: {
-        _id: string;
-        name: string;
-        email: string;
-        designation: string;
-    };
-}
 
 export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: boolean }) => {
     const { user } = useAuth();
-    const [clients, setClients] = useState<Client[]>([]);
-    const [loading, setLoading] = useState(true);
+    const {
+        paginatedClients,
+        pagination,
+        fetchPaginatedClients,
+        loading,
+        // fetchClients, // Keep for backward compatibility or refresh after edit/delete
+        deleteClient // Assuming deleteClient is available from context
+    } = useClientsContext();
+
     const [showForm, setShowForm] = useState(initialFormOpen);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const limit = 10;
 
-    const fetchClients = async () => {
-        try {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/clients`);
-            const data = await response.json();
-            if (data.success && data.clients) {
-                setClients(data.clients);
-            } else {
-                // Fallback for old format
-                setClients(Array.isArray(data) ? data : []);
-            }
-        } catch (error) {
-            console.error('Error fetching clients:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // Fetch paginated clients on change
     useEffect(() => {
-        fetchClients();
-    }, []);
+        const timer = setTimeout(() => {
+            fetchPaginatedClients(currentPage, limit, searchTerm);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [currentPage, searchTerm]);
+
+    // Reset to page 1 on search
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
+    // Initial load
+    useEffect(() => {
+        if (initialFormOpen) setShowForm(true);
+    }, [initialFormOpen]);
 
     const handleEdit = (client: Client) => {
         setSelectedClient(client);
@@ -67,30 +47,16 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
 
     const handleDelete = async (clientId: string) => {
         if (window.confirm('Are you sure you want to delete this client?')) {
-            try {
-                const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/clients/${clientId}`, {
-                    method: 'DELETE',
-                });
-
-                if (response.ok) {
-                    toast.success('Client deleted successfully');
-                    fetchClients();
-                } else {
-                    toast.error('Failed to delete client');
-                }
-            } catch (error) {
-                console.error('Error deleting client:', error);
-                toast.error('Error deleting client');
-            }
+            await deleteClient(clientId);
+            // Refresh current page
+            fetchPaginatedClients(currentPage, limit, searchTerm);
         }
     };
 
-    const filteredClients = clients?.filter(client =>
-        client.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.industry?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // REMOVED: filteredClients client-side logic
+    // We now use `paginatedClients` directly
 
-    if (loading) {
+    if (loading && paginatedClients.length === 0) {
         return (
             <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -124,7 +90,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="Search clients by name or industry..."
+                        placeholder="Search clients by name, industry, website..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -134,7 +100,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
 
             {/* Client List */}
             <div className="space-y-4">
-                {filteredClients.length === 0 ? (
+                {paginatedClients.length === 0 && !loading ? (
                     <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-200">
                         <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-gray-600 mb-2">No clients found</h3>
@@ -144,8 +110,13 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-6">
-                        {filteredClients.map((client) => (
-                            <div key={client._id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
+                        {loading && (
+                            <div className="flex items-center justify-center h-64">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                            </div>
+                        )}
+                        {!loading && paginatedClients.map((client) => (
+                            <div key={client._id || Math.random()} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
                                 <div className="p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex items-start gap-4">
@@ -167,11 +138,11 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                                             <div>
                                                 <h3 className="text-xl font-bold text-gray-800">{client.companyName}</h3>
                                                 <p className="text-sm text-gray-500">{client.industry}</p>
-                                                {client.createdBy && (
+                                                {client.createdBy && typeof client.createdBy === 'object' && (
                                                     <p className="text-xs text-gray-400 mt-1">
-                                                        Created by: <span className="font-medium text-gray-600">{client.createdBy.name}</span>
-                                                        {client.createdBy.designation && (
-                                                            <span className="ml-1">({client.createdBy.designation})</span>
+                                                        Created by: <span className="font-medium text-gray-600">{(client.createdBy as any).name}</span>
+                                                        {(client.createdBy as any).designation && (
+                                                            <span className="ml-1">({(client.createdBy as any).designation})</span>
                                                         )}
                                                     </p>
                                                 )}
@@ -199,7 +170,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                                                     <Pencil className="w-4 h-4" />
                                                 </button>
                                                 <button
-                                                    onClick={() => handleDelete(client._id)}
+                                                    onClick={() => client._id && handleDelete(client._id)}
                                                     className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition"
                                                     title="Delete Client"
                                                 >
@@ -297,12 +268,40 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                 )}
             </div>
 
+            {/* Pagination Controls */}
+            {paginatedClients.length > 0 && (
+                <div className="p-4 flex items-center justify-between bg-white rounded-xl shadow-md border border-gray-200">
+                    <div className="text-sm text-slate-500">
+                        Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, pagination?.totalClients || 0)} of {pagination?.totalClients || 0} clients
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 border rounded hover:bg-slate-50 disabled:opacity-50"
+                        >
+                            Previous
+                        </button>
+                        <span className="px-3 py-1 bg-slate-100 rounded">
+                            Page {currentPage} of {pagination?.totalPages || 1}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(pagination?.totalPages || 1, p + 1))}
+                            disabled={currentPage === (pagination?.totalPages || 1)}
+                            className="px-3 py-1 border rounded hover:bg-slate-50 disabled:opacity-50"
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* Client Form Modal */}
             {showForm && (
                 <ClientForm
                     onClose={() => setShowForm(false)}
                     onSuccess={() => {
-                        fetchClients();
+                        fetchPaginatedClients(currentPage, limit, searchTerm);
                         setShowForm(false);
                     }}
                     initialData={selectedClient}

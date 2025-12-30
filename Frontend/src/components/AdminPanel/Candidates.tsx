@@ -24,8 +24,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
     const {
         updateStatus,
-        candidates,
-        fetchallCandidates,
+        paginatedCandidates,
+        pagination,
+        fetchPaginatedCandidates,
         loading,
         deleteCandidate,
     } = useCandidateContext();
@@ -38,6 +39,11 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     const [filterClient, setFilterClient] = useState("all");
     const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
     const [filterStage, setFilterStage] = useState("all");
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const limit = 10;
+
     const [clients, setClients] = useState<any[]>([]);
 
     useEffect(() => {
@@ -55,10 +61,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     }, [initialJobTitleFilter, searchParams]);
 
     // 1️⃣ Fetch all candidates and clients on load
+    // 1️⃣ Fetch data (clients & initial candidates)
     useEffect(() => {
-        fetchallCandidates();
-
-        // Fetch all clients from API
+        // Fetch clients
         fetch(`${import.meta.env.VITE_BACKEND_URL}/api/clients`)
             .then(res => res.json())
             .then(data => {
@@ -67,14 +72,40 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 }
             })
             .catch(err => console.error('Error fetching clients:', err));
-    }, [user, showForm]);
+    }, []);
 
-    // 3️⃣ Get unique job titles from ALL candidates
+    // 2️⃣ Fetch Paginated Candidates when filters/page change
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            console.log("🚀 Frontend Fetching Candidates:", {
+                page: currentPage,
+                limit,
+                search: searchTerm,
+                status: statusFilter,
+                client: filterClient,
+                jobTitle: filterJobTitle,
+                stage: filterStage
+            });
+            fetchPaginatedCandidates(currentPage, limit, {
+                search: searchTerm,
+                status: statusFilter,
+                client: filterClient,
+                jobTitle: filterJobTitle,
+                stage: filterStage
+            });
+        }, 300); // Debounce search
+        return () => clearTimeout(timer);
+    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm]);
+
+    // Reset page to 1 on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage]);
+
+    // 3️⃣ Get unique job titles from JOBS CONTEXT instead of candidates (since candidates are paginated)
     const uniqueJobTitles = Array.from(
         new Set(
-            candidates
-                .map((c: any) => c.jobId?.title)
-                .filter(Boolean)
+            (jobs || []).map((j: any) => j.title).filter(Boolean)
         )
     ).sort();
 
@@ -84,49 +115,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             ? jobs.find((j) => j.title === filterJobTitle)?.stages || []
             : [];
 
-    // 4️⃣ Search + Client + Job Title filter
-    const searchedCandidates = candidates.filter((candidate: any) => {
-        const name = candidate.dynamicFields?.candidateName?.toLowerCase() || "";
-        const email = candidate.dynamicFields?.Email?.toLowerCase() || "";
-        const phone = candidate.dynamicFields?.Phone?.toLowerCase() || "";
-        const skills = candidate.dynamicFields?.Skills?.toLowerCase() || "";
-        const job = candidate.jobId?.title?.toLowerCase() || "";
-        const status = candidate.status?.toLowerCase() || "";
-        const clientName = candidate.jobId?.clientId?.companyName || "";
 
-        // 🔥 1. STATUS FILTER
-        if (statusFilter !== "all" && status !== statusFilter.toLowerCase()) {
-            return false;
-        }
-
-        // 🔥 2. CLIENT FILTER
-        if (filterClient !== "all" && clientName !== filterClient) {
-            return false;
-        }
-
-        // 🔥 3. JOB TITLE FILTER
-        if (filterJobTitle !== "all" && candidate.jobId?.title !== filterJobTitle) {
-            return false;
-        }
-
-        // 🔥 4. STAGE FILTER
-        if (filterStage !== "all" && candidate.interviewStage !== filterStage) {
-            return false;
-        }
-
-        // 🔎 4. SEARCH FILTER
-        if (
-            name.includes(searchTerm.toLowerCase()) ||
-            email.includes(searchTerm.toLowerCase()) ||
-            phone.includes(searchTerm.toLowerCase()) ||
-            skills.includes(searchTerm.toLowerCase()) ||
-            job.includes(searchTerm.toLowerCase())
-        ) {
-            return true;
-        }
-
-        return false;
-    });
 
     const handleEdit = (candidate: any) => {
         setEditingCandidate(candidate);
@@ -178,17 +167,19 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             comment // comment
         );
 
-        await fetchallCandidates();
+        // Optimistic update or refetch
+        fetchPaginatedCandidates(currentPage, limit, {
+            search: searchTerm,
+            status: statusFilter,
+            client: filterClient,
+            jobTitle: filterJobTitle,
+            stage: filterStage
+        });
         setStatusModalOpen(false);
         setPendingStatusChange(null);
     };
 
-    if (loading)
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-            </div>
-        );
+
 
     return (
         <div className="space-y-6">
@@ -331,124 +322,166 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                         </thead>
 
                         <tbody>
-                            {searchedCandidates.map((candidate: any) => (
-                                <tr key={candidate._id} className="hover:bg-gray-50 transition">
-                                    {/* NAME */}
-                                    <td className="px-6 py-4 font-semibold text-gray-800">
-                                        {candidate.dynamicFields?.candidateName || "-"}
-                                    </td>
-
-                                    {/* CONTACT */}
-                                    <td className="px-6 py-4 text-sm text-gray-600">
-                                        <div className="flex items-center mb-1">
-                                            <Mail className="w-4 h-4 mr-2" />
-                                            {candidate.dynamicFields?.Email || "No Email"}
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={10} className="py-12 text-center">
+                                        <div className="flex justify-center">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
                                         </div>
-                                        <div className="flex items-center">
-                                            <Phone className="w-4 h-4 mr-2" />
-                                            {candidate.dynamicFields?.Phone || "No Phone"}
-                                        </div>
-                                    </td>
-
-                                    {/* EXPERIENCE */}
-                                    <td className="px-6 py-4 text-sm text-gray-700">
-                                        {candidate.dynamicFields?.Experience
-                                            ? `${candidate.dynamicFields.Experience} years`
-                                            : "-"}
-                                    </td>
-
-                                    {/* SKILLS */}
-                                    <td className="px-6 py-4">
-                                        {candidate.dynamicFields?.Skills ? (
-                                            <div className="flex flex-wrap gap-1">
-                                                {candidate.dynamicFields.Skills.split(",").map(
-                                                    (skill: any, i: any) => (
-                                                        <span
-                                                            key={i}
-                                                            className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                                                        >
-                                                            {skill.trim()}
-                                                        </span>
-                                                    )
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <span className="text-gray-400 text-sm">No Skills</span>
-                                        )}
-                                    </td>
-
-                                    {/* RESUME */}
-                                    <td className="px-6 py-4">
-                                        {candidate.resumeUrl ? (
-                                            <a
-                                                href={`${API_BASE_URL}${candidate.resumeUrl}`} // prepend backend URL
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="flex items-center text-blue-600"
-                                            >
-                                                <Upload className="w-4 h-4 mr-1" />
-                                                View Resume
-                                            </a>
-                                        ) : (
-                                            <span className="text-gray-400 text-sm">No Resume</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">
-                                        {candidate.jobId?.title || "-"}
-                                        {candidate.jobId?.clientId?.companyName && (
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Client: {candidate.jobId?.clientId?.companyName}
-                                            </p>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">
-                                        {candidate.createdBy?.name || "-"}-
-                                        {candidate.createdBy?.designation}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">
-                                        {candidate.createdBy?.reporter?.name}
-                                    </td>
-                                    <td className="px-6 py-4 text-sm text-gray-700">
-                                        <select
-                                            value={candidate.status || "New"}
-                                            onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
-                                            className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
-                                        >
-                                            <option value="New">New</option>
-                                            <option value="Shortlisted">Shortlisted</option>
-                                            <option value="Interviewed">Interviewed</option>
-                                            <option value="Selected">Selected</option>
-                                            <option value="Joined">Joined</option>
-                                            <option value="Rejected">Rejected</option>
-                                        </select>
-                                    </td>
-
-                                    {/* ACTIONS */}
-                                    <td className="px-6 py-4 flex space-x-2">
-                                        <button
-                                            onClick={() => handleEdit(candidate)}
-                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleDelete(candidate._id)}
-                                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                paginatedCandidates.map((candidate: any) => (
+                                    <tr key={candidate._id} className="hover:bg-gray-50 transition">
+                                        {/* NAME */}
+                                        <td className="px-6 py-4 font-semibold text-gray-800">
+                                            {candidate.dynamicFields?.candidateName || "-"}
+                                        </td>
+
+                                        {/* CONTACT */}
+                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                            <div className="flex items-center mb-1">
+                                                <Mail className="w-4 h-4 mr-2" />
+                                                {candidate.dynamicFields?.Email || "No Email"}
+                                            </div>
+                                            <div className="flex items-center">
+                                                <Phone className="w-4 h-4 mr-2" />
+                                                {candidate.dynamicFields?.Phone || "No Phone"}
+                                            </div>
+                                        </td>
+
+                                        {/* EXPERIENCE */}
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {candidate.dynamicFields?.Experience
+                                                ? `${candidate.dynamicFields.Experience} years`
+                                                : "-"}
+                                        </td>
+
+                                        {/* SKILLS */}
+                                        <td className="px-6 py-4">
+                                            {candidate.dynamicFields?.Skills ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {candidate.dynamicFields.Skills.split(",").map(
+                                                        (skill: any, i: any) => (
+                                                            <span
+                                                                key={i}
+                                                                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                                                            >
+                                                                {skill.trim()}
+                                                            </span>
+                                                        )
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <span className="text-gray-400 text-sm">No Skills</span>
+                                            )}
+                                        </td>
+
+                                        {/* RESUME */}
+                                        <td className="px-6 py-4">
+                                            {candidate.resumeUrl ? (
+                                                <a
+                                                    href={`${API_BASE_URL}${candidate.resumeUrl}`} // prepend backend URL
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center text-blue-600"
+                                                >
+                                                    <Upload className="w-4 h-4 mr-1" />
+                                                    View Resume
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400 text-sm">No Resume</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {candidate.jobId?.title || "-"}
+                                            {candidate.jobId?.clientId?.companyName && (
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Client: {candidate.jobId?.clientId?.companyName}
+                                                </p>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {candidate.createdBy?.name || "-"}-
+                                            {candidate.createdBy?.designation}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {candidate.createdBy?.reporter?.name}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            <select
+                                                value={candidate.status || "New"}
+                                                onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
+                                                className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
+                                            >
+                                                <option value="New">New</option>
+                                                <option value="Shortlisted">Shortlisted</option>
+                                                <option value="Interviewed">Interviewed</option>
+                                                <option value="Selected">Selected</option>
+                                                <option value="Joined">Joined</option>
+                                                <option value="Rejected">Rejected</option>
+                                            </select>
+                                        </td>
+
+                                        {/* ACTIONS */}
+                                        <td className="px-6 py-4 flex space-x-2">
+                                            <button
+                                                onClick={() => handleEdit(candidate)}
+                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                            >
+                                                <Edit className="w-4 h-4" />
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleDelete(candidate._id)}
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
             </div>
 
+
+
+            {/* Pagination Controls */}
+            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-white rounded-b-xl shadow-md border-x border-b border-gray-200 -mt-2 mb-6">
+                <div className="text-sm text-slate-500">
+                    Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, pagination.totalCandidates)} of {pagination.totalCandidates} candidates
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        Previous
+                    </button>
+
+                    <div className="flex items-center gap-1">
+                        <span className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-sm font-medium">
+                            Page {pagination.currentPage} of {pagination.totalPages}
+                        </span>
+                    </div>
+
+                    <button
+                        onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+                        disabled={currentPage === pagination.totalPages}
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
+
             {/* Empty UI */}
             {
-                searchedCandidates.length === 0 && (
+                paginatedCandidates.length === 0 && (
                     <div className="bg-white rounded-xl p-12 text-center shadow-md border border-gray-200">
                         <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                         <h3 className="text-xl font-semibold text-gray-600 mb-2">
@@ -479,8 +512,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 }}
                 onConfirm={confirmStatusChange}
                 newStatus={pendingStatusChange?.newStatus || ""}
-                candidateName={searchedCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+                candidateName={paginatedCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
             />
-        </div>
+        </div >
     );
 };

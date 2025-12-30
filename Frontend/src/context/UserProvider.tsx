@@ -70,6 +70,21 @@ interface UserContextType {
     status: "Approved" | "Rejected",
     role: string
   ) => Promise<boolean>;
+
+  // 🔹 Pagination
+  paginatedUsers: User[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalUsers: number;
+  };
+  fetchPaginatedUsers: (
+    page: number,
+    limit: number,
+    search?: string,
+    role?: string,
+    isAdmin?: string
+  ) => Promise<void>;
 }
 
 const API_BASE_URL =
@@ -78,6 +93,12 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
+  const [paginatedUsers, setPaginatedUsers] = useState<User[]>([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalUsers: 0,
+  });
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -134,11 +155,39 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       await axios.delete(`${API_BASE_URL}/api/users/${id}`);
       setUsers((prev) => prev.filter((user) => user._id !== id));
+      setPaginatedUsers((prev) => prev.filter((user) => user._id !== id));
       toast.success("User deleted successfully!");
       return true;
     } catch (err) {
       toast.error("Failed to delete user");
       return false;
+    }
+  };
+
+  const fetchPaginatedUsers = async (
+    page: number,
+    limit: number,
+    search = "",
+    role = "",
+    isAdmin = ""
+  ) => {
+    try {
+      setLoading(true);
+      const res = await axios.get(`${API_BASE_URL}/api/users`, {
+        params: { page, limit, search, role, isAdmin },
+      });
+
+      setPaginatedUsers(res.data.users);
+      setPagination({
+        currentPage: res.data.currentPage,
+        totalPages: res.data.totalPages,
+        totalUsers: res.data.totalUsers,
+      });
+    } catch (err) {
+      toast.error("Failed to load users");
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -226,6 +275,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         fetchLeaves,
         applyLeave,
         updateLeaveStatus,
+        paginatedUsers,
+        pagination,
+        fetchPaginatedUsers,
       }}
     >
       {children}

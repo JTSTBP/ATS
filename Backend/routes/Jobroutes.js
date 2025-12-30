@@ -40,17 +40,139 @@ router.post("/", async (req, res) => {
   }
 });
 
+const User = require("../models/Users"); // Ensure User model is imported
+const Candidate = require("../models/CandidatesByJob");
+
+// 📋 Get all jobs with Pagination & Filtering
 router.get("/", async (req, res) => {
   try {
-    const jobs = await Job.find()
+    const { page, limit, search, status, userId, role } = req.query;
+
+    console.log("🔍 Jobs Request:", { page, limit, search, status, userId, role });
+
+    // If no pagination params, use existing logic (backward compatibility)
+    if (!page || !limit) {
+      const jobs = await Job.find()
+        .populate("assignedRecruiters", "name email")
+        .populate("leadRecruiter", "name email")
+        .populate("CreatedBy", "name email")
+        .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
+        .sort({ createdAt: -1 });
+      return res.json({ success: true, jobs });
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Build Query
+    let query = {};
+
+    // 1️⃣ Status Filter
+    if (status && status !== "all") {
+      query.status = status;
+    }
+
+    // 2️⃣ Search Filter (Title, Dept, Location names, Client Name)
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+
+      // We need to look up client names if searching by client, 
+      // but simpler to search direct fields first. 
+      // For complex search like Client Name, we'd need an aggregation pipeline 
+      // or we fetch match IDs first.
+      // For now, let's search basic fields: title, department, employmentType
+      // To search location.name, we can use dot notation if it's an array of objects
+
+      query.$or = [
+        { title: searchRegex },
+        { department: searchRegex },
+        { employmentType: searchRegex },
+        { "location.name": searchRegex }
+      ];
+    }
+
+    // 3️⃣ Role-Based Filtering
+    if (role) {
+      const userRole = role.toLowerCase();
+
+      if (userRole === "admin") {
+        // Admin sees all - no extra filter
+      }
+      else if (userRole === "mentor") {
+        // Mentor sees ONLY their own jobs
+        if (userId) {
+          query.CreatedBy = userId;
+        }
+      }
+      else if (userRole === "manager") {
+        // Manager sees Own Jobs + Direct Reportees' Jobs
+        if (userId) {
+          // Find reportees
+          const reportees = await User.find({ reporter: userId }).select("_id");
+          const reporteeIds = reportees.map(u => u._id);
+
+          // Add Manager's own ID
+          const allowedIds = [userId, ...reporteeIds];
+
+          query.CreatedBy = { $in: allowedIds };
+        }
+      }
+    }
+
+    // Execute Query with Pagination
+    const jobs = await Job.find(query)
+      .sort({ createdAt: -1 })
       .populate("assignedRecruiters", "name email")
       .populate("leadRecruiter", "name email")
       .populate("CreatedBy", "name email")
       .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
-      .sort({ createdAt: -1 });
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
 
-    res.json({ success: true, jobs });
+    const totalJobs = await Job.countDocuments(query);
+
+    // 📊 AGGREGATE STATS (New & Shortlisted Counts)
+    const jobIds = jobs.map(job => job._id);
+
+    const stats = await Candidate.aggregate([
+      { $match: { jobId: { $in: jobIds } } },
+      {
+        $group: {
+          _id: "$jobId",
+          newCount: {
+            $sum: { $cond: [{ $eq: ["$status", "New"] }, 1, 0] }
+          },
+          shortlistedCount: {
+            $sum: { $cond: [{ $eq: ["$status", "Shortlisted"] }, 1, 0] }
+          },
+          totalCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Map stats to jobs
+    const jobsWithStats = jobs.map(job => {
+      const stat = stats.find(s => s._id.toString() === job._id.toString());
+      return {
+        ...job,
+        newResponses: stat ? stat.newCount : 0,
+        shortlisted: stat ? stat.shortlistedCount : 0,
+        candidateCount: stat ? stat.totalCount : (job.candidateCount || 0)
+      };
+    });
+
+    res.json({
+      success: true,
+      jobs: jobsWithStats,
+      totalJobs,
+      totalPages: Math.ceil(totalJobs / limitNum),
+      currentPage: pageNum
+    });
+
   } catch (error) {
+    console.error("Error fetching jobs:", error);
     res.status(500).json({ success: false, message: "Failed to fetch jobs" });
   }
 });

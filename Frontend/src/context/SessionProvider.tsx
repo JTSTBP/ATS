@@ -3,9 +3,11 @@ import {
     useContext,
     useState,
     ReactNode,
+    useEffect,
 } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { useAuth } from "./AuthProvider";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -66,6 +68,48 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 export const SessionProvider = ({ children }: { children: ReactNode }) => {
     const [sessions, setSessions] = useState<Session[]>([]);
     const [loading, setLoading] = useState(false);
+    const { user, logout } = useAuth(); // Get user and logout from AuthContext
+
+    // Auto Logout Logic
+    useEffect(() => {
+        // Only trigger for Recruiters and Mentors
+        if (user?.designation !== 'Recruiter' && user?.designation !== 'Mentor') {
+            return;
+        }
+
+        const TIMEOUT_DURATION = 10 * 60 * 1000; // 10 minutes
+        let logoutTimer: NodeJS.Timeout;
+
+        const logoutUser = () => {
+            logout();
+            toast.info("Session timed out due to inactivity");
+            // Optional: Redirect is handled by logout/AuthContext or ProtectedRoute usually
+        };
+
+        const resetTimer = () => {
+            if (logoutTimer) clearTimeout(logoutTimer);
+            logoutTimer = setTimeout(logoutUser, TIMEOUT_DURATION);
+        };
+
+        // Events to detect activity
+        const events = ['mousemove', 'mousedown', 'click', 'scroll', 'keypress', 'touchstart'];
+
+        // Add listeners
+        events.forEach(event => {
+            window.addEventListener(event, resetTimer);
+        });
+
+        // Initialize timer
+        resetTimer();
+
+        // Cleanup
+        return () => {
+            if (logoutTimer) clearTimeout(logoutTimer);
+            events.forEach(event => {
+                window.removeEventListener(event, resetTimer);
+            });
+        };
+    }, [user, logout]);
 
     // Fetch all sessions with optional filters
     const fetchSessions = async (filters?: {

@@ -130,18 +130,18 @@ export default function Reports() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Recruitment Reports Overview</h1>
-          <p className="text-slate-600">Analytics and insights for your recruitment process</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-1 md:mb-2">Recruitment Reports Overview</h1>
+          <p className="text-sm md:text-base text-slate-600">Analytics and insights for your recruitment process</p>
         </div>
       </div>
 
       {/* Stats Cards - Now with REAL data and CLICKABLE */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
         <div
           onClick={() => navigate('/Recruiter/candidates')}
-          className="bg-white rounded-xl shadow-md p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
+          className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-800">Applications</h3>
@@ -153,7 +153,7 @@ export default function Reports() {
 
         <div
           onClick={() => navigate('/Recruiter/candidates?status=Interview')}
-          className="bg-white rounded-xl shadow-md p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
+          className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-800">Interviews</h3>
@@ -165,7 +165,7 @@ export default function Reports() {
 
         <div
           onClick={() => navigate('/Recruiter/candidates?status=Hired')}
-          className="bg-white rounded-xl shadow-md p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
+          className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-800">Hires</h3>
@@ -177,9 +177,9 @@ export default function Reports() {
       </div>
 
       {/* Top Positions and Hiring Funnel - Now with REAL data */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
-          <h2 className="text-xl font-bold text-slate-800 mb-6">Top Positions</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
+          <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">Top Positions</h2>
           <div className="space-y-4">
             {topPositions.length > 0 ? (
               topPositions.map((item) => (
@@ -206,8 +206,8 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
-          <h2 className="text-xl font-bold text-slate-800 mb-6">Hiring Funnel</h2>
+        <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
+          <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">Hiring Funnel</h2>
           <div className="space-y-6">
             {[
               { stage: 'Applications Received', count: stats.totalApplications, color: 'bg-slate-500', status: '' },
@@ -233,11 +233,11 @@ export default function Reports() {
       </div>
 
       {/* Recent Activity - Now with REAL data */}
-      <div className="mt-6 bg-white rounded-xl shadow-md p-6 border border-slate-200">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-slate-800">Recent Activity Log</h2>
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Calendar size={16} />
+      <div className="mt-4 md:mt-6 bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 md:mb-6">
+          <h2 className="text-lg md:text-xl font-bold text-slate-800">Recent Activity Log</h2>
+          <div className="flex items-center gap-2 text-xs md:text-sm text-slate-600">
+            <Calendar size={14} className="md:w-4 md:h-4" />
             <span>Last 7 days</span>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { toast } from "react-toastify";
 
 const API_BASE_URL =
@@ -18,6 +18,7 @@ type Candidate = {
   dynamicFields?: Record<string, any>;
   createdAt?: string;
   updatedAt?: string;
+  interviewStage?: string;
 };
 
 type CandidateContextType = {
@@ -43,6 +44,25 @@ type CandidateContextType = {
     stageNotes?: string,
     comment?: string
   ) => Promise<Candidate | null>;
+
+  // 🔹 Pagination
+  paginatedCandidates: Candidate[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalCandidates: number;
+  };
+  fetchPaginatedCandidates: (
+    page: number,
+    limit: number,
+    filters?: {
+      search?: string;
+      status?: string;
+      client?: string;
+      jobTitle?: string;
+      stage?: string;
+    }
+  ) => Promise<void>;
 };
 
 const CandidateContext = createContext<CandidateContextType | undefined>(
@@ -55,6 +75,47 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination State
+  const [paginatedCandidates, setPaginatedCandidates] = useState<Candidate[]>([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalCandidates: 0,
+  });
+
+  const fetchPaginatedCandidates = async (
+    page: number,
+    limit: number,
+    filters: any = {}
+  ) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit,
+        ...filters
+      };
+
+      const { data } = await axios.get(`${API_URL}`, { params });
+
+      if (data.success) {
+        setPaginatedCandidates(data.candidates);
+        setPagination({
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalCandidates: data.totalCandidates
+        });
+      } else {
+        throw new Error("Failed to load candidates");
+      }
+    } catch (err: any) {
+      setError(err.message);
+      toast.error("Failed to load candidates");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchallCandidates = async () => {
     setLoading(true);
@@ -247,6 +308,9 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
         updateCandidate,
         deleteCandidate,
         updateStatus,
+        paginatedCandidates,
+        pagination,
+        fetchPaginatedCandidates,
       }}
     >
       {children}

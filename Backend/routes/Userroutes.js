@@ -33,12 +33,63 @@ router.post("/", async (req, res) => {
 });
 
 // 📋 Get All Users
+// 📋 Get All Users (with Pagination & Filtering)
 router.get("/", async (req, res) => {
   try {
-    const users = await User.find()
+    const { page, limit, search, role, isAdmin } = req.query;
+
+    // Build Query
+    const query = {};
+
+    // Search (Name or Designation or Email)
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      query.$or = [
+        { name: searchRegex },
+        { designation: searchRegex },
+        { email: searchRegex }
+      ];
+    }
+
+    // Role Filter
+    if (role) {
+      query.designation = new RegExp(`^${role}$`, "i"); // Case-insensitive exact match
+    }
+
+    // Admin Filter
+    if (isAdmin !== undefined) {
+      query.isAdmin = isAdmin === "true";
+    }
+
+    // If Pagination params are present
+    if (page && limit) {
+      const pageNum = parseInt(page);
+      const limitNum = parseInt(limit);
+      const skip = (pageNum - 1) * limitNum;
+
+      const users = await User.find(query)
+        .sort({ createdAt: -1 })
+        .populate("reporter", "name designation")
+        .skip(skip)
+        .limit(limitNum);
+
+      const totalUsers = await User.countDocuments(query);
+
+      return res.json({
+        users,
+        totalUsers,
+        totalPages: Math.ceil(totalUsers / limitNum),
+        currentPage: pageNum
+      });
+    }
+
+    // Default: Return All Users (Backward Compatibility)
+    const users = await User.find(query)
       .sort({ createdAt: -1 })
-      .populate("reporter", "name designation");;
+      .populate("reporter", "name designation");
+
     res.json(users);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });

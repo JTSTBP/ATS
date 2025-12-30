@@ -76,23 +76,78 @@ router.post('/', clientUpload.single('logo'), async (req, res) => {
 });
 
 // Get all clients
-// Get all clients with job count
+// 📋 Get all clients with Pagination & Search
 router.get('/', async (req, res) => {
     try {
-        const clients = await Client.find()
+        const { page, limit, search } = req.query;
+
+        // Backward compatibility: fetch all if no pagination params
+        if (!page || !limit) {
+            const clients = await Client.find()
+                .populate('createdBy', 'name email designation')
+                .sort({ createdAt: -1 })
+                .lean();
+
+            const Job = require('../models/Jobs');
+            const jobs = await Job.find({}, 'clientId'); // Optimize: only fetch clientId
+
+            const clientsWithCount = clients.map(client => {
+                const count = jobs.filter(job => job.clientId && job.clientId.toString() === client._id.toString()).length;
+                return { ...client, jobCount: count };
+            });
+
+            return res.json({ success: true, clients: clientsWithCount });
+        }
+
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const skip = (pageNum - 1) * limitNum;
+
+        let query = {};
+
+        // Search Filter
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            query.$or = [
+                { companyName: searchRegex },
+                { websiteUrl: searchRegex },
+                { industry: searchRegex },
+                { address: searchRegex },
+                { state: searchRegex }
+            ];
+        }
+
+        // Fetch paginated clients
+        const clients = await Client.find(query)
             .populate('createdBy', 'name email designation')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNum)
             .lean();
+
+        // Calculate job counts for *these* clients only
         const Job = require('../models/Jobs');
-        const jobs = await Job.find({}, 'clientId');
+        // We only need to check jobs for the clients we just fetched
+        const clientIds = clients.map(c => c._id);
+        const jobs = await Job.find({ clientId: { $in: clientIds } }, 'clientId').lean();
 
         const clientsWithCount = clients.map(client => {
             const count = jobs.filter(job => job.clientId && job.clientId.toString() === client._id.toString()).length;
             return { ...client, jobCount: count };
         });
 
-        res.json({ success: true, clients: clientsWithCount });
+        const totalClients = await Client.countDocuments(query);
+
+        res.json({
+            success: true,
+            clients: clientsWithCount,
+            totalClients,
+            totalPages: Math.ceil(totalClients / limitNum),
+            currentPage: pageNum
+        });
+
     } catch (err) {
+        console.error('Error fetching clients:', err);
         res.status(500).json({ success: false, message: err.message });
     }
 });

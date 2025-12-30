@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserContext } from "../../context/UserProvider";
@@ -6,12 +6,14 @@ import { useSearchParams } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
 
 export default function UserManagement() {
-  const { users, addUser, updateUser, deleteUser } = useUserContext();
+  const { users, addUser, updateUser, deleteUser, paginatedUsers, pagination, fetchPaginatedUsers } = useUserContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const limit = 10;
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [showAppPassword, setShowAppPassword] = useState(false);
@@ -36,23 +38,25 @@ export default function UserManagement() {
     dateOfBirth: "",
   });
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.designation.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch users when params change
+  useEffect(() => {
+    // Debounce search slightly if needed, or just pass directly
+    const timer = setTimeout(() => {
+      fetchPaginatedUsers(
+        currentPage,
+        limit,
+        searchTerm,
+        roleFilter || "",
+        adminFilter || ""
+      );
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [currentPage, searchTerm, roleFilter, adminFilter]);
 
-    let matchesRole = true;
-    if (roleFilter) {
-      matchesRole = user.designation.toLowerCase() === roleFilter.toLowerCase();
-    }
-
-    let matchesAdmin = true;
-    if (adminFilter === "true") {
-      matchesAdmin = user.isAdmin === true;
-    }
-
-    return matchesSearch && matchesRole && matchesAdmin;
-  });
+  // Reset to page 1 when filters change (but not when page changes)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, roleFilter, adminFilter]);
 
   const resetForm = () => {
     setFormData({
@@ -101,12 +105,14 @@ export default function UserManagement() {
           setShowModal(false);
           setEditUserId(null);
           resetForm();
+          fetchPaginatedUsers(currentPage, limit, searchTerm, roleFilter || "", adminFilter || "");
         }
       } else {
         const success = await addUser(formData);
         if (success) {
           setShowModal(false);
           resetForm();
+          fetchPaginatedUsers(currentPage, limit, searchTerm, roleFilter || "", adminFilter || "");
         }
       }
     } catch (err) {
@@ -226,8 +232,8 @@ export default function UserManagement() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            <AnimatePresence>
-              {filteredUsers.map((user, index) => {
+            <AnimatePresence mode="wait">
+              {paginatedUsers.map((user, index) => {
                 return (
                   <motion.tr
                     key={user._id}
@@ -322,7 +328,38 @@ export default function UserManagement() {
         </table>
       </div>
 
-      {filteredUsers.length === 0 && (
+      {/* Pagination Controls */}
+      <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-white">
+        <div className="text-sm text-slate-500">
+          Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, pagination.totalUsers)} of {pagination.totalUsers} users
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Previous
+          </button>
+
+          <div className="flex items-center gap-1">
+
+            <span className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
+            disabled={currentPage === pagination.totalPages}
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {paginatedUsers.length === 0 && (
         <div className="text-center py-16">
           <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
             <Search size={32} className="text-slate-300" />

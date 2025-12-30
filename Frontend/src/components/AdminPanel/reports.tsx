@@ -320,45 +320,45 @@ export default function ReportsTab() {
 
       {/* Client Job Report Table */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Client Job Report</h2>
-            <p className="text-sm text-slate-500">Overview of requirement status by client</p>
+        <div className="p-4 md:p-6 border-b border-slate-100">
+          <div className="mb-4">
+            <h2 className="text-base md:text-lg font-bold text-slate-800">Client Job Report</h2>
+            <p className="text-xs md:text-sm text-slate-500">Overview of requirement status by client</p>
           </div>
-          <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-            <div className="relative group">
+          <div className="flex flex-col md:flex-row gap-2 md:gap-3 w-full">
+            <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Search Client..."
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-[180px]"
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
               />
             </div>
-            <div className="relative group">
+            <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Search Recruiter..."
                 value={recruiterSearch}
                 onChange={(e) => setRecruiterSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-[180px]"
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
               />
             </div>
-            <div className="relative group">
+            <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Search Job Title..."
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full sm:w-[180px]"
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
               />
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[450px]">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px]">
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10">
               <tr>
@@ -410,9 +410,7 @@ export default function ReportsTab() {
                 <th className="py-3 px-6 min-w-[100px]">
                   <span>Positions</span>
                 </th>
-                <th className="py-3 px-6 min-w-[100px]">
-                  <span>Positions</span>
-                </th>
+
                 <th className="py-3 px-6 min-w-[200px] relative">
                   <div className="flex items-center justify-between">
                     <span>Assigned Recruiters</span>
@@ -472,10 +470,14 @@ export default function ReportsTab() {
                   const clientName = client?.companyName || "Unknown";
                   const dateReceived = job.createdAt ? formatDate(job.createdAt) : "N/A";
 
-                  const recruitersInvolved = Array.from(new Set(jobCandidates.map(c => {
-                    const creatorId = typeof c.createdBy === 'object' ? (c.createdBy as any)?._id : c.createdBy;
-                    return users.find(u => u._id === creatorId)?.name || "Unknown";
-                  })));
+                  // Get assigned recruiters from the job itself
+                  const assignedRecruiterIds = Array.isArray(job.assignedRecruiters)
+                    ? job.assignedRecruiters.map((r: any) => typeof r === 'object' ? r._id : r)
+                    : [];
+
+                  const recruitersInvolved = assignedRecruiterIds
+                    .map(recruiterId => users.find(u => u._id === recruiterId)?.name)
+                    .filter(Boolean) as string[];
 
                   const matchesDate = selectedFilters.date.length > 0 ? selectedFilters.date.includes(dateReceived) : true;
                   const matchesClient = selectedFilters.client.length > 0 ? selectedFilters.client.includes(clientName) : true;
@@ -519,7 +521,7 @@ export default function ReportsTab() {
                         {row.recruitersInvolved.map((r: string) => (
                           <span key={r} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] border border-slate-200">{r}</span>
                         ))}
-                        {row.recruitersInvolved.length === 0 && <span className="text-slate-400 text-xs italic">No uploads</span>}
+                        {row.recruitersInvolved.length === 0 && <span className="text-slate-400 text-xs italic">No recruiters assigned</span>}
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center">
@@ -560,52 +562,56 @@ export default function ReportsTab() {
 
 
       {/* Daily Lineup Reports Table */}
-      < div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" >
-        <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">Daily Lineup Reports</h2>
-            <p className="text-sm text-slate-500">Recruiter performance breakdown by job</p>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="p-4 md:p-6 border-b border-slate-100">
+          <div className="mb-4">
+            <h2 className="text-base md:text-lg font-bold text-slate-800">Daily Lineup Reports</h2>
+            <p className="text-xs md:text-sm text-slate-500">Recruiter performance breakdown by job</p>
           </div>
-          <div className="flex flex-wrap gap-3 w-full lg:w-auto">
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 w-full md:w-auto justify-center sm:justify-start">
               {['T', 'Y', 'W', 'L'].map(s => (
                 <button
                   key={s}
                   onClick={() => applyDateShortcut(s)}
-                  className="w-7 h-7 flex items-center justify-center text-[10px] font-bold rounded-md hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all text-slate-500 hover:text-indigo-600"
+                  className="w-9 h-9 md:w-7 md:h-7 flex items-center justify-center text-xs md:text-[10px] font-bold rounded-md hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all text-slate-500 hover:text-indigo-600"
                   title={s === 'T' ? 'Today' : s === 'Y' ? 'Yesterday' : s === 'W' ? 'This Week' : 'Last Week'}
                 >
                   {s}
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1 flex-1 sm:flex-none">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">From</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="bg-transparent text-sm focus:outline-none text-slate-600 w-full sm:w-auto"
-              />
-              <span className="text-[10px] font-bold text-slate-400 uppercase">To</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="bg-transparent text-sm focus:outline-none text-slate-600 w-full sm:w-auto"
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 w-full md:max-w-md">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">From</span>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="bg-transparent text-sm focus:outline-none text-slate-600 w-full"
+                />
+              </div>
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">To</span>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="bg-transparent text-sm focus:outline-none text-slate-600 w-full"
+                />
+              </div>
               {(startDate || endDate) && (
                 <button
                   onClick={() => { setStartDate(""); setEndDate(""); }}
-                  className="ml-1 text-slate-400 hover:text-red-500 transition-colors"
+                  className="text-slate-400 hover:text-red-500 transition-colors self-center p-1"
                 >
-                  <X size={14} />
+                  <X size={16} />
                 </button>
               )}
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[450px]">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px]">
           <table className="w-full text-sm text-left">
             <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10">
               <tr>
@@ -844,29 +850,29 @@ export default function ReportsTab() {
       <AnimatePresence>
         {
           selectedReport && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col"
+                className="bg-white rounded-none md:rounded-xl shadow-xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[80vh] flex flex-col"
               >
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
                   <div>
-                    <h2 className="text-xl font-bold text-slate-800">
+                    <h2 className="text-lg md:text-xl font-bold text-slate-800">
                       {reports.find(r => r.id === selectedReport)?.name}
                     </h2>
-                    <p className="text-sm text-slate-500">Detailed View</p>
+                    <p className="text-xs md:text-sm text-slate-500">Detailed View</p>
                   </div>
                   <button
                     onClick={() => setSelectedReport(null)}
                     className="p-2 hover:bg-slate-100 rounded-full transition-colors"
                   >
-                    <X size={24} className="text-slate-500" />
+                    <X size={20} className="text-slate-500 md:w-6 md:h-6" />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-auto p-6">
+                <div className="flex-1 overflow-auto p-4 md:p-6">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
                       <tr>
@@ -916,29 +922,29 @@ export default function ReportsTab() {
       <AnimatePresence>
         {
           candidatePopupData && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col"
+                className="bg-white rounded-none md:rounded-xl shadow-xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[80vh] flex flex-col"
               >
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800">
+                <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-base md:text-xl font-bold text-slate-800 truncate">
                       {candidatePopupData.title}
                     </h2>
-                    <p className="text-sm font-semibold text-indigo-600">Client: {candidatePopupData.clientName}</p>
+                    <p className="text-xs md:text-sm font-semibold text-indigo-600 truncate">Client: {candidatePopupData.clientName}</p>
                   </div>
                   <button
                     onClick={() => setCandidatePopupData(null)}
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0 ml-2"
                   >
-                    <X size={24} className="text-slate-500" />
+                    <X size={20} className="text-slate-500 md:w-6 md:h-6" />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-auto p-6">
+                <div className="flex-1 overflow-auto p-4 md:p-6">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
                       <tr>

@@ -113,16 +113,175 @@ async function sendUpdateNotificationToReporter(updatingUserId, candidateName, j
   }
 }
 
-// 🔵 Get all candidates
+// 🔵 Get all candidates (with Pagination & Filtering)
 router.get("/", async (req, res) => {
   try {
+    const { page, limit, search, status, client, jobTitle, stage } = req.query;
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    console.log("🔍 Candidates Filter Request:", {
+      page, limit, search, status, client, jobTitle, stage
+    });
+
+    // Base Match Stage (for direct fields)
+    const matchStage = {};
+
+    // Filter by Status
+    if (status && status !== "all") {
+      matchStage.status = new RegExp(`^${status}$`, "i");
+    }
+
+    // Filter by Interview Stage
+    if (stage && stage !== "all") {
+      matchStage.interviewStage = stage;
+    }
+
+    // Search (Candidate Name, Email, Phone, Skills) - stored in dynamicFields
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      matchStage.$or = [
+        { "dynamicFields.candidateName": searchRegex },
+        { "dynamicFields.CandidateName": searchRegex }, // Handle potential case differences
+        { "dynamicFields.Email": searchRegex },
+        { "dynamicFields.email": searchRegex },
+        { "dynamicFields.Phone": searchRegex },
+        { "dynamicFields.phone": searchRegex },
+        { "dynamicFields.Skills": searchRegex },
+        { "dynamicFields.skills": searchRegex }
+      ];
+    }
+
+    // Aggregation Pipeline
+    const pipeline = [
+      { $match: matchStage },
+      { $sort: { createdAt: -1 } },
+
+      // Lookup Job
+      {
+        $lookup: {
+          from: "jobs",
+          localField: "jobId",
+          foreignField: "_id",
+          as: "job"
+        }
+      },
+      { $unwind: { path: "$job", preserveNullAndEmptyArrays: true } },
+
+      // Lookup Client (via Job)
+      {
+        $lookup: {
+          from: "clients",
+          localField: "job.clientId",
+          foreignField: "_id",
+          as: "client"
+        }
+      },
+      { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
+
+      // Lookup CreatedBy User
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdBy",
+          foreignField: "_id",
+          as: "creator"
+        }
+      },
+      { $unwind: { path: "$creator", preserveNullAndEmptyArrays: true } },
+
+      // Lookup Creator's Reporter
+      {
+        $lookup: {
+          from: "users",
+          localField: "creator.reporter",
+          foreignField: "_id",
+          as: "reporter"
+        }
+      },
+      { $unwind: { path: "$reporter", preserveNullAndEmptyArrays: true } },
+
+      // Relational Filtering (Client & Job Title)
+      {
+        $match: {
+          ...(client && client !== "all" ? { "client.companyName": new RegExp(client, "i") } : {}),
+          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(jobTitle, "i") } : {})
+        }
+      }
+    ];
+
+    // If Pagination is Requested
+    if (page && limit) {
+      const result = await Candidate.aggregate([
+        ...pipeline,
+        {
+          $facet: {
+            candidates: [
+              { $skip: skip },
+              { $limit: limitNum },
+              // Project to restore original structure expected by frontend (nested objects)
+              {
+                $project: {
+                  _id: 1,
+                  dynamicFields: 1,
+                  resumeUrl: 1,
+                  status: 1,
+                  interviewStage: 1,
+                  createdAt: 1,
+                  // Reconstruct jobId object
+                  jobId: {
+                    _id: "$job._id",
+                    title: "$job.title",
+                    clientId: {
+                      _id: "$client._id",
+                      companyName: "$client.companyName"
+                    }
+                  },
+                  // Reconstruct createdBy object
+                  createdBy: {
+                    _id: "$creator._id",
+                    name: "$creator.name",
+                    designation: "$creator.designation",
+                    reporter: {
+                      _id: "$reporter._id",
+                      name: "$reporter.name"
+                    }
+                  }
+                }
+              }
+            ],
+            totalCount: [{ $count: "count" }]
+          }
+        }
+      ]);
+
+      const candidates = result[0].candidates;
+      const totalCandidates = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
+
+      return res.json({
+        success: true,
+        candidates,
+        totalCandidates,
+        totalPages: Math.ceil(totalCandidates / limitNum),
+        currentPage: pageNum
+      });
+    }
+
+    // Default: Return All (Backward Compatibility - utilizing basic find for simpler structure if no complex filters)
+    // NOTE: The previous implementation used standard populate. If we want to support the same rich population without pagination, we can fall back to the original method or use the pipeline without skip/limit.
+    // However, to keep it safe and consistent with previous behavior (populating EVERYTHING), let's stick to the Mongoose find() for the default case,
+    // OR we can use the pipeline with no limit. 
+    // Given the complexity of the previous populations (nested deep), let's FALLBACK to the original Mongoose Find for non-paginated requests to modify as little risk as possible.
+
     const candidates = await Candidate.find()
       .populate({
         path: "createdBy",
         select: "name email reporter designation",
         populate: {
           path: "reporter",
-          select: "name email role", // add fields you need
+          select: "name email role",
         },
       })
       .populate({
@@ -144,11 +303,10 @@ router.get("/", async (req, res) => {
       .sort({ createdAt: -1 });
 
     res.json({ success: true, candidates });
+
   } catch (error) {
     console.error("Error fetching candidates:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to fetch candidates" });
+    res.status(500).json({ success: false, message: "Failed to fetch candidates" });
   }
 });
 
