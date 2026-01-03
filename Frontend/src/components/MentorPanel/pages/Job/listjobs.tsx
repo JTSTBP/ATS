@@ -24,7 +24,9 @@ interface JobCardProps {
     onDelete?: (id?: string | number) => void;
     onRefresh?: (id?: string | number) => void;
     onNavigateToCandidates?: (jobTitle: string) => void;
+    onStatusChange?: (id: string, status: string) => void;
     positions?: number;
+    status?: string;
 }
 
 
@@ -44,7 +46,9 @@ const JobCard: React.FC<JobCardProps> = ({
     onDelete,
     onRefresh,
     onNavigateToCandidates,
+    onStatusChange,
     positions,
+    status,
 }) => {
     const { user } = useAuth(); // Assuming useAuth is available or imported
     const navigate = useNavigate();
@@ -131,6 +135,25 @@ const JobCard: React.FC<JobCardProps> = ({
                         <p className="text-xs text-gray-500 mt-1">Positions</p>
                     </div>
                 )}
+
+                {/* Status Dropdown */}
+                <div className="text-center min-w-[100px]">
+                    <select
+                        value={status}
+                        onChange={(e) => onStatusChange?.(id as string, e.target.value)}
+                        className={`text-xs font-semibold px-2 py-1 rounded-full border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all cursor-pointer ${status === "Open"
+                            ? "bg-green-100 text-green-700 border-green-200 focus:ring-green-500"
+                            : status === "Closed"
+                                ? "bg-red-100 text-red-700 border-red-200 focus:ring-red-500"
+                                : "bg-yellow-100 text-yellow-700 border-yellow-200 focus:ring-yellow-500"
+                            }`}
+                    >
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                        <option value="On Hold">On Hold</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Status</p>
+                </div>
             </div>
 
 

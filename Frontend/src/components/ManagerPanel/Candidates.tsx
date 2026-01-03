@@ -8,10 +8,11 @@ import {
   Phone,
   Search,
   Upload,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
-import { useUserContext } from "../../context/UserProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 
@@ -20,15 +21,28 @@ export const ManagerCandidates = () => {
   const API_BASE_URL =
     import.meta.env.VITE_BACKEND_URL;
 
-  const { updateStatus, candidates, fetchCandidatesByUser, loading } =
-    useCandidateContext();
-  const { users } = useUserContext();
+  const {
+    updateStatus,
+    paginatedCandidates,
+    pagination,
+    fetchPaginatedCandidatesByUser,
+    loading
+  } = useCandidateContext();
 
-  const [filteredList, setFilteredList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [editingCandidate, setEditingCandidate] = useState(null);
+  const [editingCandidate, setEditingCandidate] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Status Change Modal State
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -55,63 +69,36 @@ export const ManagerCandidates = () => {
       comment // comment
     );
 
-    if (user?._id) await fetchCandidatesByUser(user._id);
+    if (user?._id) {
+      fetchPaginatedCandidatesByUser(user._id, pagination.currentPage, 10, {
+        search: debouncedSearch,
+        status: statusFilter
+      });
+    }
     setStatusModalOpen(false);
     setPendingStatusChange(null);
   };
 
-  // 1️⃣ Fetch all candidates on load
+  // 1️⃣ Fetch candidates on load and when filters change
   useEffect(() => {
-    if (user?._id) fetchCandidatesByUser(user._id);
-  }, [user, showForm]);
-
-  // 2️⃣ Filter candidates based on your rules
-  useEffect(() => {
-    if (!candidates || !user) return;
-
-    // 🔸 Get list of users who report to current user
-    const reportingUsers = users.filter((u) => u?.reporter?._id === user._id);
-
-    const reportingUserIds = reportingUsers.map((u) => u._id);
-
-    const filtered = candidates.filter(
-      (c) =>
-        c.createdBy?._id === user._id ||
-        reportingUserIds.includes(c.createdBy?._id)
-    );
-
-    setFilteredList(filtered);
-  }, [candidates, users, user]);
-
-  // 3️⃣ Search filter
-  const searchedCandidates = filteredList.filter((candidate) => {
-    const name = candidate.dynamicFields?.candidateName?.toLowerCase() || "";
-    const email = candidate.dynamicFields?.Email?.toLowerCase() || "";
-    const phone = candidate.dynamicFields?.Phone?.toLowerCase() || "";
-    const skills = candidate.dynamicFields?.Skills?.toLowerCase() || "";
-    const job = candidate.jobId?.title?.toLowerCase() || "";
-    const status = candidate.status?.toLowerCase() || "";
-
-    // 🔥 1. STATUS FILTER
-    if (statusFilter !== "all" && status !== statusFilter.toLowerCase()) {
-      return false;
+    if (user?._id) {
+      fetchPaginatedCandidatesByUser(user._id, 1, 10, {
+        search: debouncedSearch,
+        status: statusFilter
+      });
     }
+  }, [user, debouncedSearch, statusFilter, showForm]);
 
-    // 🔎 2. SEARCH FILTER
-    if (
-      name.includes(searchTerm.toLowerCase()) ||
-      email.includes(searchTerm.toLowerCase()) ||
-      phone.includes(searchTerm.toLowerCase()) ||
-      skills.includes(searchTerm.toLowerCase()) ||
-      job.includes(searchTerm.toLowerCase())
-    ) {
-      return true;
+  const handlePageChange = (newPage: number) => {
+    if (user?._id && newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchPaginatedCandidatesByUser(user._id, newPage, 10, {
+        search: debouncedSearch,
+        status: statusFilter
+      });
     }
+  };
 
-    return false;
-  });
-
-  const handleEdit = (candidate) => {
+  const handleEdit = (candidate: any) => {
     setEditingCandidate(candidate);
     setShowForm(true);
   };
@@ -121,12 +108,14 @@ export const ManagerCandidates = () => {
     setEditingCandidate(null);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     if (!confirm("Are you sure to delete?")) return;
+    console.log("Delete not implemented for", id);
+    // Implement delete logic if needed
   };
 
 
-  if (loading)
+  if (loading && !paginatedCandidates.length)
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
@@ -164,7 +153,7 @@ export const ManagerCandidates = () => {
         </div>
       </div>
 
-      <div className="flex gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+      <div className="flex gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200 overflow-x-auto">
         {[
           "all",
           "New",
@@ -177,7 +166,7 @@ export const ManagerCandidates = () => {
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-3 py-1 rounded-lg text-sm font-medium capitalize
+            className={`px-3 py-1 rounded-lg text-sm font-medium capitalize whitespace-nowrap
         ${statusFilter === status
                 ? "bg-orange-600 text-white"
                 : "bg-gray-100 text-gray-700"
@@ -189,7 +178,6 @@ export const ManagerCandidates = () => {
         ))}
       </div>
 
-      {/* Table */}
       {/* Table */}
       <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto whitespace-nowrap">
@@ -228,7 +216,7 @@ export const ManagerCandidates = () => {
             </thead>
 
             <tbody>
-              {searchedCandidates.map((candidate) => (
+              {paginatedCandidates.map((candidate: any) => (
                 <tr key={candidate._id} className="hover:bg-gray-50 transition">
                   {/* NAME */}
                   <td className="px-6 py-4 font-semibold text-gray-800">
@@ -258,8 +246,8 @@ export const ManagerCandidates = () => {
                   <td className="px-6 py-4">
                     {candidate.dynamicFields?.Skills ? (
                       <div className="flex flex-wrap gap-1">
-                        {candidate.dynamicFields.Skills.split(",").map(
-                          (skill, i) => (
+                        {(candidate.dynamicFields.Skills as string).split(",").map(
+                          (skill: string, i: number) => (
                             <span
                               key={i}
                               className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
@@ -291,16 +279,16 @@ export const ManagerCandidates = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.jobId.title || "-"}
+                    {candidate.jobId?.title || "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.createdBy.name || "-"}
+                    {candidate.createdBy?.name || "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-700">
                     <select
                       value={candidate.status || "New"}
                       onChange={(e) =>
-                        handleStatusChange(candidate._id, e.target.value)
+                        handleStatusChange(candidate._id as string, e.target.value)
                       }
                       className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                     >
@@ -334,10 +322,80 @@ export const ManagerCandidates = () => {
             </tbody>
           </table>
         </div>
+
+        {/* Start Pagination Controls */}
+        {pagination.totalCandidates > 0 && (
+          <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+            <div className="text-sm text-gray-500">
+              Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCandidates)} of {pagination.totalCandidates} entries
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition
+                  ${pagination.currentPage === 1
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 shadow-sm"
+                  }
+                `}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (pagination.currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                    pageNum = pagination.totalPages - 4 + i;
+                  } else {
+                    pageNum = pagination.currentPage - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition
+                        ${pagination.currentPage === pageNum
+                          ? "bg-orange-600 text-white"
+                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                        }
+                      `}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition
+                  ${pagination.currentPage === pagination.totalPages
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 shadow-sm"
+                  }
+                `}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </button>
+            </div>
+          </div>
+        )}
+        {/* End Pagination Controls */}
+
       </div>
 
       {/* Empty UI */}
-      {searchedCandidates.length === 0 && (
+      {paginatedCandidates.length === 0 && !loading && (
         <div className="bg-white rounded-xl p-12 text-center shadow-md border">
           <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-600 mb-2">
@@ -362,7 +420,7 @@ export const ManagerCandidates = () => {
         }}
         onConfirm={confirmStatusChange}
         newStatus={pendingStatusChange?.newStatus || ""}
-        candidateName={searchedCandidates.find((c) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+        candidateName={paginatedCandidates.find((c) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
       />
     </div>
   );

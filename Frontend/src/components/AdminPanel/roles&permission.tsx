@@ -33,6 +33,12 @@ export default function RolesAndPermissions() {
       permissions: ["View Candidates", "View Reports"],
       color: "text-purple-600 bg-purple-100",
     },
+    {
+      name: "Finance",
+      description: "Manage invoices, payments, and financial reports.",
+      permissions: ["Create Invoices", "Track Payments", "View Financial Reports"],
+      color: "text-rose-600 bg-rose-100",
+    },
   ];
 
   return (
@@ -50,7 +56,7 @@ export default function RolesAndPermissions() {
         <div className="bg-white shadow rounded-xl p-5 flex justify-between items-center hover:shadow-md transition">
           <div>
             <p className="text-slate-500 text-sm">Total Roles</p>
-            <h2 className="text-3xl font-semibold mt-1">4</h2>
+            <h2 className="text-3xl font-semibold mt-1">5</h2>
           </div>
           <div className="bg-blue-100 text-blue-600 p-3 rounded-lg">
             <Shield size={28} />

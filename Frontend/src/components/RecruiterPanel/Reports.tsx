@@ -4,14 +4,21 @@ import { useEffect, useMemo } from 'react';
 import { useCandidateContext } from '../../context/CandidatesProvider';
 import { useAuth } from '../../context/AuthProvider';
 import { useNavigate } from 'react-router-dom';
+import { useJobContext } from '../../context/DataProvider';
+import { useClientsContext } from '../../context/ClientsProvider';
+import PerformanceReportTable from './PerformanceReportTable';
 
 export default function Reports() {
   const { user } = useAuth();
   const { candidates, fetchCandidatesByUser, loading } = useCandidateContext();
+  const { fetchJobs } = useJobContext();
+  const { fetchClients } = useClientsContext();
   const navigate = useNavigate();
 
   // Fetch data on component mount
   useEffect(() => {
+    fetchJobs();
+    fetchClients();
     if (user?._id) {
       fetchCandidatesByUser(user._id);
     }
@@ -19,9 +26,6 @@ export default function Reports() {
 
   // Calculate statistics from real data
   const stats = useMemo(() => {
-    console.log("Reports Debug - User:", user);
-    console.log("Reports Debug - All Candidates:", candidates);
-
     if (!user || !candidates) return {
       totalApplications: 0,
       interviews: 0,
@@ -31,18 +35,13 @@ export default function Reports() {
       rejected: 0,
     };
 
-    // Candidates are already filtered by user on the backend via fetchCandidatesByUser
     const userCandidates = candidates;
 
-    console.log("Reports Debug - User Candidates:", userCandidates);
-
     const totalApplications = userCandidates.length;
-    // Match both 'Interview' (new) and 'Interviewed' (old/backend)
     const interviews = userCandidates.filter((c) =>
       c.status === 'Interview' || c.status === 'Interviewed'
     ).length;
 
-    // Match 'Hired', 'Offer' (new) and 'Joined', 'Selected' (old/backend)
     const hires = userCandidates.filter((c) =>
       c.status === 'Hired' || c.status === 'Offer' || c.status === 'Joined' || c.status === 'Selected'
     ).length;
@@ -63,7 +62,6 @@ export default function Reports() {
 
   // Calculate top positions
   const topPositions = useMemo(() => {
-    // Candidates are already filtered by user
     const userCandidates = candidates;
 
     const jobCounts = userCandidates.reduce((acc, candidate) => {
@@ -87,10 +85,7 @@ export default function Reports() {
 
   // Calculate recent activity
   const recentActivity = useMemo(() => {
-    // Candidates are already filtered by user
     const userCandidates = candidates;
-
-    // Group by date
     const last7Days = new Date();
     last7Days.setDate(last7Days.getDate() - 7);
 
@@ -98,7 +93,6 @@ export default function Reports() {
       (c) => c.createdAt && new Date(c.createdAt) >= last7Days
     );
 
-    // Group by date
     const activityByDate = recentCandidates.reduce((acc, candidate) => {
       const date = new Date(candidate.createdAt!).toISOString().split('T')[0];
       if (!acc[date]) acc[date] = [];
@@ -129,6 +123,7 @@ export default function Reports() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
+      className="text-slate-800 space-y-6"
     >
       <div className="flex items-center justify-between mb-6 md:mb-8">
         <div>
@@ -137,7 +132,7 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Stats Cards - Now with REAL data and CLICKABLE */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
         <div
           onClick={() => navigate('/Recruiter/candidates')}
@@ -176,8 +171,8 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Top Positions and Hiring Funnel - Now with REAL data */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      {/* Top Positions and Hiring Funnel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
           <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">Top Positions</h2>
           <div className="space-y-4">
@@ -232,7 +227,10 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Recent Activity - Now with REAL data */}
+      {/* Performance Report Table Component */}
+      <PerformanceReportTable />
+
+      {/* Recent Activity */}
       <div className="mt-4 md:mt-6 bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 md:mb-6">
           <h2 className="text-lg md:text-xl font-bold text-slate-800">Recent Activity Log</h2>

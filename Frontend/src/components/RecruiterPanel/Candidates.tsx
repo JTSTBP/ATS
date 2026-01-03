@@ -1,33 +1,101 @@
+
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Filter, Download, MoreVertical, Briefcase, Users, ChevronRight } from "lucide-react";
+import { Search, Filter, Briefcase, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useJobContext } from "../../context/DataProvider";
-import * as XLSX from "xlsx";
 import CandidateModal from "./CandidateModal";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 
 export default function Candidates() {
-  const { candidates, fetchCandidatesByUser, updateStatus, loading } = useCandidateContext();
+  const {
+    paginatedCandidates,
+    fetchRoleBasedCandidates,
+    pagination,
+    updateStatus,
+    loading
+  } = useCandidateContext();
   const { user } = useAuth();
   const { jobs, fetchJobs } = useJobContext();
   const [searchParams] = useSearchParams();
 
+  // Filters State
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // Status Filter
+  const urlStatus = searchParams.get('status');
+  const [statusFilter, setStatusFilter] = useState(urlStatus || "All Status");
 
-  // Modal State
+  // Other Filters
+  const urlJobTitle = searchParams.get('jobTitle');
+  const [jobTitleFilter, setJobTitleFilter] = useState(urlJobTitle || "All");
+  const [clientFilter, setClientFilter] = useState("");
+
+  // Modals
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Status Change Modal State
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     candidateId: string;
     newStatus: string;
   } | null>(null);
+
+  // Debounce Search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Update Status Filter from URL
+  useEffect(() => {
+    if (urlStatus) setStatusFilter(urlStatus);
+    if (urlJobTitle) setJobTitleFilter(urlJobTitle);
+  }, [urlStatus, urlJobTitle]);
+
+  // Fetch Candidates (Server Side)
+  useEffect(() => {
+    if (user?._id) {
+      // Fetch Jobs for Dropdowns
+      fetchJobs();
+
+      // Fetch Paginated Candidates
+      fetchRoleBasedCandidates(
+        user._id,
+        user.designation || "Recruiter", // Default to Recruiter if missing
+        1, // Reset to page 1 on filter change
+        10,
+        {
+          search: debouncedSearch,
+          status: statusFilter === "All Status" ? undefined : statusFilter,
+          client: clientFilter,
+          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+        }
+      );
+    }
+  }, [user, debouncedSearch, statusFilter, clientFilter, jobTitleFilter]);
+
+  // Handle Page Change
+  const handlePageChange = (newPage: number) => {
+    if (user?._id && newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchRoleBasedCandidates(
+        user._id,
+        user.designation || "Recruiter",
+        newPage,
+        10,
+        {
+          search: debouncedSearch,
+          status: statusFilter === "All Status" ? undefined : statusFilter,
+          client: clientFilter,
+          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+        }
+      );
+    }
+  };
 
   const handleStatusChange = (candidateId: string, newStatus: string) => {
     setPendingStatusChange({ candidateId, newStatus });
@@ -46,98 +114,45 @@ export default function Candidates() {
       undefined,
       comment
     );
-    if (user?._id) await fetchCandidatesByUser(user._id);
+
+    // Refetch current page after update
+    if (user?._id) {
+      fetchRoleBasedCandidates(
+        user._id,
+        user.designation || "Recruiter",
+        pagination.currentPage, // Stay on current page
+        10,
+        {
+          search: debouncedSearch,
+          status: statusFilter === "All Status" ? undefined : statusFilter,
+          client: clientFilter,
+          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+        }
+      );
+    }
 
     setStatusModalOpen(false);
     setPendingStatusChange(null);
   };
 
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
-
-  useEffect(() => {
-    if (user?._id) {
-      // Fetch all candidates to ensure data visibility
-      fetchCandidatesByUser(user._id);
-      fetchJobs(); // Ensure jobs are loaded for the modal
-    }
-  }, [user]);
-
-  const [clientFilter, setClientFilter] = useState("");
-
-  // Get status from URL query parameter or default to "All Status"
-  const urlStatus = searchParams.get('status');
-  const [statusFilter, setStatusFilter] = useState(urlStatus || "All Status");
-
-  // Get jobTitle from URL query parameter or default to "All"
-  const urlJobTitle = searchParams.get('jobTitle');
-  const [jobTitleFilter, setJobTitleFilter] = useState(urlJobTitle || "All");
-
-  // Update filters when URL changes
-  useEffect(() => {
-    if (urlStatus) setStatusFilter(urlStatus);
-    if (urlJobTitle) setJobTitleFilter(urlJobTitle);
-  }, [urlStatus, urlJobTitle]);
-
-  // 🧠 Collect all dynamic field keys
-  const allDynamicKeys = useMemo(() => {
-    const keys = new Set<string>();
-    candidates.forEach((c) => {
-      if (c.dynamicFields) {
-        Object.keys(c.dynamicFields).forEach((key) => keys.add(key));
-      }
-    });
-    return Array.from(keys);
-  }, [candidates]);
-
-  // ✂️ Show only first 3 dynamic fields
-  const visibleDynamicKeys = allDynamicKeys.slice(0, 3);
-
-  // 🔍 Filter Candidates
-  const filteredCandidates = useMemo(() => {
-    return candidates.filter((candidate: any) => {
-      // Job Title Filter
-      const matchesJobTitle =
-        jobTitleFilter === "All" ||
-        candidate.jobId?.title === jobTitleFilter;
-
-      // Client Filter
-      const matchesClient =
-        clientFilter === "" ||
-        candidate.jobId?.clientId?.companyName === clientFilter;
-
-      // Status Filter
-      const matchesStatus =
-        statusFilter === "All Status" ||
-        candidate.status === statusFilter ||
-        // Handle fuzzy matching for legacy/backend status variations
-        (statusFilter === "Interview" && (candidate.status === "Interview" || candidate.status === "Interviewed")) ||
-        (statusFilter === "Hired" && (candidate.status === "Hired" || candidate.status === "Joined" || candidate.status === "Offer" || candidate.status === "Selected"));
-
-      return matchesJobTitle && matchesClient && matchesStatus;
-    });
-  }, [candidates, jobTitleFilter, clientFilter, statusFilter]);
-
-  // 📋 Get Unique Job Titles for Dropdown
+  // 📋 Get Unique Job Titles from JOBS Context (not candidate list)
   const uniqueJobTitles = useMemo(() => {
+    // Only show jobs this recruiter has access to (which they seemingly do via fetchJobs)
+    // Or simpler: Extract from fetched jobs
     const titles = new Set<string>();
-    candidates.forEach((c: any) => {
-      if (c.jobId?.title) titles.add(c.jobId.title);
-    });
+    jobs.forEach((j) => titles.add(j.title));
     return Array.from(titles);
-  }, [candidates]);
+  }, [jobs]);
 
-  // 🏢 Get Unique Clients for Dropdown
+  // 🏢 Get Unique Clients from JOBS Context
   const uniqueClients = useMemo(() => {
     const clients = new Set<string>();
-    candidates.forEach((c: any) => {
-      if (c.jobId?.clientId?.companyName) {
-        clients.add(c.jobId.clientId.companyName);
-      }
+    jobs.forEach((j) => {
+      if (j.clientId?.companyName) clients.add(j.clientId.companyName);
     });
     return Array.from(clients).sort();
-  }, [candidates]);
+  }, [jobs]);
 
-  if (loading) return <p>Loading...</p>;
 
   return (
     <>
@@ -155,7 +170,6 @@ export default function Candidates() {
 
         <div className="bg-white/80 backdrop-blur-xl shadow-xl border border-slate-200 rounded-2xl overflow-hidden">
           {/* 🔍 Top Controls */}
-          {/* 🔍 Top Controls */}
           <div className="p-5 border-b border-slate-100 bg-slate-50/50">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
               {/* Search Box */}
@@ -167,6 +181,8 @@ export default function Candidates() {
                 <input
                   type="text"
                   placeholder="Search candidates..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm text-sm"
                 />
               </div>
@@ -228,7 +244,11 @@ export default function Candidates() {
 
           {/* 📊 Candidates Grid */}
           <div className="p-6 bg-slate-50/50 min-h-[400px]">
-            {filteredCandidates.length === 0 ? (
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <p>Loading candidates...</p>
+              </div>
+            ) : paginatedCandidates.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                   <Users className="w-8 h-8 text-slate-400" />
@@ -261,7 +281,7 @@ export default function Candidates() {
                   </div>
                 </div>
 
-                {filteredCandidates.map((candidate, index) => {
+                {paginatedCandidates.map((candidate, index) => {
                   // 🧠 Smart Field Mapping
                   const dynamicKeys = Object.keys(candidate.dynamicFields || {});
 
@@ -283,6 +303,10 @@ export default function Candidates() {
                   if (!companyKey) companyKey = dynamicKeys.find(k => k.toLowerCase().includes("company"));
 
                   const companyValue = (companyKey && candidate.dynamicFields?.[companyKey]) || (candidate as any).currentCompany || "Not Specified";
+
+                  // Safe Access to Job Title and Client (might be populated objects)
+                  const jobTitle = (candidate.jobId as any)?.title || "No Job Title";
+                  // Note: The new endpoint returns jobId as object with clientId as object.
 
                   return (
                     <motion.div
@@ -309,7 +333,7 @@ export default function Candidates() {
                             </h3>
                             <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5 truncate">
                               <Briefcase size={12} className="text-slate-400 shrink-0" />
-                              <span className="truncate">{(candidate.jobId as any)?.title || "No Job Title"}</span>
+                              <span className="truncate">{jobTitle}</span>
                             </p>
                           </div>
                         </div>
@@ -370,6 +394,73 @@ export default function Candidates() {
                 })}
               </div>
             )}
+
+            {/* Pagination Controls */}
+            {pagination.totalCandidates > 0 && (
+              <div className="flex items-center justify-between mt-6">
+                <div className="text-sm text-slate-500">
+                  Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCandidates)} of {pagination.totalCandidates} candidates
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage - 1)}
+                    disabled={pagination.currentPage === 1}
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition
+                            ${pagination.currentPage === 1
+                        ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                        : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm"
+                      }`}
+                  >
+                    <ChevronLeft size={16} className="mr-1" />
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                        pageNum = pagination.totalPages - 4 + i;
+                      } else {
+                        pageNum = pagination.currentPage - 2 + i;
+                      }
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition
+                                            ${pagination.currentPage === pageNum
+                              ? "bg-blue-600 text-white"
+                              : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200"
+                            }
+                                        `}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => handlePageChange(pagination.currentPage + 1)}
+                    disabled={pagination.currentPage === pagination.totalPages}
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition
+                            ${pagination.currentPage === pagination.totalPages
+                        ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                        : "bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 shadow-sm"
+                      }`}
+                  >
+                    Next
+                    <ChevronRight size={16} className="ml-1" />
+                  </button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
 
@@ -390,7 +481,21 @@ export default function Candidates() {
             onSave={() => {
               setIsModalOpen(false);
               setSelectedCandidate(null);
-              if (user?._id) fetchCandidatesByUser(user._id);
+              // Refetch current page
+              if (user?._id) {
+                fetchRoleBasedCandidates(
+                  user._id,
+                  user.designation || "Recruiter",
+                  pagination.currentPage,
+                  10,
+                  {
+                    search: debouncedSearch,
+                    status: statusFilter === "All Status" ? undefined : statusFilter,
+                    client: clientFilter,
+                    jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+                  }
+                );
+              }
             }}
           />
         )}
@@ -405,7 +510,7 @@ export default function Candidates() {
         }}
         onConfirm={confirmStatusChange}
         newStatus={pendingStatusChange?.newStatus || ""}
-        candidateName={filteredCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+        candidateName={paginatedCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
       />
     </>
   );

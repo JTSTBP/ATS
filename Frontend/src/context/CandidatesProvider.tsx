@@ -28,6 +28,16 @@ type CandidateContextType = {
   fetchCandidatesByJob: (jobId: string) => Promise<void>;
   fetchallCandidates: () => Promise<void>;
   fetchCandidatesByUser: (userId: string) => Promise<void>;
+  fetchPaginatedCandidatesByUser: (
+    userId: string,
+    page: number,
+    limit: number,
+    filters?: {
+      search?: string;
+      status?: string;
+    }
+  ) => Promise<void>;
+  fetchRoleBasedCandidates: (userId: string, designation: string, page: number, limit: number, filters?: any) => Promise<void>;
   createCandidate: (data: Candidate, file?: File) => Promise<Candidate | null>;
   updateCandidate: (
     id: string,
@@ -98,6 +108,80 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       const { data } = await axios.get(`${API_URL}`, { params });
+
+      if (data.success) {
+        setPaginatedCandidates(data.candidates);
+        setPagination({
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalCandidates: data.totalCandidates
+        });
+      } else {
+        throw new Error("Failed to load candidates");
+      }
+    } catch (err: any) {
+      setError(err.message);
+      toast.error("Failed to load candidates");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* 
+   * 🟣 Fetch Role-Based Candidates with Pagination
+   */
+  const fetchRoleBasedCandidates = async (
+    userId: string,
+    designation: string,
+    page: number,
+    limit: number,
+    filters: any = {}
+  ) => {
+    setLoading(true);
+    try {
+      const params = {
+        userId,
+        designation,
+        page,
+        limit,
+        ...filters
+      };
+
+      const { data } = await axios.get(`${API_URL}/role-based-candidates`, { params });
+
+      if (data.success) {
+        setPaginatedCandidates(data.candidates);
+        setPagination({
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalCandidates: data.totalCandidates
+        });
+      } else {
+        throw new Error("Failed to load candidates");
+      }
+    } catch (err: any) {
+      setError(err.message);
+      toast.error("Failed to load candidates");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPaginatedCandidatesByUser = async (
+    userId: string,
+    page: number,
+    limit: number,
+    filters: any = {}
+  ) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit,
+        ...filters
+      };
+
+      const { data } = await axios.get(`${API_URL}/user/${userId}`, { params });
 
       if (data.success) {
         setPaginatedCandidates(data.candidates);
@@ -311,6 +395,8 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
         paginatedCandidates,
         pagination,
         fetchPaginatedCandidates,
+        fetchPaginatedCandidatesByUser,
+        fetchRoleBasedCandidates,
       }}
     >
       {children}

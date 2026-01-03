@@ -8,6 +8,8 @@ import {
   Phone,
   Search,
   Upload,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { CandidateForm } from "./CandidatesForm";
 import { StatusUpdateModal } from "../../Common/StatusUpdateModal";
@@ -27,24 +29,33 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
 
   const {
     updateStatus,
-    candidates,
-    fetchCandidatesByUser,
-    fetchallCandidates,
+    paginatedCandidates,
+    pagination,
+    fetchRoleBasedCandidates,
     loading,
     deleteCandidate,
   } = useCandidateContext();
   const { users } = useUserContext();
   const { jobs } = useJobContext();
 
-  const [filteredList, setFilteredList] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(initialFormOpen);
-  const [editingCandidate, setEditingCandidate] = useState(null);
+  const [editingCandidate, setEditingCandidate] = useState<any>(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [filterClient, setFilterClient] = useState("all");
   const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
   const [filterStage, setFilterStage] = useState("all");
   const [clients, setClients] = useState<any[]>([]);
+
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Status Change Modal State
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -64,13 +75,28 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     await updateStatus(
       pendingStatusChange.candidateId,
       pendingStatusChange.newStatus,
-      user?._id,
+      user?._id || "",
       undefined, // interviewStage
       undefined, // stageStatus
       undefined, // stageNotes
       comment // comment
     );
-    await fetchallCandidates();
+    // Refresh current page
+    if (user?._id) {
+      fetchRoleBasedCandidates(
+        user._id,
+        user.designation || "",
+        pagination.currentPage,
+        10,
+        {
+          search: debouncedSearch,
+          status: statusFilter,
+          client: filterClient,
+          jobTitle: filterJobTitle,
+          stage: filterStage
+        }
+      );
+    }
 
     setStatusModalOpen(false);
     setPendingStatusChange(null);
@@ -90,11 +116,25 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     }
   }, [initialJobTitleFilter, searchParams]);
 
-  // 1️⃣ Fetch all candidates and clients on load
+  // 1️⃣ Fetch candidates on load and when filters change
   useEffect(() => {
-    fetchallCandidates();
+    if (user?._id) {
+      fetchRoleBasedCandidates(
+        user._id,
+        user.designation || "",
+        1, // Reset to page 1 on filter change
+        10,
+        {
+          search: debouncedSearch,
+          status: statusFilter,
+          client: filterClient,
+          jobTitle: filterJobTitle,
+          stage: filterStage
+        }
+      );
+    }
 
-    // Fetch all clients from API
+    // Fetch all clients from API (independent of candidates)
     fetch(`${import.meta.env.VITE_BACKEND_URL}/api/clients`)
       .then(res => res.json())
       .then(data => {
@@ -103,155 +143,42 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         }
       })
       .catch(err => console.error('Error fetching clients:', err));
-  }, [user, showForm]);
+  }, [user, debouncedSearch, statusFilter, filterClient, filterJobTitle, filterStage, showForm]);
 
-  // 2️⃣ Filter candidates based on your rules
-  useEffect(() => {
-    if (!candidates || !user) return;
 
-    // 🔥 Role-Based User Visibility (Same logic you wanted)
-    const designation = user?.designation?.toLowerCase();
-
-    let allowedUserIds: string[] = [];
-
-    // 1️⃣ ADMIN → sees all candidates
-    if (designation === "admin") {
-      allowedUserIds = users.map((u) => u._id);
-    }
-
-    // 2️⃣ RECRUITER → only sees their own candidates
-    else if (designation === "recruiter") {
-      allowedUserIds = [user._id];
-    }
-
-    // 3️⃣ MENTOR → sees self + all recruiters directly reporting to mentor
-    else if (designation === "mentor") {
-      const recruiters = users.filter(
-        (u) =>
-          u.designation?.toLowerCase() === "recruiter" &&
-          (u.reporter?._id === user._id || u.reporter === user._id)
-      );
-
-      allowedUserIds = [
+  const handlePageChange = (newPage: number) => {
+    if (user?._id && newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchRoleBasedCandidates(
         user._id,
-        ...recruiters.map((r) => r._id),
-      ];
+        user.designation || "",
+        newPage,
+        10,
+        {
+          search: debouncedSearch,
+          status: statusFilter,
+          client: filterClient,
+          jobTitle: filterJobTitle,
+          stage: filterStage
+        }
+      );
     }
-
-    // 4️⃣ MANAGER → sees self + mentors + all recruiters under those mentors
-    else if (designation === "manager") {
-      // Step A: Mentors reporting to manager
-      const mentors = users.filter(
-        (u) =>
-          u.designation?.toLowerCase() === "mentor" &&
-          (u.reporter?._id === user._id || u.reporter === user._id)
-      );
-
-      const mentorIds = mentors.map((m) => m._id);
-
-      // Step B: Recruiters reporting to those mentors
-      const recruiters = users.filter(
-        (u) =>
-          u.designation?.toLowerCase() === "recruiter" &&
-          mentorIds.includes(u.reporter?._id || u.reporter)
-      );
-
-      allowedUserIds = [
-        user._id,
-        ...mentorIds,
-        ...recruiters.map((r) => r._id),
-      ];
-    }
+  };
 
 
-    // 🔸 Step 3: Get IDs of jobs where user is assigned or lead
-    const assignedJobIds = Array.isArray(jobs)
-      ? jobs
-        .filter((job) => {
-          const isLead =
-            (typeof job.leadRecruiter === "object"
-              ? job.leadRecruiter?._id
-              : job.leadRecruiter) === user._id;
-          const isAssigned = job.assignedRecruiters?.some((r) =>
-            (typeof r === "object" ? r._id : r) === user._id
-          );
-          return isLead || isAssigned;
-        })
-        .map((job) => job._id)
-      : [];
+  // Get unique job titles from JOBS context for the filter dropdown
+  // This replaces the old logic that derived it from loaded candidates (which we don't have all of now)
+  const uniqueJobTitles = Array.isArray(jobs)
+    ? Array.from(new Set(jobs.map((j) => j.title).filter(Boolean))).sort()
+    : [];
 
-    const filtered = candidates.filter((c) => {
-      const createdById = c?.createdBy?._id;
-
-      return (
-        allowedUserIds.includes(createdById) ||
-        assignedJobIds.includes(c.jobId?._id || c.jobId)
-      );
-    });
-
-    setFilteredList(filtered);
-  }, [candidates, users, user, jobs]);
-
-  // 3️⃣ Get unique job titles from filtered candidates
-  const uniqueJobTitles = Array.from(
-    new Set(
-      filteredList
-        .map((c) => c.jobId?.title)
-        .filter(Boolean)
-    )
-  ).sort();
-
-  // 3.5️⃣ Get available stages for the selected job
+  // Get available stages for the selected job
   const availableStages =
     filterJobTitle !== "all" && Array.isArray(jobs)
       ? jobs.find((j) => j.title === filterJobTitle)?.stages || []
       : [];
 
-  // 4️⃣ Search + Client + Job Title filter
-  const searchedCandidates = filteredList.filter((candidate) => {
-    const name = candidate.dynamicFields?.candidateName?.toLowerCase() || "";
-    const email = candidate.dynamicFields?.Email?.toLowerCase() || "";
-    const phone = candidate.dynamicFields?.Phone?.toLowerCase() || "";
-    const skills = candidate.dynamicFields?.Skills?.toLowerCase() || "";
-    const job = candidate.jobId?.title?.toLowerCase() || "";
-    const status = candidate.status?.toLowerCase() || "";
-    const clientName = candidate.jobId?.clientId?.companyName || "";
 
-    // 🔥 1. STATUS FILTER
-    if (statusFilter !== "all" && status !== statusFilter.toLowerCase()) {
-      return false;
-    }
-
-    // 🔥 2. CLIENT FILTER
-    if (filterClient !== "all" && clientName !== filterClient) {
-      return false;
-    }
-
-    // 🔥 3. JOB TITLE FILTER
-    if (filterJobTitle !== "all" && candidate.jobId?.title !== filterJobTitle) {
-      return false;
-    }
-
-    // 🔥 4. STAGE FILTER
-    if (filterStage !== "all" && candidate.interviewStage !== filterStage) {
-      return false;
-    }
-
-    // 🔎 4. SEARCH FILTER
-    if (
-      name.includes(searchTerm.toLowerCase()) ||
-      email.includes(searchTerm.toLowerCase()) ||
-      phone.includes(searchTerm.toLowerCase()) ||
-      skills.includes(searchTerm.toLowerCase()) ||
-      job.includes(searchTerm.toLowerCase())
-    ) {
-      return true;
-    }
-
-    return false;
-  });
-
-  const handleEdit = (candidate) => {
+  const handleEdit = (candidate: any) => {
     setEditingCandidate(candidate);
     setShowForm(true);
   };
@@ -260,7 +187,6 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     setShowForm(false);
     setEditingCandidate(null);
   };
-  console.log(searchedCandidates, "searchedCandidates")
 
   const handleDelete = async (candidateId: string) => {
     const confirmDelete = window.confirm(
@@ -272,12 +198,28 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
 
     if (success) {
       toast.success("Candidate deleted successfully");
+      // Refresh
+      if (user?._id) {
+        fetchRoleBasedCandidates(
+          user._id,
+          user.designation || "",
+          pagination.currentPage,
+          10,
+          {
+            search: debouncedSearch,
+            status: statusFilter,
+            client: filterClient,
+            jobTitle: filterJobTitle,
+            stage: filterStage
+          }
+        );
+      }
     } else {
       toast.error("Failed to delete candidate");
     }
   };
 
-  if (loading)
+  if (loading && !paginatedCandidates.length)
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
@@ -359,7 +301,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       </div>
 
       {/* Status Filter Buttons */}
-      <div className="flex gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+      <div className="flex gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200 overflow-x-auto">
         {[
           "all",
           "New",
@@ -372,7 +314,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-3 py-1 rounded-lg text-sm font-medium capitalize
+            className={`px-3 py-1 rounded-lg text-sm font-medium capitalize whitespace-nowrap
         ${statusFilter === status
                 ? "bg-orange-600 text-white"
                 : "bg-gray-100 text-gray-700"
@@ -384,7 +326,6 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         ))}
       </div>
 
-      {/* Table */}
       {/* Table */}
       <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto whitespace-nowrap">
@@ -426,7 +367,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
             </thead>
 
             <tbody>
-              {searchedCandidates.map((candidate) => (
+              {paginatedCandidates.map((candidate: any) => (
                 <tr key={candidate._id} className="hover:bg-gray-50 transition">
                   {/* NAME */}
                   <td className="px-6 py-4 font-semibold text-gray-800">
@@ -456,8 +397,8 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                   <td className="px-6 py-4">
                     {candidate.dynamicFields?.Skills ? (
                       <div className="flex flex-wrap gap-1">
-                        {candidate.dynamicFields.Skills.split(",").map(
-                          (skill, i) => (
+                        {(candidate.dynamicFields.Skills as string).split(",").map(
+                          (skill: string, i: number) => (
                             <span
                               key={i}
                               className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
@@ -539,10 +480,80 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
             </tbody>
           </table>
         </div>
+
+        {/* Start Pagination Controls */}
+        {pagination.totalCandidates > 0 && (
+          <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+            <div className="text-sm text-gray-500">
+              Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCandidates)} of {pagination.totalCandidates} entries
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 1}
+                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition
+                  ${pagination.currentPage === 1
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 shadow-sm"
+                  }
+                `}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Previous
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (pagination.currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (pagination.currentPage >= pagination.totalPages - 2) {
+                    pageNum = pagination.totalPages - 4 + i;
+                  } else {
+                    pageNum = pagination.currentPage - 2 + i;
+                  }
+
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-medium transition
+                        ${pagination.currentPage === pageNum
+                          ? "bg-orange-600 text-white"
+                          : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300"
+                        }
+                      `}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages}
+                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition
+                  ${pagination.currentPage === pagination.totalPages
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 shadow-sm"
+                  }
+                `}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </button>
+            </div>
+          </div>
+        )}
+        {/* End Pagination Controls */}
+
       </div>
 
       {/* Empty UI */}
-      {searchedCandidates.length === 0 && (
+      {paginatedCandidates.length === 0 && !loading && (
         <div className="bg-white rounded-xl p-12 text-center shadow-md border border-gray-200">
           <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-600 mb-2">
@@ -572,7 +583,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         }}
         onConfirm={confirmStatusChange}
         newStatus={pendingStatusChange?.newStatus || ""}
-        candidateName={searchedCandidates.find((c) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+        candidateName={paginatedCandidates.find((c) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
       />
     </div>
   );

@@ -17,7 +17,7 @@ const UserSchema = new mongoose.Schema({
   },
   designation: {
     type: String,
-    enum: ["Mentor", "Recruiter", "Manager", "Admin"],
+    enum: ["Mentor", "Recruiter", "Manager", "Admin", "Finance"],
     required: [true, "Designation is required"],
   },
   reporter: {

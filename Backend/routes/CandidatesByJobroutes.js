@@ -423,12 +423,424 @@ router.post("/", upload.single("resume"), async (req, res) => {
   }
 });
 
+// 🟣 Get Candidates with Role-Based Access Control (Pagination & Filtering)
+router.get("/role-based-candidates", async (req, res) => {
+  try {
+    const { userId, designation, page, limit, search, status, client, jobTitle, stage } = req.query;
+
+    console.log("🔍 Role-Based Candidates Request:", {
+      userId, designation, page, limit
+    });
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    // 1️⃣ Determine Allowed User IDs (Creator Logic)
+    let allowedUserIds = [];
+    if (designation === "admin") {
+      // Admin sees all, so we might not need to filter by createdBy, but let's see logic below
+      // Actually, if admin, we can skip createdBy filter or specific list
+      allowedUserIds = null; // null means 'all'
+    } else if (designation === "recruiter") {
+      allowedUserIds = [userId];
+    } else if (designation === "mentor") {
+      const allUsers = await User.find({}).select("reporter designation");
+      const recruiters = allUsers.filter(u =>
+        u.designation?.toLowerCase() === "recruiter" &&
+        (u.reporter?.toString() === userId)
+      );
+      allowedUserIds = [userId, ...recruiters.map(r => r._id.toString())];
+    } else if (designation === "manager") {
+      const allUsers = await User.find({}).select("reporter designation");
+      // Mentors reporting to manager
+      const mentors = allUsers.filter(u =>
+        u.designation?.toLowerCase() === "mentor" &&
+        (u.reporter?.toString() === userId)
+      );
+      const mentorIds = mentors.map(m => m._id.toString());
+
+      // Recruiters reporting to those mentors
+      const recruiters = allUsers.filter(u =>
+        u.designation?.toLowerCase() === "recruiter" &&
+        mentorIds.includes(u.reporter?.toString())
+      );
+
+      allowedUserIds = [userId, ...mentorIds, ...recruiters.map(r => r._id.toString())];
+    }
+
+    // 2️⃣ Determine Job IDs where user is Lead or Assigned
+    // This adds to the visibility: User can see candidates for jobs they are assigned to, regardless of who created them.
+    let assignedJobIds = [];
+    if (designation !== "admin") {
+      const jobs = await Job.find({
+        $or: [
+          { leadRecruiter: userId },
+          { assignedRecruiters: userId }, // assuming stores IDs, or array of objects checking below
+          { "assignedRecruiters._id": userId } // compatibility if array of objects
+        ]
+      }).select("_id");
+      assignedJobIds = jobs.map(j => j._id);
+    }
+
+    // 3️⃣ Construct Match Query
+    const matchStage = {};
+
+    // A. Visibility Filter (Admin sees all, others restricted)
+    if (designation !== "admin") {
+      const accessConditions = [];
+
+      // Condition 1: Created by allowed users
+      if (allowedUserIds && allowedUserIds.length > 0) {
+        accessConditions.push({
+          createdBy: { $in: allowedUserIds.map(id => new mongoose.Types.ObjectId(id)) }
+        });
+      }
+
+      // Condition 2: Belongs to assigned jobs
+      if (assignedJobIds.length > 0) {
+        accessConditions.push({
+          jobId: { $in: assignedJobIds }
+        });
+      }
+
+      if (accessConditions.length > 0) {
+        matchStage.$or = accessConditions;
+      } else if (allowedUserIds && allowedUserIds.length === 0) {
+        // Should technically see nothing if not admin and no allowed users/jobs
+        // But usually own user is in allowedUserIds
+      }
+    }
+
+    // B. Filters (Status, Stage, Search)
+    if (status && status !== "all") {
+      matchStage.status = new RegExp(`^${status}$`, "i");
+    }
+    if (stage && stage !== "all" && stage !== "All Stages") {
+      matchStage.interviewStage = stage;
+    }
+
+    // Search
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      const searchConditions = [
+        { "dynamicFields.candidateName": searchRegex },
+        { "dynamicFields.CandidateName": searchRegex },
+        { "dynamicFields.Email": searchRegex },
+        { "dynamicFields.email": searchRegex },
+        { "dynamicFields.Phone": searchRegex },
+        { "dynamicFields.phone": searchRegex },
+        { "dynamicFields.Skills": searchRegex },
+        { "dynamicFields.skills": searchRegex }
+      ];
+
+      if (matchStage.$or) {
+        // If we already have $or for visibility, we need using $and
+        matchStage.$and = [
+          { $or: matchStage.$or },
+          { $or: searchConditions }
+        ];
+        delete matchStage.$or;
+      } else {
+        matchStage.$or = searchConditions;
+      }
+    }
+
+    // Pagination
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Aggregation Pipeline
+    const pipeline = [
+      // 1. Initial Match (Visibility, Status, Stage, Search on Dynamic Fields)
+      { $match: matchStage },
+      { $sort: { createdAt: -1 } },
+
+      // 2. Lookups (Required for filtering by Client/JobTitle)
+      {
+        $lookup: {
+          from: "jobs",
+          localField: "jobId",
+          foreignField: "_id",
+          as: "job"
+        }
+      },
+      { $unwind: { path: "$job", preserveNullAndEmptyArrays: true } },
+
+      {
+        $lookup: {
+          from: "clients",
+          localField: "job.clientId",
+          foreignField: "_id",
+          as: "client"
+        }
+      },
+      { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
+
+      // 3. Secondary Match (Client & Job Title Filters)
+      {
+        $match: {
+          ...(client && client !== "all" ? { "client.companyName": new RegExp(`^${client}$`, "i") } : {}),
+          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(`^${jobTitle}$`, "i") } : {})
+        }
+      },
+
+      // 4. Facet for Pagination
+      {
+        $facet: {
+          candidates: [
+            { $skip: skip },
+            { $limit: limitNum },
+
+            // Re-Populate/Format fields into expected structure
+            {
+              $project: {
+                _id: 1,
+                status: 1,
+                interviewStage: 1,
+                createdAt: 1,
+                resumeUrl: 1,
+                linkedinUrl: 1,
+                portfolioUrl: 1,
+                notes: 1,
+                dynamicFields: 1,
+
+                // Reconstruct jobId object structure expected by frontend
+                jobId: {
+                  _id: "$job._id",
+                  title: "$job.title",
+                  clientId: {
+                    _id: "$client._id",
+                    companyName: "$client.companyName"
+                  }
+                },
+                createdBy: 1 // Keep ID for next lookup
+              }
+            },
+
+            // Populate User fields (Creators, Reporters) - AFTER Limit for performance
+            {
+              $lookup: {
+                from: "users",
+                localField: "createdBy",
+                foreignField: "_id",
+                as: "creator"
+              }
+            },
+            { $unwind: { path: "$creator", preserveNullAndEmptyArrays: true } },
+
+            // Populate Creator's Reporter
+            {
+              $lookup: {
+                from: "users",
+                localField: "creator.reporter",
+                foreignField: "_id",
+                as: "creatorReporter"
+              }
+            },
+            { $unwind: { path: "$creatorReporter", preserveNullAndEmptyArrays: true } },
+
+            {
+              $project: {
+                _id: 1,
+                status: 1,
+                interviewStage: 1,
+                createdAt: 1,
+                resumeUrl: 1,
+                linkedinUrl: 1,
+                portfolioUrl: 1,
+                notes: 1,
+                dynamicFields: 1,
+                jobId: 1,
+
+                // Reconstruct createdBy object structure
+                createdBy: {
+                  _id: "$creator._id",
+                  name: "$creator.name",
+                  email: "$creator.email",
+                  designation: "$creator.designation",
+                  reporter: {
+                    _id: "$creatorReporter._id",
+                    name: "$creatorReporter.name"
+                  }
+                }
+              }
+            }
+          ],
+          totalCount: [{ $count: "count" }]
+        }
+      }
+    ];
+
+    const result = await Candidate.aggregate(pipeline);
+    const candidates = result[0].candidates;
+    const totalCandidates = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
+
+    // Client and Job Title Filtering (Post-fetch or Pre-fetch?)
+    // Note: To filter by client name or job title EFFICIENTLY, we should do lookups BEFORE match.
+    // However, that's heavy. The frontend request implies these are primary filters.
+    // Ideally, we should add lookups to the pipeline BEFORE the $facet if client/jobTitle filters are present.
+    // For now, let's keep it simple. If client/JobTitle are needed, we can add them to matchStage if we know the IDs,
+    // or add lookups before match.
+    // Given the current structure, let's optimize:
+
+    // RE-EVALUATION: The user wants to filter by Client Name and Job Title. 
+    // Doing it after limit is WRONG for pagination. 
+    // We must Lookup -> Match -> Skip/Limit.
+
+    // ... (Refined Pipeline Logic below if filters exist) ...
+
+    return res.json({
+      success: true,
+      candidates,
+      totalCandidates,
+      totalPages: Math.ceil(totalCandidates / limitNum),
+      currentPage: pageNum
+    });
+
+  } catch (err) {
+    console.error("Error in GET /role-based-candidates:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+
+
 // GET /api/CandidatesJob/user/:userId
 router.get("/user/:userId", async (req, res) => {
   try {
-    const candidates = await Candidate.find({
-      createdBy: req.params.userId,
-    })
+    const { userId } = req.params;
+    const { page, limit, search, status } = req.query;
+
+    console.log("🔍 Candidates User Request:", {
+      userId, page, limit, search, status
+    });
+
+    // 1️⃣ Base Query: Candidates created by this user
+    const query = { createdBy: userId };
+
+    // 2️⃣ Filter by Status
+    if (status && status !== "all" && status !== "All Status") {
+      // Handle special composite statuses from frontend if any, or just direct match
+      query.status = new RegExp(`^${status}$`, "i");
+    }
+
+    // 3️⃣ Search Filter (Name, Email, Phone, Skills, Job Title)
+    // Note: Job Title search requires lookup, which is harder in simple find().
+    // We'll focus on dynamicFields for now as per other endpoints.
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      query.$or = [
+        { "dynamicFields.candidateName": searchRegex },
+        { "dynamicFields.CandidateName": searchRegex },
+        { "dynamicFields.Email": searchRegex },
+        { "dynamicFields.email": searchRegex },
+        { "dynamicFields.Phone": searchRegex },
+        { "dynamicFields.phone": searchRegex },
+        { "dynamicFields.Skills": searchRegex },
+        { "dynamicFields.skills": searchRegex }
+      ];
+    }
+
+    // 4️⃣ If Pagination is NOT requested, return ALL (Backward Compatibility)
+    if (!page || !limit) {
+      const candidates = await Candidate.find(query)
+        .populate("createdBy", "name email")
+        .populate({
+          path: "jobId",
+          select: "title _id clientId stages candidateFields",
+          populate: {
+            path: "clientId",
+            select: "companyName pocs"
+          }
+        })
+        .populate({
+          path: "interviewStageHistory.updatedBy",
+          select: "name email designation",
+        })
+        .populate({
+          path: "statusHistory.updatedBy",
+          select: "name email designation",
+        })
+        .sort({ createdAt: -1 });
+      return res.json({ success: true, candidates });
+    }
+
+    // 5️⃣ If Pagination IS requested
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const pipeline = [
+      { $match: { createdBy: new mongoose.Types.ObjectId(userId) } }, // Ensure ObjectId match
+
+      // Apply Search & Status Filters to the match
+      ...(Object.keys(query).length > 1 ? [{
+        $match: (() => {
+          // We need to exclude createdBy from here as it's already matched above
+          // and query might use string ID instead of ObjectId
+          const { createdBy, ...rest } = query;
+          return rest;
+        })()
+      }] : []),
+
+      { $sort: { createdAt: -1 } },
+
+      // Pagination Facet
+      {
+        $facet: {
+          candidates: [
+            { $skip: skip },
+            { $limit: limitNum },
+            // Lookups for population
+            {
+              $lookup: {
+                from: "users",
+                localField: "createdBy",
+                foreignField: "_id",
+                as: "createdBy"
+              }
+            },
+            { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
+            {
+              $project: { "createdBy.password": 0, "createdBy.appPassword": 0 }
+            },
+            {
+              $lookup: {
+                from: "jobs",
+                localField: "jobId",
+                foreignField: "_id",
+                as: "jobId"
+              }
+            },
+            { $unwind: { path: "$jobId", preserveNullAndEmptyArrays: true } },
+            // Nested lookup for Client in Job
+            {
+              $lookup: {
+                from: "clients",
+                localField: "jobId.clientId",
+                foreignField: "_id",
+                as: "jobId.clientId"
+              }
+            },
+            { $unwind: { path: "$jobId.clientId", preserveNullAndEmptyArrays: true } },
+          ],
+          totalCount: [{ $count: "count" }]
+        }
+      }
+    ];
+
+    // Note: The pipeline above is a simplified version. 
+    // To match the exact population of the non-paginated version (especially deep nested history),
+    // it's often easier to fetch IDs first via pagination, then populate fully.
+
+    // Alternative Strategy for Consistency:
+    // 1. Count total documents matching query
+    // 2. Fetch paginated documents using standard .find(query).skip().limit().populate(...)
+
+    const totalCandidates = await Candidate.countDocuments(query);
+
+    const paginatedCandidates = await Candidate.find(query)
       .populate("createdBy", "name email")
       .populate({
         path: "jobId",
@@ -446,9 +858,20 @@ router.get("/user/:userId", async (req, res) => {
         path: "statusHistory.updatedBy",
         select: "name email designation",
       })
-      .sort({ createdAt: -1 });
-    res.json({ success: true, candidates });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
+
+    return res.json({
+      success: true,
+      candidates: paginatedCandidates,
+      totalCandidates,
+      totalPages: Math.ceil(totalCandidates / limitNum),
+      currentPage: pageNum
+    });
+
   } catch (err) {
+    console.error("Error in GET /user/:userId:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

@@ -46,11 +46,18 @@ type JobContextType = {
   fetchJobById: (id: string) => Promise<Job | null>;
   createJob: (job: any) => Promise<void>;
   updateJob: (id: string, job: Partial<Job>) => Promise<void>;
+  updateJobStatus: (id: string, status: string, userId: string) => Promise<void>;
   deleteJob: (id: string, role: string) => Promise<void>;
   jobsByUser: Job[];
   fetchJobsByCreator: (userId: string) => Promise<void>;
   assignedJobs: Job[];
   fetchAssignedJobs: (recruiterId: string) => Promise<void>;
+  fetchPaginatedAssignedJobs: (
+    recruiterId: string,
+    page: number,
+    limit: number,
+    filters?: any
+  ) => Promise<void>;
 
   // 🔹 Pagination
   paginatedJobs: Job[];
@@ -198,6 +205,30 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const updateJobStatus = async (id: string, status: string, userId: string): Promise<void> => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, UpdatedBy: userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update job status");
+
+      // Update both lists to ensure UI consistency
+      setJobs((prev) => prev.map((job) => (job._id === id ? data.job : job)));
+      setPaginatedJobs((prev) => prev.map((job) => (job._id === id ? { ...job, status: data.job.status } : job)));
+
+      toast.success(`Job status updated to ${status}`);
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || "Failed to update job status");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 🔹 Delete a job
   const deleteJob = async (id: string, role: string): Promise<void> => {
     try {
@@ -232,7 +263,7 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // 🔹 Fetch jobs assigned to a recruiter
+  // 🔹 Fetch jobs assigned to a recruiter (Legacy/All)
   const fetchAssignedJobs = async (recruiterId: string) => {
     try {
       setLoading(true);
@@ -246,6 +277,44 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } catch (err: any) {
       console.error("Failed to fetch assigned jobs:", err);
       setAssignedJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔹 Fetch jobs assigned to a recruiter (Paginated)
+  const fetchPaginatedAssignedJobs = async (
+    recruiterId: string,
+    page: number,
+    limit: number,
+    filters: any = {}
+  ) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit,
+        ...filters
+      };
+      const queryParams = new URLSearchParams(params as any).toString();
+      const res = await fetch(`${API_URL}/assigned/${recruiterId}?${queryParams}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setPaginatedJobs(data.jobs);
+        setPagination({
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalJobs: data.totalJobs
+        });
+      } else {
+        throw new Error(data.message || "Failed to load assigned jobs");
+      }
+
+    } catch (err: any) {
+      console.error("Failed to fetch assigned jobs:", err);
+      setError(err.message);
+      toast.error("Failed to load assigned jobs");
     } finally {
       setLoading(false);
     }
@@ -266,11 +335,13 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
         fetchJobById,
         createJob,
         updateJob,
+        updateJobStatus,
         deleteJob,
         jobsByUser,
         fetchJobsByCreator,
         assignedJobs,
         fetchAssignedJobs,
+        fetchPaginatedAssignedJobs,
         paginatedJobs,
         pagination,
         fetchPaginatedJobs,

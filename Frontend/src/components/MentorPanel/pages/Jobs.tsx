@@ -52,7 +52,8 @@ export const JobsManager = ({
     pagination,
     fetchPaginatedJobs,
     loading,
-    deleteJob
+    deleteJob,
+    updateJobStatus
   } = useJobContext();
 
   const { user } = useAuth();
@@ -222,6 +223,7 @@ export const JobsManager = ({
               shortlisted={job.shortlisted || 0}
               postedBy={typeof job.CreatedBy === 'object' && job.CreatedBy ? job.CreatedBy.name : "You"}
               positions={job.noOfPositions}
+              status={job.status}
               postedDate={
                 job.createdAt
                   ? formatDate(job.createdAt)
@@ -230,6 +232,7 @@ export const JobsManager = ({
               onView={() => setSelectedJob(job as any)}
               onEdit={() => handleEdit(job)}
               onDelete={() => handleDelete(job._id as string)}
+              onStatusChange={(id, status) => updateJobStatus(id, status, user?._id || "")}
               onRefresh={() => {
                 fetchPaginatedJobs(currentPage, limit, {
                   search: searchTerm,

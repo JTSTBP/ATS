@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff } from "lucide-react";
+import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff, Banknote } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserContext } from "../../context/UserProvider";
 import { useSearchParams } from "react-router-dom";
@@ -169,6 +169,7 @@ export default function UserManagement() {
       case "recruiter": return "bg-blue-100 text-blue-700 border-blue-200";
       case "manager": return "bg-amber-100 text-amber-700 border-amber-200";
       case "mentor": return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "finance": return "bg-rose-100 text-rose-700 border-rose-200";
       default: return "bg-slate-100 text-slate-700 border-slate-200";
     }
   };
@@ -178,6 +179,7 @@ export default function UserManagement() {
       case "admin": return <Shield size={12} className="mr-1" />;
       case "recruiter": return <Users size={12} className="mr-1" />;
       case "manager": return <Briefcase size={12} className="mr-1" />;
+      case "finance": return <Banknote size={12} className="mr-1" />;
       default: return <UserIcon size={12} className="mr-1" />;
     }
   };
@@ -597,6 +599,7 @@ export default function UserManagement() {
                             <option value="Mentor">Mentor</option>
                             <option value="Recruiter">Recruiter</option>
                             <option value="Manager">Manager</option>
+                            <option value="Finance">Finance</option>
                           </select>
                           <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                             <Briefcase size={14} />

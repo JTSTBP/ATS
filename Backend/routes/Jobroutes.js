@@ -210,15 +210,60 @@ router.get("/createdby/:userId", async (req, res) => {
 router.get("/assigned/:recruiterId", async (req, res) => {
   try {
     const { recruiterId } = req.params;
+    const { page, limit, search, status } = req.query;
 
-    const jobs = await Job.find({ assignedRecruiters: recruiterId })
+    console.log("🔍 Assigned Jobs Request:", { recruiterId, page, limit, search, status });
+
+    const query = { assignedRecruiters: recruiterId };
+
+    // 1️⃣ Status Filter
+    if (status && status !== "all" && status !== "All") {
+      query.status = status;
+    }
+
+    // 2️⃣ Search Filter (Title, Dept)
+    if (search) {
+      const searchRegex = new RegExp(search, "i");
+      query.$or = [
+        { title: searchRegex },
+        { department: searchRegex }
+      ];
+    }
+
+    // Backward compatibility: If no pagination, return all
+    if (!page || !limit) {
+      const jobs = await Job.find(query)
+        .populate("assignedRecruiters", "name email")
+        .populate("leadRecruiter", "name email")
+        .populate("CreatedBy", "name email")
+        .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
+        .sort({ createdAt: -1 });
+      return res.json({ success: true, jobs });
+    }
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    const jobs = await Job.find(query)
       .populate("assignedRecruiters", "name email")
       .populate("leadRecruiter", "name email")
       .populate("CreatedBy", "name email")
       .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum);
 
-    res.json({ success: true, jobs });
+    const totalJobs = await Job.countDocuments(query);
+
+    res.json({
+      success: true,
+      jobs,
+      totalJobs,
+      totalPages: Math.ceil(totalJobs / limitNum),
+      currentPage: pageNum
+    });
+
   } catch (error) {
     console.error("Error fetching assigned jobs:", error);
     res.status(500).json({

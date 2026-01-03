@@ -1,17 +1,32 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Users, FileCheck, Clock, Calendar, CheckCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { useNavigate } from "react-router-dom";
 import { useCandidateContext } from "../../context/CandidatesProvider";
+import { useJobContext } from "../../context/DataProvider";
+import { useClientsContext } from "../../context/ClientsProvider";
 import { formatDate } from "../../utils/dateUtils";
+import PerformanceReportTable from "./PerformanceReportTable";
+
+// Add helper function to format YYYY-MM for input type="month"
+const getCurrentMonth = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { candidates, fetchCandidatesByUser } = useCandidateContext();
+  const { fetchJobs } = useJobContext();
+  const { fetchClients } = useClientsContext();
+
+  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
 
   useEffect(() => {
+    fetchJobs();
+    fetchClients();
     if (user?._id) {
       // Fetch all candidates to ensure data visibility
       fetchCandidatesByUser(user._id);
@@ -19,41 +34,44 @@ export default function Dashboard() {
   }, [user]);
 
   const stats = useMemo(() => {
-    const isThisMonth = (dateString?: string) => {
+    const isSelectedMonth = (dateString?: string) => {
       if (!dateString) return false;
       const date = new Date(dateString);
-      const now = new Date();
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+      const [year, month] = selectedMonth.split('-').map(Number);
+      return date.getMonth() === month - 1 && date.getFullYear() === year;
     };
 
     if (!candidates) return [];
 
-    const total = candidates.length;
-    const shortlisted = candidates.filter((c) => c.status === "Shortlisted").length;
+    // Filter candidates relevant to the selected month
+    // Strategy: 
+    // Total Lined Up -> Created in selected month
+    // Shortlisted -> Status Shortlisted AND (updatedAt in month OR createdAt in month) - sticking to createdAt/updatedAt logic
+    // Actually, usually "Count for Month X" means "Created in Month X" for Total
+    // For Statuses, it implies "Achieved status in Month X" ideally, but often "Currently in status X and touched in Month X" is used.
+    // Let's use isSelectedMonth(c.updatedAt || c.createdAt) as a general "Active/Relevant in Month" check for statuses
+    // For "Total", we use creation date.
 
-    // Pending includes New, Pending, Under Review
-    const pending = candidates.filter((c) =>
-      ["New", "Pending", "Under Review"].includes(c.status || "")
+    const total = candidates.filter(c => isSelectedMonth(c.createdAt)).length;
+
+    const shortlisted = candidates.filter((c) =>
+      c.status === "Shortlisted" && isSelectedMonth(c.updatedAt || c.createdAt)
     ).length;
 
-    // Selected (Offer/Selected) - This Month
-    const selectedThisMonth = candidates.filter((c) =>
-      ["Offer", "Selected"].includes(c.status || "") && isThisMonth(c.updatedAt || c.createdAt)
+    // Interviews includes Interview, Interviewed
+    const interviews = candidates.filter((c) =>
+      ["Interview", "Interviewed"].includes(c.status || "") && isSelectedMonth(c.dynamicFields?.interviewDate || c.updatedAt || c.createdAt)
     ).length;
 
-    // Hired (Joined/Hired) - All candidates who actually joined
+    // Selected (Offer/Selected)
+    const selectedMonthCount = candidates.filter((c) =>
+      ["Offer", "Selected"].includes(c.status || "") && isSelectedMonth(c.updatedAt || c.createdAt)
+    ).length;
+
+    // Hired (Joined/Hired)
     const hiredCandidates = candidates.filter((c) =>
-      ["Joined", "Hired"].includes(c.status || "")
+      ["Joined", "Hired"].includes(c.status || "") && isSelectedMonth(c.updatedAt || c.createdAt)
     ).length;
-
-    console.log("Dashboard Stats:", {
-      total: candidates.length,
-      shortlisted,
-      pending,
-      selectedThisMonth,
-      hiredCandidates,
-      candidateStatuses: candidates.map(c => ({ name: c.dynamicFields?.name, status: c.status }))
-    });
 
     return [
       {
@@ -73,31 +91,31 @@ export default function Dashboard() {
         route: "/Recruiter/candidates?status=Shortlisted",
       },
       {
-        label: "Pending Review",
-        value: pending,
+        label: "Interviews",
+        value: interviews,
         icon: Clock,
         color: "bg-amber-500",
         clickable: true,
-        route: "/Recruiter/candidates?status=New", // Link to New/Pending
+        route: "/Recruiter/candidates?status=Interview",
       },
       {
-        label: "Selected This Month",
-        value: selectedThisMonth,
+        label: "Selected",
+        value: selectedMonthCount,
         icon: Calendar,
         color: "bg-indigo-500",
         clickable: true,
         route: "/Recruiter/candidates?status=Selected",
       },
       {
-        label: "Hired This Month",
+        label: "Hired",
         value: hiredCandidates,
         icon: CheckCircle,
         color: "bg-teal-500",
         clickable: true,
-        route: "/Recruiter/candidates?status=Hired", // This will show Joined/Hired/Selected per Candidates.tsx logic
+        route: "/Recruiter/candidates?status=Hired",
       },
     ];
-  }, [candidates]);
+  }, [candidates, selectedMonth]);
 
   return (
     <motion.div
@@ -113,6 +131,14 @@ export default function Dashboard() {
           <p className="text-sm md:text-base text-slate-600">
             Here's what's happening with your recruitment today.
           </p>
+        </div>
+        <div>
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
+          />
         </div>
       </div>
 
@@ -142,6 +168,9 @@ export default function Dashboard() {
           );
         })}
       </div>
+
+      {/* Performance Report Table */}
+      <PerformanceReportTable />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
