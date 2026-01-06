@@ -73,7 +73,16 @@ export default function UploadCandidatePage() {
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
+            const selectedFile = e.target.files[0];
+
+            // Validate file size (5MB)
+            if (selectedFile.size > 5 * 1024 * 1024) {
+                alert("File size exceeds 5MB. Please upload a smaller file.");
+                e.target.value = ""; // Clear selection
+                return;
+            }
+
+            setFile(selectedFile);
             setUploadStatus("idle");
         }
     };
@@ -92,7 +101,15 @@ export default function UploadCandidatePage() {
         e.preventDefault();
         setIsDragging(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            setFile(e.dataTransfer.files[0]);
+            const selectedFile = e.dataTransfer.files[0];
+
+            // Validate file size (5MB)
+            if (selectedFile.size > 5 * 1024 * 1024) {
+                alert("File size exceeds 5MB. Please upload a smaller file.");
+                return;
+            }
+
+            setFile(selectedFile);
             setUploadStatus("idle");
         }
     };
