@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Candidate = require("../models/CandidatesByJob");
 const Job = require("../models/Jobs");
 const User = require("../models/Users");
@@ -436,21 +437,22 @@ router.get("/role-based-candidates", async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     // 1️⃣ Determine Allowed User IDs (Creator Logic)
+    const lowerDesignation = designation ? designation.toLowerCase() : "";
     let allowedUserIds = [];
-    if (designation === "admin") {
+    if (lowerDesignation === "admin") {
       // Admin sees all, so we might not need to filter by createdBy, but let's see logic below
       // Actually, if admin, we can skip createdBy filter or specific list
       allowedUserIds = null; // null means 'all'
-    } else if (designation === "recruiter") {
+    } else if (lowerDesignation === "recruiter") {
       allowedUserIds = [userId];
-    } else if (designation === "mentor") {
+    } else if (lowerDesignation === "mentor") {
       const allUsers = await User.find({}).select("reporter designation");
       const recruiters = allUsers.filter(u =>
         u.designation?.toLowerCase() === "recruiter" &&
         (u.reporter?.toString() === userId)
       );
       allowedUserIds = [userId, ...recruiters.map(r => r._id.toString())];
-    } else if (designation === "manager") {
+    } else if (lowerDesignation === "manager") {
       const allUsers = await User.find({}).select("reporter designation");
       // Mentors reporting to manager
       const mentors = allUsers.filter(u =>
@@ -471,7 +473,7 @@ router.get("/role-based-candidates", async (req, res) => {
     // 2️⃣ Determine Job IDs where user is Lead or Assigned
     // This adds to the visibility: User can see candidates for jobs they are assigned to, regardless of who created them.
     let assignedJobIds = [];
-    if (designation !== "admin") {
+    if (lowerDesignation !== "admin" && lowerDesignation !== "recruiter") { // STRICT FILTER: Recruiters don't see shared candidates here
       const jobs = await Job.find({
         $or: [
           { leadRecruiter: userId },
@@ -486,7 +488,7 @@ router.get("/role-based-candidates", async (req, res) => {
     const matchStage = {};
 
     // A. Visibility Filter (Admin sees all, others restricted)
-    if (designation !== "admin") {
+    if (lowerDesignation !== "admin") {
       const accessConditions = [];
 
       // Condition 1: Created by allowed users
