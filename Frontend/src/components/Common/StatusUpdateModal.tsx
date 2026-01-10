@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 interface StatusUpdateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (comment: string) => void;
+    onConfirm: (comment: string, joiningDate?: string) => void;
     newStatus: string;
     candidateName?: string;
     isCommentOnly?: boolean;
@@ -20,14 +20,18 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     isCommentOnly = false,
 }) => {
     const [comment, setComment] = useState("");
+    const [joiningDate, setJoiningDate] = useState("");
 
     useEffect(() => {
         if (isOpen) {
             setComment("");
+            setJoiningDate("");
         }
     }, [isOpen]);
 
     if (!isOpen) return null;
+
+    const isJoined = newStatus === "Joined";
 
     return (
         <AnimatePresence>
@@ -58,6 +62,21 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             </p>
                         )}
 
+                        {isJoined && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Joining Date <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                    value={joiningDate}
+                                    onChange={(e) => setJoiningDate(e.target.value)}
+                                />
+                            </div>
+                        )}
+
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Add a Comment (Optional)
                         </label>
@@ -77,7 +96,13 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                 Cancel
                             </button>
                             <button
-                                onClick={() => onConfirm(comment)}
+                                onClick={() => {
+                                    if (isJoined && !joiningDate) {
+                                        alert("Please select a joining date");
+                                        return;
+                                    }
+                                    onConfirm(comment, joiningDate);
+                                }}
                                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
                             >
                                 Confirm Update

@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthProvider";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: Array<"Recruiter" | "Manager" | "HR" | "Admin" | "Mentor">;
+  allowedRoles?: Array<"Recruiter" | "Manager" | "HR" | "Admin" | "Mentor" | "Finance">;
 }
 
 export default function ProtectedRoute({
@@ -23,9 +23,10 @@ export default function ProtectedRoute({
   }
 
   // 🔥 3. Role restriction check
-  if (allowedRoles && user && !allowedRoles.includes(user.designation)) {
+  if (allowedRoles && user && !allowedRoles.includes(user.designation as any)) {
     // redirect to correct panel based on role
-    return <Navigate to={`/${user.designation}`} replace />;
+    const route = user.designation === 'Finance' ? 'Admin' : user.designation;
+    return <Navigate to={`/${route}`} replace />;
   }
 
   return <>{children}</>;

@@ -19,6 +19,7 @@ type Candidate = {
   createdAt?: string;
   updatedAt?: string;
   interviewStage?: string;
+  joiningDate?: string;
 };
 
 type CandidateContextType = {
@@ -52,7 +53,8 @@ type CandidateContextType = {
     interviewStage?: string,
     stageStatus?: "Selected" | "Rejected",
     stageNotes?: string,
-    comment?: string
+    comment?: string,
+    joiningDate?: string
   ) => Promise<Candidate | null>;
 
   // 🔹 Pagination
@@ -357,7 +359,8 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     interviewStage?: string,
     stageStatus?: "Selected" | "Rejected",
     stageNotes?: string,
-    comment?: string
+    comment?: string,
+    joiningDate?: string
   ) => {
     try {
       const { data } = await axios.patch(`${API_URL}/${id}/status`, {
@@ -367,6 +370,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
         stageStatus,
         stageNotes,
         comment,
+        joiningDate
       });
       if (data.success) {
         toast.success("Candidate status updated successfully");

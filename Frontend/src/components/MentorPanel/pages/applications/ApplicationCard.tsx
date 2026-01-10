@@ -34,7 +34,7 @@ export const ApplicationCard = ({
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string) => {
     if (!pendingStatusChange) return;
     setLoading(true);
     const success = await updateStatus(
@@ -44,7 +44,8 @@ export const ApplicationCard = ({
       undefined,
       undefined,
       undefined,
-      comment
+      comment,
+      joiningDate
     );
     setLoading(false);
     fetchallCandidates();
@@ -111,6 +112,14 @@ export const ApplicationCard = ({
                 {application.status}
               </span>
             </span>
+            {application.status === "Joined" && application.joiningDate && (
+              <span className="text-sm font-medium text-gray-700 ml-4">
+                Joining:
+                <span className="ml-2 px-2 py-1 text-xs rounded-full bg-green-100 text-green-600">
+                  {formatDate(application.joiningDate)}
+                </span>
+              </span>
+            )}
             <ChevronDown
               onClick={toggleNotes}
               className={`w-5 h-5 text-gray-600 transition-transform duration-300 ${showNotes ? "rotate-180" : "rotate-0"}`}

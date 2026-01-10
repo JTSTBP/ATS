@@ -56,7 +56,7 @@ export const ManagerCandidates = () => {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
@@ -66,7 +66,8 @@ export const ManagerCandidates = () => {
       undefined, // interviewStage
       undefined, // stageStatus
       undefined, // stageNotes
-      comment // comment
+      comment, // comment
+      joiningDate
     );
 
     if (user?._id) {
@@ -288,9 +289,9 @@ export const ManagerCandidates = () => {
                     <select
                       value={candidate.status || "New"}
                       onChange={(e) =>
-                        handleStatusChange(candidate._id as string, e.target.value)
+                        handleStatusChange(candidate._id || "", e.target.value)
                       }
-                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
+                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="New">New</option>
                       <option value="Shortlisted">Shortlisted</option>
@@ -299,6 +300,11 @@ export const ManagerCandidates = () => {
                       <option value="Joined">Joined</option>
                       <option value="Rejected">Rejected</option>
                     </select>
+                    {candidate.status === "Joined" && candidate.joiningDate && (
+                      <p className="text-[10px] text-green-600 mt-1 font-medium">
+                        Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                      </p>
+                    )}
                   </td>
 
                   {/* ACTIONS */}

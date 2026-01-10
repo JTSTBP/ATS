@@ -60,6 +60,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         }
     }, [initialJobTitleFilter, searchParams]);
 
+    // Enforce "Joined" status for Finance users
+    useEffect(() => {
+        if (user?.designation === 'Finance') {
+            setStatusFilter("Joined");
+        }
+    }, [user]);
+
     // 1️⃣ Fetch all candidates and clients on load
     // 1️⃣ Fetch data (clients & initial candidates)
     useEffect(() => {
@@ -154,7 +161,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         setStatusModalOpen(true);
     };
 
-    const confirmStatusChange = async (comment: string) => {
+    const confirmStatusChange = async (comment: string, joiningDate?: string) => {
         if (!pendingStatusChange) return;
 
         await updateStatus(
@@ -164,7 +171,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             undefined, // interviewStage
             undefined, // stageStatus
             undefined, // stageNotes
-            comment // comment
+            comment, // comment
+            joiningDate
         );
 
         // Optimistic update or refetch
@@ -256,30 +264,32 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             </div>
 
             {/* Status Filter Buttons */}
-            <div className="flex gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
-                {[
-                    "all",
-                    "New",
-                    "Shortlisted",
-                    "Interviewed",
-                    "Selected",
-                    "Joined",
-                    "Rejected",
-                ].map((status) => (
-                    <button
-                        key={status}
-                        onClick={() => setStatusFilter(status)}
-                        className={`px-3 py-1 rounded-lg text-sm font-medium capitalize
+            {user?.designation !== 'Finance' && (
+                <div className="flex gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
+                    {[
+                        "all",
+                        "New",
+                        "Shortlisted",
+                        "Interviewed",
+                        "Selected",
+                        "Joined",
+                        "Rejected",
+                    ].map((status) => (
+                        <button
+                            key={status}
+                            onClick={() => setStatusFilter(status)}
+                            className={`px-3 py-1 rounded-lg text-sm font-medium capitalize
         ${statusFilter === status
-                                ? "bg-orange-600 text-white"
-                                : "bg-gray-100 text-gray-700"
-                            }
+                                    ? "bg-orange-600 text-white"
+                                    : "bg-gray-100 text-gray-700"
+                                }
       `}
-                    >
-                        {status}
-                    </button>
-                ))}
-            </div>
+                        >
+                            {status}
+                        </button>
+                    ))}
+                </div>
+            )}
 
             {/* Table */}
             <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
@@ -411,7 +421,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         <td className="px-6 py-4 text-sm text-gray-700">
                                             <select
                                                 value={candidate.status || "New"}
-                                                onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
+                                                onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
                                                 className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                                             >
                                                 <option value="New">New</option>
@@ -421,6 +431,11 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 <option value="Joined">Joined</option>
                                                 <option value="Rejected">Rejected</option>
                                             </select>
+                                            {candidate.status === "Joined" && candidate.joiningDate && (
+                                                <p className="text-[10px] text-green-600 mt-1 font-medium">
+                                                    Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                                                </p>
+                                            )}
                                         </td>
 
                                         {/* ACTIONS */}

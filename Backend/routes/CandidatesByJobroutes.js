@@ -1085,7 +1085,7 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
 // 🔁 Update candidate status only
 router.patch("/:id/status", async (req, res) => {
   try {
-    const { status, role, interviewStage, stageStatus, stageNotes } = req.body;
+    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate } = req.body;
 
     // Get existing candidate to detect changes
     const existingCandidate = await Candidate.findById(req.params.id).populate('jobId', 'title');
@@ -1148,6 +1148,17 @@ router.patch("/:id/status", async (req, res) => {
       updateData.interviewStage = interviewStage;
     }
 
+    // If status is "Joined" and joiningDate is provided, update it
+    if (status === "Joined" && joiningDate) {
+      updateData.joiningDate = joiningDate;
+      // Add to changes for email notification
+      changes.push({
+        field: 'Joining Date',
+        oldValue: existingCandidate.joiningDate ? new Date(existingCandidate.joiningDate).toLocaleDateString() : 'N/A',
+        newValue: new Date(joiningDate).toLocaleDateString()
+      });
+    }
+
     // If stage status and notes are provided, add to history
     if (status === "Interviewed" && interviewStage && stageStatus) {
       const stageHistoryEntry = {
@@ -1169,6 +1180,7 @@ router.patch("/:id/status", async (req, res) => {
     const statusHistoryEntry = {
       status,
       comment: req.body.comment || "",
+      joiningDate: status === "Joined" ? joiningDate : undefined,
       updatedBy: role,
       timestamp: new Date(),
     };

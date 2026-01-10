@@ -41,7 +41,9 @@ export default function Login() {
     if (success) {
       const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
       if (savedUser?.designation) {
-        navigate(`/${savedUser.designation}`);
+        // Finance users should go to Admin panel
+        const route = savedUser.designation === 'Finance' ? 'Admin' : savedUser.designation;
+        navigate(`/${route}`);
       }
     } else {
       setErrors({ general: "Invalid email or password" });
@@ -193,11 +195,10 @@ export default function Login() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${
-                    errors.email
+                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.email
                       ? "border-red-500 bg-red-50"
                       : "border-slate-200"
-                  }`}
+                    }`}
                   placeholder="name@company.com"
                 />
               </div>
@@ -221,11 +222,10 @@ export default function Login() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className={`w-full pl-12 pr-12 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${
-                    errors.password
+                  className={`w-full pl-12 pr-12 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.password
                       ? "border-red-500 bg-red-50"
                       : "border-slate-200"
-                  }`}
+                    }`}
                   placeholder="••••••••"
                 />
                 <button

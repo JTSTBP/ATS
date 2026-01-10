@@ -89,7 +89,7 @@ const CandidatesList = () => {
 
     // Admin sees all candidates for the job
     if (user.designation === "Admin") {
-      filtered = candidates.filter((c) => c.jobId?._id === id);
+      filtered = candidates.filter((c) => (c.jobId as any)?._id === id);
     } else {
       // Other roles see candidates created by them or their reporting users
       // Other roles see candidates created by them or their reporting users
@@ -129,12 +129,12 @@ const CandidatesList = () => {
       );
     } else if (sortBy === "Date") {
       filtered = filtered.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        (a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
       );
     }
 
     // Save full filtered list before pagination
-    setFullFilteredList(filtered);
+    setFullFilteredList(filtered as any);
   }, [candidates, users, user, id, statusFilter, sortBy, interviewStageFilter]);
 
   useEffect(() => {
@@ -216,18 +216,19 @@ const CandidatesList = () => {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusAction = async (comment: string) => {
+  const confirmStatusAction = async (comment: string, joiningDate?: string) => {
     if (!pendingAction) return;
 
     if (pendingAction.type === 'reject' || pendingAction.type === 'statusChange') {
       const success = await updateStatus(
         pendingAction.candidateId,
         pendingAction.newStatus,
-        user?._id,
+        user?._id || "",
         undefined,
         undefined,
         undefined,
-        comment
+        comment,
+        joiningDate
       );
 
       if (success) {
@@ -1069,6 +1070,13 @@ const CandidatesList = () => {
                             {candidate.status}
                           </span>
 
+                          {/* Joining Date Badge */}
+                          {candidate.status === "Joined" && candidate.joiningDate && (
+                            <span className="px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200">
+                              Joining: {formatDate(candidate.joiningDate)}
+                            </span>
+                          )}
+
                           {/* Interview Stage Badge */}
                           {candidate.status === "Interviewed" &&
                             candidate.interviewStage && (
@@ -1313,6 +1321,13 @@ const CandidatesList = () => {
                       {selectedCandidate.status}
                     </span>
 
+                    {/* Joining Date Badge */}
+                    {selectedCandidate.status === "Joined" && selectedCandidate.joiningDate && (
+                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full border border-green-300 shadow-sm">
+                        Joining: {formatDate(selectedCandidate.joiningDate)}
+                      </span>
+                    )}
+
                     {/* Interview Stage Badge */}
                     {selectedCandidate.status === "Interviewed" &&
                       selectedCandidate.interviewStage && (
@@ -1500,6 +1515,11 @@ const CandidatesList = () => {
                                   <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 border border-blue-200">
                                     {history.status}
                                   </span>
+                                  {history.status === "Joined" && history.joiningDate && (
+                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 border border-green-200">
+                                      Joining: {formatDate(history.joiningDate)}
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="text-xs text-gray-500">
                                   {history.updatedBy?.name || "Unknown"} •{" "}

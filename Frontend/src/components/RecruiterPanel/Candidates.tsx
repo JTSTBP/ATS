@@ -102,17 +102,18 @@ export default function Candidates() {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
       pendingStatusChange.candidateId,
       pendingStatusChange.newStatus,
-      user?._id,
-      undefined,
-      undefined,
-      undefined,
-      comment
+      user?._id || "",
+      undefined, // interviewStage
+      undefined, // stageStatus
+      undefined, // stageNotes
+      comment, // comment
+      joiningDate
     );
 
     // Refetch current page after update
@@ -291,11 +292,11 @@ export default function Candidates() {
 
                   // 2. Find Email field
                   const emailKey = dynamicKeys.find(k => k.toLowerCase().includes("email"));
-                  const emailValue = candidate.dynamicFields?.[emailKey] || "--";
+                  const emailValue = (emailKey && candidate.dynamicFields?.[emailKey]) || "--";
 
                   // 3. Find Phone field
                   const phoneKey = dynamicKeys.find(k => k.toLowerCase().includes("phone"));
-                  const phoneValue = candidate.dynamicFields?.[phoneKey] || "--";
+                  const phoneValue = (phoneKey && candidate.dynamicFields?.[phoneKey]) || "--";
 
                   // 4. Find Company field
                   let companyKey = dynamicKeys.find(k => k.toLowerCase() === "current company");
@@ -363,7 +364,7 @@ export default function Candidates() {
                         <div className="col-span-12 md:col-span-2 min-w-0" onClick={(e) => e.stopPropagation()}>
                           <select
                             value={candidate.status || "New"}
-                            onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
+                            onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
                             className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium border outline-none cursor-pointer appearance-none ${candidate.status === "New"
                               ? "bg-blue-50 text-blue-700 border-blue-200"
                               : (candidate.status === "Interview" || candidate.status === "Interviewed")
@@ -386,6 +387,11 @@ export default function Candidates() {
                             <option value="Joined">Joined</option>
                             <option value="Rejected">Rejected</option>
                           </select>
+                          {candidate.status === "Joined" && candidate.joiningDate && (
+                            <p className="text-[10px] text-teal-600 mt-0.5 font-medium text-center">
+                              Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                            </p>
+                          )}
                         </div>
 
                       </div>

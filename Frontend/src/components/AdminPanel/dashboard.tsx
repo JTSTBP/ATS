@@ -2,10 +2,11 @@ import { Users, ShieldCheck, Briefcase, CalendarCheck } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { formatDate } from "../../utils/dateUtils";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
+import FinanceDashboard from "./FinanceDashboard";
 import {
   BarChart,
   Bar,
@@ -32,31 +33,63 @@ export default function AdminDashboard() {
     fetchallCandidates();
   }, []);
 
+  const [selectedMonth, setSelectedMonth] = useState("");
+
+  // If user is Finance, show Finance Dashboard
+  if (user?.designation === 'Finance') {
+    return <FinanceDashboard />;
+  }
+
   // Calculate statistics
   const stats = useMemo(() => {
-    const totalUsers = users.length;
-    const activeAdmins = users.filter((u) => u.isAdmin).length;
+    // Filter functions
+    const filterByMonth = (dateString: string | undefined) => {
+      if (!selectedMonth || !dateString) return true;
+      const date = new Date(dateString);
+      const month = date.toISOString().slice(0, 7); // YYYY-MM
+      return month === selectedMonth;
+    };
+
+    // Filter data based on selected month
+    const filteredUsers = users.filter((u) => filterByMonth(u.createdAt));
+    const filteredJobs = jobs.filter((j) => filterByMonth(j.createdAt));
+    const filteredCandidates = candidates.filter((c) => filterByMonth(c.createdAt));
+    const filteredLeaves = leaves.filter((l) => filterByMonth(l.appliedAt));
+
+    const totalUsers = filteredUsers.length;
+    const activeAdmins = filteredUsers.filter((u) => u.isAdmin).length;
     // Case-insensitive check for 'Recruiter' designation
-    const recruiters = users.filter(
+    const recruiters = filteredUsers.filter(
       (u) => u.designation?.toLowerCase() === "recruiter"
     ).length;
-    const pendingLeaves = leaves.filter((l) => l.status === "Pending").length;
-    const activeJobs = jobs.filter((j) => j.status === "Open").length;
+    const mentors = filteredUsers.filter(
+      (u) => u.designation?.toLowerCase() === "mentor"
+    ).length;
+    const totalCandidates = filteredCandidates.length;
+
+    const pendingLeaves = filteredLeaves.filter((l) => l.status === "Pending").length;
+    const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
 
     return {
       totalUsers,
       activeAdmins,
       recruiters,
+      mentors,
+      totalCandidates,
       pendingLeaves,
       activeJobs,
     };
-  }, [users, leaves, jobs]);
+  }, [users, leaves, jobs, candidates, selectedMonth]);
 
   // Prepare Recruiter Performance Data
   const recruiterPerformanceData = useMemo(() => {
     const recruiterStats: Record<string, { name: string; uploaded: number; shortlisted: number; joined: number }> = {};
 
-    // Initialize with all recruiters
+    // Initialize with all recruiters - Filtered by month if needed? 
+    // Usually performance is based on candidate activity, but let's filter the recruiters themselves first??
+    // Actually, usually you want to see performance of *all* recruiters for the *selected period*.
+    // So we should filter candidates by date, but keep all recruiters visible.
+
     users.forEach(u => {
       if (u.designation?.toLowerCase().includes("recruiter") || u.isAdmin) {
         recruiterStats[u._id] = { name: u.name, uploaded: 0, shortlisted: 0, joined: 0 };
@@ -64,6 +97,11 @@ export default function AdminDashboard() {
     });
 
     candidates.forEach((c) => {
+      // Apply Month Filter to candidates for the chart too
+      if (selectedMonth) {
+        if (!c.createdAt || c.createdAt.slice(0, 7) !== selectedMonth) return;
+      }
+
       const creator = c.createdBy;
       if (!creator) return;
 
@@ -81,20 +119,41 @@ export default function AdminDashboard() {
 
     return Object.values(recruiterStats)
       .sort((a, b) => b.uploaded - a.uploaded);
-  }, [candidates, users]);
+  }, [candidates, users, selectedMonth]);
 
   return (
     <div className="text-slate-800">
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Dashboard Overview</h1>
-        <p className="text-slate-500 mt-1">
-          Welcome back, Admin! Here's a quick summary of your portal activity.
-        </p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard Overview</h1>
+          <p className="text-slate-500 mt-1">
+            Welcome back, Admin! Here's a quick summary of your portal activity.
+          </p>
+        </div>
+
+        {/* Month Filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-600">Filter by Month:</span>
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          />
+          {selectedMonth && (
+            <button
+              onClick={() => setSelectedMonth("")}
+              className="text-xs text-red-500 hover:text-red-700 underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
         {/* Total Users */}
         <div
           onClick={() => navigate("/Admin/Users")}
@@ -112,6 +171,25 @@ export default function AdminDashboard() {
             <Users size={24} />
           </div>
         </div>
+
+        {/* Total Candidates */}
+        <div
+          // onClick={() => navigate("/Admin/Candidates")} // Navigate if route exists
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-indigo-600 transition-colors">
+              Total Candidates
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.totalCandidates}
+            </h2>
+          </div>
+          <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-100 transition-colors">
+            <Users size={24} />
+          </div>
+        </div>
+
 
         {/* Active Admins */}
         <div
@@ -146,6 +224,24 @@ export default function AdminDashboard() {
           </div>
           <div className="bg-orange-50 text-orange-600 p-3 rounded-xl group-hover:bg-orange-100 transition-colors">
             <Briefcase size={24} />
+          </div>
+        </div>
+
+        {/* Mentors */}
+        <div
+          onClick={() => navigate("/Admin/Users?role=Mentor")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-teal-600 transition-colors">
+              Mentors
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.mentors}
+            </h2>
+          </div>
+          <div className="bg-teal-50 text-teal-600 p-3 rounded-xl group-hover:bg-teal-100 transition-colors">
+            <Users size={24} /> {/* Or another icon like GraduationCap if available */}
           </div>
         </div>
 

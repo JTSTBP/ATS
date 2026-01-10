@@ -32,6 +32,9 @@ const candidateSchema = new mongoose.Schema(
       ],
       default: "New",
     },
+    joiningDate: {
+      type: Date,
+    },
     dynamicFields: {
       type: Object,
       default: {},
@@ -75,6 +78,9 @@ const candidateSchema = new mongoose.Schema(
         comment: {
           type: String,
           default: "",
+        },
+        joiningDate: {
+          type: Date,
         },
         updatedBy: {
           type: mongoose.Schema.Types.ObjectId,

@@ -146,7 +146,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
           </button>
           <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-slate-800 truncate">
             {user?.designation === 'Recruiter' ? 'Recruiter Portal' :
-              user?.designation === 'Manager' ? 'Manager Portal' : user?.designation === 'Admin' ? 'Admin Portal' : user?.designation === "Mentor" ? "Mentor Portal" : 'Hr Portal'}
+              user?.designation === 'Manager' ? 'Manager Portal' : user?.designation === 'Admin' ? 'Admin Portal' : user?.designation === "Mentor" ? "Mentor Portal" : 'Finance Portal'}
           </h1>
         </div>
 

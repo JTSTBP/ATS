@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
+import { useAuth } from "../context/AuthProvider";
 import Sidebar from "../components/RecruiterPanel/Sidebar";
 import Navbar from "../components/RecruiterPanel/Navbar";
 import {
@@ -34,26 +35,31 @@ export default function AdminLayout() {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  const menuItems = [
-    { path: "/Admin", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/admin/users", label: "Manage Users", icon: Users },
-    { path: "/Admin/candidates", label: "Candidates", icon: Users },
-    { path: "/Admin/jobs", label: "Jobs", icon: Briefcase },
-    { path: "/Admin/clients", label: "Clients", icon: Building2 },
+  const { user } = useAuth();
+
+  const allMenuItems = [
+    { path: "/Admin", label: "Dashboard", icon: LayoutDashboard, roles: ["Admin", "Finance"] },
+    { path: "/admin/users", label: "Manage Users", icon: Users, roles: ["Admin"] },
+    { path: "/Admin/candidates", label: "Candidates", icon: Users, roles: ["Admin", "Finance"] },
+    { path: "/Admin/jobs", label: "Jobs", icon: Briefcase, roles: ["Admin"] },
+    { path: "/Admin/clients", label: "Clients", icon: Building2, roles: ["Admin", "Finance"] },
     {
       path: "/Admin/leaveApplications",
       label: "Leave Applications",
       icon: Calendar,
+      roles: ["Admin"]
     },
-
-
-    { path: "/Admin/finance", label: "Finance", icon: DollarSign },
-    { path: "/Admin/reports", label: "Reports", icon: FileText },
-    { path: "/Admin/analytics", label: "Analytics", icon: BarChart3 },
-    { path: "/Admin/tasks", label: "Task Management", icon: ClipboardList },
-
-
+    { path: "/Admin/finance", label: "Finance", icon: DollarSign, roles: ["Admin", "Finance"] },
+    { path: "/Admin/reports", label: "Reports", icon: FileText, roles: ["Admin"] },
+    { path: "/Admin/analytics", label: "Analytics", icon: BarChart3, roles: ["Admin"] },
+    { path: "/Admin/tasks", label: "Task Management", icon: ClipboardList, roles: ["Admin"] },
   ];
+
+  const menuItems = allMenuItems.filter(item =>
+    user?.designation === 'Finance'
+      ? item.roles.includes("Finance")
+      : true // Admin sees everything (or default)
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">

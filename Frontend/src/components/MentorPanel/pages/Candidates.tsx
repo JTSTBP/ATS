@@ -14,7 +14,6 @@ import {
 import { CandidateForm } from "./CandidatesForm";
 import { StatusUpdateModal } from "../../Common/StatusUpdateModal";
 import { useCandidateContext } from "../../../context/CandidatesProvider";
-import { useUserContext } from "../../../context/UserProvider";
 import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
 import { toast } from "react-toastify";
@@ -35,7 +34,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     loading,
     deleteCandidate,
   } = useCandidateContext();
-  const { users } = useUserContext();
+  // const { users } = useUserContext();
   const { jobs } = useJobContext();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,7 +68,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
@@ -79,7 +78,8 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       undefined, // interviewStage
       undefined, // stageStatus
       undefined, // stageNotes
-      comment // comment
+      comment, // comment
+      joiningDate
     );
     // Refresh current page
     if (user?._id) {
@@ -194,7 +194,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     );
     if (!confirmDelete) return;
 
-    const success = await deleteCandidate(candidateId, user?._id);
+    const success = await deleteCandidate(candidateId, user?._id || "");
 
     if (success) {
       toast.success("Candidate deleted successfully");
@@ -447,7 +447,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                   <td className="px-6 py-4 text-sm text-gray-700">
                     <select
                       value={candidate.status || "New"}
-                      onChange={(e) => handleStatusChange(candidate._id, e.target.value)}
+                      onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
                       className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                     >
                       <option value="New">New</option>
@@ -457,6 +457,11 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                       <option value="Joined">Joined</option>
                       <option value="Rejected">Rejected</option>
                     </select>
+                    {candidate.status === "Joined" && candidate.joiningDate && (
+                      <p className="text-[10px] text-green-600 mt-1 font-medium">
+                        Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                      </p>
+                    )}
                   </td>
 
                   {/* ACTIONS */}

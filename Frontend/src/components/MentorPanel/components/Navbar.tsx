@@ -34,10 +34,10 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
             {user?.designation === "Recruiter"
               ? "Recruiter Portal"
               : user?.designation === "Manager"
-              ? "Manager Portal"
-              : user?.designation === "Mentor"
-              ? "Mentor Portal"
-              : "HR Portal"}
+                ? "Manager Portal"
+                : user?.designation === "Mentor"
+                  ? "Mentor Portal"
+                  : "Finance Portal"}
           </h1>
         </div>
 
