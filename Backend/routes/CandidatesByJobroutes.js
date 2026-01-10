@@ -7,6 +7,8 @@ const upload = require("../middleware/upload");
 const router = express.Router();
 const logActivity = require("./logactivity");
 const nodemailer = require("nodemailer");
+const fs = require('fs');
+const path = require('path');
 
 // Helper function to send email notification to reporter
 async function sendUpdateNotificationToReporter(updatingUserId, candidateName, jobTitle, changes) {
@@ -1243,6 +1245,20 @@ router.delete("/:id/:role", async (req, res) => {
     }
 
     const jobId = candidate.jobId; // store jobId before deletion
+
+    // Delete the resume file if it exists
+    if (candidate.resumeUrl) {
+      // resumeUrl is usually stored as /uploads/resumes/filename
+      const resumePath = path.join(__dirname, '..', candidate.resumeUrl);
+      if (fs.existsSync(resumePath)) {
+        try {
+          fs.unlinkSync(resumePath);
+          console.log(`Deleted resume file: ${resumePath}`);
+        } catch (err) {
+          console.error(`Error deleting resume file: ${err.message}`);
+        }
+      }
+    }
 
     // 2. Delete the candidate
     await Candidate.findByIdAndDelete(req.params.id);

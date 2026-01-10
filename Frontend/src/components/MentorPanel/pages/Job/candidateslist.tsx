@@ -1189,7 +1189,7 @@ const CandidatesList = () => {
 
                       <div className="flex items-center gap-3">
                         <span className="text-xs text-gray-400">
-                          <span>posted by {candidate.createdBy.name}</span> |{" "}
+                          <span>posted by {candidate.createdBy?.name || "Unknown"}</span> |{" "}
                           {formatDate(candidate.createdAt)}
                         </span>
 

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Client = require('../models/Client');
 const clientUpload = require('../middleware/clientUpload');
+const fs = require('fs');
+const path = require('path');
 
 // Helper function to normalize URLs for comparison
 const normalizeUrl = (url) => {
@@ -211,6 +213,20 @@ router.put('/:id', clientUpload.single('logo'), async (req, res) => {
 // Delete a client
 router.delete('/:id', async (req, res) => {
     try {
+        const client = await Client.findById(req.params.id);
+        if (!client) {
+            return res.status(404).json({ message: 'Client not found' });
+        }
+
+        // Delete the profile logo file if it exists
+        if (client.logo) {
+            const imagePath = path.join(__dirname, '..', client.logo);
+            // Check if file exists before trying to delete
+            if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
+            }
+        }
+
         await Client.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: 'Client deleted' });
     } catch (err) {
