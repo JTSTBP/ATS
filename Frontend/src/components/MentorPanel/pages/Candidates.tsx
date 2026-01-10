@@ -292,9 +292,11 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           >
             <option value="all">All Stages</option>
             {availableStages.map((stage: any, index: number) => (
-              <option key={index} value={stage.name}>
-                {stage.name}
-              </option>
+              stage ? (
+                <option key={index} value={stage.name}>
+                  {stage.name}
+                </option>
+              ) : null
             ))}
           </select>
         </div>

@@ -292,42 +292,44 @@ const CandidatesList = () => {
               </label>
               <div className="space-y-2">
                 {selectedCandidate.jobId.stages.map((stage: any) => (
-                  <button
-                    key={stage._id}
-                    onClick={() => {
-                      // Store selected stage in state
-                      const stageInput = document.getElementById(
-                        "selected-stage"
-                      ) as HTMLInputElement;
-                      if (stageInput) stageInput.value = stage.name;
+                  stage ? (
+                    <button
+                      key={stage._id}
+                      onClick={() => {
+                        // Store selected stage in state
+                        const stageInput = document.getElementById(
+                          "selected-stage"
+                        ) as HTMLInputElement;
+                        if (stageInput) stageInput.value = stage.name;
 
-                      // Visual feedback
-                      document
-                        .querySelectorAll("[data-stage-btn]")
-                        .forEach((btn) => {
-                          btn.classList.remove(
-                            "bg-blue-50",
-                            "border-blue-300",
-                            "ring-2",
-                            "ring-blue-200"
-                          );
-                          btn.classList.add("bg-white", "border-gray-200");
-                        });
-                      (document.activeElement as HTMLElement)?.classList.add(
-                        "bg-blue-50",
-                        "border-blue-300",
-                        "ring-2",
-                        "ring-blue-200"
-                      );
-                    }}
-                    data-stage-btn
-                    className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition flex justify-between items-center"
-                  >
-                    <span className="font-medium">{stage.name}</span>
-                    <span className="text-xs text-gray-500">
-                      {stage.responsible}
-                    </span>
-                  </button>
+                        // Visual feedback
+                        document
+                          .querySelectorAll("[data-stage-btn]")
+                          .forEach((btn) => {
+                            btn.classList.remove(
+                              "bg-blue-50",
+                              "border-blue-300",
+                              "ring-2",
+                              "ring-blue-200"
+                            );
+                            btn.classList.add("bg-white", "border-gray-200");
+                          });
+                        (document.activeElement as HTMLElement)?.classList.add(
+                          "bg-blue-50",
+                          "border-blue-300",
+                          "ring-2",
+                          "ring-blue-200"
+                        );
+                      }}
+                      data-stage-btn
+                      className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition flex justify-between items-center"
+                    >
+                      <span className="font-medium">{stage.name}</span>
+                      <span className="text-xs text-gray-500">
+                        {stage.responsible}
+                      </span>
+                    </button>
+                  ) : null
                 ))}
               </div>
               <input type="hidden" id="selected-stage" />
@@ -530,31 +532,33 @@ const CandidatesList = () => {
             <div className="mb-6 max-h-60 overflow-y-auto space-y-2 border border-gray-200 rounded-lg p-3">
               {emailCandidates[0]?.jobId?.clientId?.pocs?.length > 0 ? (
                 emailCandidates[0].jobId.clientId.pocs.map((poc: any) => (
-                  <label
-                    key={poc._id}
-                    className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedPocs.includes(poc.email)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedPocs([...selectedPocs, poc.email]);
-                        } else {
-                          setSelectedPocs(
-                            selectedPocs.filter((email) => email !== poc.email)
-                          );
-                        }
-                      }}
-                      className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <div>
-                      <div className="font-medium text-sm text-gray-900">
-                        {poc.name}
+                  poc ? (
+                    <label
+                      key={poc._id}
+                      className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedPocs.includes(poc.email)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPocs([...selectedPocs, poc.email]);
+                          } else {
+                            setSelectedPocs(
+                              selectedPocs.filter((email) => email !== poc.email)
+                            );
+                          }
+                        }}
+                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <div>
+                        <div className="font-medium text-sm text-gray-900">
+                          {poc.name}
+                        </div>
+                        <div className="text-xs text-gray-500">{poc.email}</div>
                       </div>
-                      <div className="text-xs text-gray-500">{poc.email}</div>
-                    </div>
-                  </label>
+                    </label>
+                  ) : null
                 ))
               ) : (
                 <p className="text-sm text-gray-500 text-center py-2">
