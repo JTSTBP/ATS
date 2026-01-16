@@ -39,6 +39,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     const [filterClient, setFilterClient] = useState("all");
     const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
     const [filterStage, setFilterStage] = useState("all");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -98,16 +100,18 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 status: statusFilter,
                 client: filterClient,
                 jobTitle: filterJobTitle,
-                stage: filterStage
+                stage: filterStage,
+                startDate,
+                endDate
             });
         }, 300); // Debounce search
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm]);
+    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm, startDate, endDate]);
 
     // Reset page to 1 on filter change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage]);
+    }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate]);
 
     // 3️⃣ Get unique job titles from JOBS CONTEXT instead of candidates (since candidates are paginated)
     const uniqueJobTitles = Array.from(
@@ -181,7 +185,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             status: statusFilter,
             client: filterClient,
             jobTitle: filterJobTitle,
-            stage: filterStage
+            stage: filterStage,
+            startDate,
+            endDate
         });
         setStatusModalOpen(false);
         setPendingStatusChange(null);
@@ -207,59 +213,106 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             </div>
 
             {/* Search + Filters */}
-            <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200 space-y-4">
+                {/* Search Bar Row */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                        type="text"
+                        placeholder="Search by name, email, phone, or skills..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                    />
+                </div>
+
+                {/* Filters Grid Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</label>
+                        <select
+                            value={filterClient}
+                            onChange={(e) => setFilterClient(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 text-sm"
+                        >
+                            <option value="all">All Clients</option>
+                            {clients.map((client: any) => (
+                                <option key={client._id} value={client.companyName}>
+                                    {client.companyName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Job Title</label>
+                        <select
+                            value={filterJobTitle}
+                            onChange={(e) => setFilterJobTitle(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 text-sm"
+                        >
+                            <option value="all">All Job Titles</option>
+                            {uniqueJobTitles.map((title: any) => (
+                                <option key={title} value={title}>
+                                    {title}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stage</label>
+                        <select
+                            value={filterStage}
+                            onChange={(e) => setFilterStage(e.target.value)}
+                            disabled={filterJobTitle === "all"}
+                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm ${filterJobTitle === "all" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-50"
+                                }`}
+                        >
+                            <option value="all">All Stages</option>
+                            {availableStages.map((stage: any, index: number) => (
+                                <option key={index} value={stage.name}>
+                                    {stage.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">From Date</label>
                         <input
-                            type="text"
-                            placeholder="Search by name, email, phone, or skills..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
                         />
                     </div>
 
-                    <select
-                        value={filterClient}
-                        onChange={(e) => setFilterClient(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    >
-                        <option value="all">All Clients</option>
-                        {clients.map((client: any) => (
-                            <option key={client._id} value={client.companyName}>
-                                {client.companyName}
-                            </option>
-                        ))}
-                    </select>
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">To Date</label>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                        />
+                    </div>
 
-                    <select
-                        value={filterJobTitle}
-                        onChange={(e) => setFilterJobTitle(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    >
-                        <option value="all">All Job Titles</option>
-                        {uniqueJobTitles.map((title: any) => (
-                            <option key={title} value={title}>
-                                {title}
-                            </option>
-                        ))}
-                    </select>
-
-                    <select
-                        value={filterStage}
-                        onChange={(e) => setFilterStage(e.target.value)}
-                        disabled={filterJobTitle === "all"}
-                        className={`px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent ${filterJobTitle === "all" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
-                            }`}
-                    >
-                        <option value="all">All Stages</option>
-                        {availableStages.map((stage: any, index: number) => (
-                            <option key={index} value={stage.name}>
-                                {stage.name}
-                            </option>
-                        ))}
-                    </select>
+                    <div className="flex items-end">
+                        {(startDate || endDate) ? (
+                            <button
+                                onClick={() => {
+                                    setStartDate("");
+                                    setEndDate("");
+                                }}
+                                className="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition text-sm font-semibold"
+                            >
+                                Reset Dates
+                            </button>
+                        ) : (
+                            <div className="w-full h-9"></div> // Placeholder to keep height consistent
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -503,7 +556,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                             No candidates found
                         </h3>
                         <p className="text-gray-500 max-w-md mx-auto">
-                            {searchTerm || filterClient !== "all" || filterJobTitle !== "all" || statusFilter !== "all"
+                            {searchTerm || filterClient !== "all" || filterJobTitle !== "all" || statusFilter !== "all" || startDate || endDate
                                 ? "No candidates match your current filters. Try adjusting your search or filters."
                                 : "Get started by adding your first candidate to the system."}
                         </p>

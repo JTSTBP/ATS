@@ -36,6 +36,8 @@ type CandidateContextType = {
     filters?: {
       search?: string;
       status?: string;
+      startDate?: string;
+      endDate?: string;
     }
   ) => Promise<void>;
   fetchRoleBasedCandidates: (userId: string, designation: string, page: number, limit: number, filters?: any) => Promise<void>;
@@ -73,6 +75,8 @@ type CandidateContextType = {
       client?: string;
       jobTitle?: string;
       stage?: string;
+      startDate?: string;
+      endDate?: string;
     }
   ) => Promise<void>;
 };

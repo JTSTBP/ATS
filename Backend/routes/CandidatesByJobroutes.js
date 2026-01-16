@@ -119,14 +119,14 @@ async function sendUpdateNotificationToReporter(updatingUserId, candidateName, j
 // 🔵 Get all candidates (with Pagination & Filtering)
 router.get("/", async (req, res) => {
   try {
-    const { page, limit, search, status, client, jobTitle, stage } = req.query;
+    const { page, limit, search, status, client, jobTitle, stage, startDate, endDate } = req.query;
 
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
     console.log("🔍 Candidates Filter Request:", {
-      page, limit, search, status, client, jobTitle, stage
+      page, limit, search, status, client, jobTitle, stage, startDate, endDate
     });
 
     // Base Match Stage (for direct fields)
@@ -140,6 +140,19 @@ router.get("/", async (req, res) => {
     // Filter by Interview Stage
     if (stage && stage !== "all") {
       matchStage.interviewStage = stage;
+    }
+
+    // Filter by Date Range (createdAt)
+    if (startDate || endDate) {
+      matchStage.createdAt = {};
+      if (startDate) {
+        matchStage.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchStage.createdAt.$lte = end;
+      }
     }
 
     // Search (Candidate Name, Email, Phone, Skills) - stored in dynamicFields
@@ -429,10 +442,10 @@ router.post("/", upload.single("resume"), async (req, res) => {
 // 🟣 Get Candidates with Role-Based Access Control (Pagination & Filtering)
 router.get("/role-based-candidates", async (req, res) => {
   try {
-    const { userId, designation, page, limit, search, status, client, jobTitle, stage } = req.query;
+    const { userId, designation, page, limit, search, status, client, jobTitle, stage, startDate, endDate } = req.query;
 
     console.log("🔍 Role-Based Candidates Request:", {
-      userId, designation, page, limit
+      userId, designation, page, limit, startDate, endDate
     });
 
     const user = await User.findById(userId);
@@ -521,6 +534,19 @@ router.get("/role-based-candidates", async (req, res) => {
     }
     if (stage && stage !== "all" && stage !== "All Stages") {
       matchStage.interviewStage = stage;
+    }
+
+    // Filter by Date Range (createdAt)
+    if (startDate || endDate) {
+      matchStage.createdAt = {};
+      if (startDate) {
+        matchStage.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchStage.createdAt.$lte = end;
+      }
     }
 
     // Search
@@ -714,10 +740,10 @@ router.get("/role-based-candidates", async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    const { page, limit, search, status } = req.query;
+    const { page, limit, search, status, startDate, endDate } = req.query;
 
     console.log("🔍 Candidates User Request:", {
-      userId, page, limit, search, status
+      userId, page, limit, search, status, startDate, endDate
     });
 
     // 1️⃣ Base Query: Candidates created by this user
@@ -727,6 +753,19 @@ router.get("/user/:userId", async (req, res) => {
     if (status && status !== "all" && status !== "All Status") {
       // Handle special composite statuses from frontend if any, or just direct match
       query.status = new RegExp(`^${status}$`, "i");
+    }
+
+    // Filter by Date Range (createdAt)
+    if (startDate || endDate) {
+      query.createdAt = {};
+      if (startDate) {
+        query.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.createdAt.$lte = end;
+      }
     }
 
     // 3️⃣ Search Filter (Name, Email, Phone, Skills, Job Title)

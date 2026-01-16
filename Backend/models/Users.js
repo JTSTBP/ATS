@@ -38,13 +38,17 @@ const UserSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  phone: {
+  personalEmail: {
     type: String,
   },
-  department: {
-    type: String,
+  phoneNumber: {
+    personal: String,
+    official: String,
   },
-  joinDate: {
+  dateOfJoining: {
+    type: Date,
+  },
+  dateOfBirth: {
     type: Date,
   },
   profilePhoto: {

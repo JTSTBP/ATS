@@ -1,4 +1,4 @@
-import { Users, ShieldCheck, Briefcase, CalendarCheck } from "lucide-react";
+import { Users, Briefcase, CalendarCheck } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { formatDate } from "../../utils/dateUtils";
@@ -33,7 +33,9 @@ export default function AdminDashboard() {
     fetchallCandidates();
   }, []);
 
-  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    return new Date().toISOString().slice(0, 7); // Default to current month (YYYY-MM)
+  });
 
   // If user is Finance, show Finance Dashboard
   if (user?.designation === 'Finance') {
@@ -51,33 +53,39 @@ export default function AdminDashboard() {
     };
 
     // Filter data based on selected month
-    const filteredUsers = users.filter((u) => filterByMonth(u.createdAt));
     const filteredJobs = jobs.filter((j) => filterByMonth(j.createdAt));
     const filteredCandidates = candidates.filter((c) => filterByMonth(c.createdAt));
-    const filteredLeaves = leaves.filter((l) => filterByMonth(l.appliedAt));
 
-    const totalUsers = filteredUsers.length;
-    const activeAdmins = filteredUsers.filter((u) => u.isAdmin).length;
-    // Case-insensitive check for 'Recruiter' designation
-    const recruiters = filteredUsers.filter(
-      (u) => u.designation?.toLowerCase() === "recruiter"
-    ).length;
-    const mentors = filteredUsers.filter(
-      (u) => u.designation?.toLowerCase() === "mentor"
-    ).length;
     const totalCandidates = filteredCandidates.length;
-
-    const pendingLeaves = filteredLeaves.filter((l) => l.status === "Pending").length;
     const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
 
+    // Calculate Total Positions and Remaining
+    const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+
+    // Count joined per job to get remaining positions
+    const joinedPerJob = candidates.reduce((acc, c) => {
+      if (c.status === "Joined") {
+        // Handle both populated object and ID string
+        const jid = typeof c.jobId === 'object' && c.jobId !== null
+          ? String((c.jobId as any)._id)
+          : String(c.jobId);
+        acc[jid] = (acc[jid] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalJoinedForFilteredJobs = filteredJobs.reduce((sum, j) => {
+      const jid = String(j._id);
+      return sum + (joinedPerJob[jid] || 0);
+    }, 0);
+
+    const remainingPositions = totalPositions - totalJoinedForFilteredJobs;
+
     return {
-      totalUsers,
-      activeAdmins,
-      recruiters,
-      mentors,
       totalCandidates,
-      pendingLeaves,
       activeJobs,
+      totalPositions,
+      remainingPositions,
     };
   }, [users, leaves, jobs, candidates, selectedMonth]);
 
@@ -154,27 +162,9 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
-        {/* Total Users */}
-        <div
-          onClick={() => navigate("/Admin/Users")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
-              Total Users
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.totalUsers}
-            </h2>
-          </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
-            <Users size={24} />
-          </div>
-        </div>
-
         {/* Total Candidates */}
         <div
-          // onClick={() => navigate("/Admin/Candidates")} // Navigate if route exists
+          onClick={() => navigate("/Admin/candidates")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
@@ -190,75 +180,56 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-
-        {/* Active Admins */}
+        {/* Total Positions */}
         <div
-          onClick={() => navigate("/Admin/Users?isAdmin=true")}
+          onClick={() => navigate("/Admin/jobs")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-green-600 transition-colors">
-              Active Admins
+            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+              Total Positions
             </p>
             <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.activeAdmins}
+              {stats.totalPositions}
             </h2>
           </div>
-          <div className="bg-green-50 text-green-600 p-3 rounded-xl group-hover:bg-green-100 transition-colors">
-            <ShieldCheck size={24} />
-          </div>
-        </div>
-
-        {/* Recruiters */}
-        <div
-          onClick={() => navigate("/Admin/Users?role=Recruiter")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-orange-600 transition-colors">
-              Recruiters
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.recruiters}
-            </h2>
-          </div>
-          <div className="bg-orange-50 text-orange-600 p-3 rounded-xl group-hover:bg-orange-100 transition-colors">
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
             <Briefcase size={24} />
           </div>
         </div>
 
-        {/* Mentors */}
+        {/* Positions Left */}
         <div
-          onClick={() => navigate("/Admin/Users?role=Mentor")}
+          onClick={() => navigate("/Admin/jobs")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-teal-600 transition-colors">
-              Mentors
+            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+              Positions Left
             </p>
             <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.mentors}
+              {stats.remainingPositions}
             </h2>
           </div>
-          <div className="bg-teal-50 text-teal-600 p-3 rounded-xl group-hover:bg-teal-100 transition-colors">
-            <Users size={24} /> {/* Or another icon like GraduationCap if available */}
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+            <Briefcase size={24} />
           </div>
         </div>
 
-        {/* Pending Leaves */}
+        {/* Active Jobs */}
         <div
-          onClick={() => navigate("/Admin/leaveApplications?status=Pending")}
+          onClick={() => navigate("/Admin/jobs")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-purple-600 transition-colors">
-              Pending Leaves
+            <p className="text-slate-500 text-sm font-medium group-hover:text-amber-600 transition-colors">
+              Active Jobs
             </p>
             <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.pendingLeaves}
+              {stats.activeJobs}
             </h2>
           </div>
-          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-100 transition-colors">
+          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
             <CalendarCheck size={24} />
           </div>
         </div>
@@ -329,7 +300,7 @@ export default function AdminDashboard() {
             <p className="text-sm text-slate-500">Currently open positions</p>
           </div>
           <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold">
-            {stats.activeJobs} Active
+            {stats.remainingPositions} openings
           </span>
         </div>
 

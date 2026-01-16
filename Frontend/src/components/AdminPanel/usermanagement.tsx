@@ -127,14 +127,14 @@ export default function UserManagement() {
       designation: user.designation,
       password: "",
       appPassword: user.appPassword || "",
-      reporter: user.reporter || "",
+      reporter: typeof user.reporter === 'object' && user.reporter !== null ? user.reporter._id : (user.reporter || ""),
       isAdmin: user.isAdmin,
       personalEmail: user.personalEmail || "",
       phoneNumber: {
         personal: user.phoneNumber?.personal || "",
         official: user.phoneNumber?.official || "",
       },
-      dateOfJoining: user.dateOfJoining ? new Date(user.dateOfJoining).toISOString().split('T')[0] : "",
+      dateOfJoining: (user.dateOfJoining || user.joinDate) ? new Date(user.dateOfJoining || user.joinDate).toISOString().split('T')[0] : "",
       dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
     });
     setEditUserId(user._id);
@@ -739,24 +739,6 @@ export default function UserManagement() {
                       </div>
                     </div>
 
-                    <div className="pt-2">
-                      <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors group">
-                        <div className="relative flex items-center justify-center">
-                          <input
-                            type="checkbox"
-                            name="isAdmin"
-                            checked={formData.isAdmin}
-                            onChange={handleChange}
-                            className="peer h-5 w-5 cursor-pointer appearance-none rounded-md border border-slate-300 transition-all checked:border-blue-500 checked:bg-blue-500 group-hover:border-blue-400"
-                          />
-                          <Check size={12} className="pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100" strokeWidth={3} />
-                        </div>
-                        <div>
-                          <span className="block text-sm font-semibold text-slate-700">Grant Admin Access</span>
-                          <span className="block text-xs text-slate-500">User will have full access to all settings</span>
-                        </div>
-                      </label>
-                    </div>
                   </div>
                 </div>
 

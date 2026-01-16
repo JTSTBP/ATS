@@ -20,6 +20,14 @@ interface User {
   };
   createdAt: string;
   isAdmin: boolean;
+  personalEmail?: string;
+  phoneNumber?: {
+    personal: string;
+    official: string;
+  };
+  dateOfJoining?: string;
+  dateOfBirth?: string;
+  appPassword?: string;
 }
 
 interface UserFormData {
@@ -29,6 +37,14 @@ interface UserFormData {
   password?: string;
   reporter?: string;
   isAdmin: boolean;
+  personalEmail?: string;
+  phoneNumber?: {
+    personal: string;
+    official: string;
+  };
+  dateOfJoining?: string;
+  dateOfBirth?: string;
+  appPassword?: string;
 }
 
 interface Leave {

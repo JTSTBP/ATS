@@ -7,7 +7,7 @@ const router = express.Router();
 // ➕ Create New User
 router.post("/", async (req, res) => {
   try {
-    const { name, email, designation, password, reporter, isAdmin } = req.body;
+    const { name, email, designation, password, reporter, isAdmin, personalEmail, phoneNumber, dateOfJoining, dateOfBirth, appPassword } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -22,7 +22,11 @@ router.post("/", async (req, res) => {
       password,
       reporter: reporter || null,
       isAdmin: isAdmin || false,
-      appPassword: req.body.appPassword,
+      personalEmail,
+      phoneNumber,
+      dateOfJoining,
+      dateOfBirth,
+      appPassword,
     });
 
     res.status(201).json(newUser);
@@ -97,7 +101,7 @@ router.get("/", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
-  const { name, email, designation, reporter, password, isAdmin } = req.body;
+  const { name, email, designation, reporter, password, isAdmin, personalEmail, phoneNumber, dateOfJoining, dateOfBirth, appPassword } = req.body;
 
   try {
     let user = await User.findById(req.params.id);
@@ -118,7 +122,11 @@ router.put("/:id", async (req, res) => {
     user.designation = designation || user.designation;
     user.reporter = reporter || user.reporter;
     user.isAdmin = isAdmin !== undefined ? isAdmin : user.isAdmin;
-    user.appPassword = req.body.appPassword || user.appPassword;
+    user.personalEmail = personalEmail || user.personalEmail;
+    user.phoneNumber = phoneNumber || user.phoneNumber;
+    user.dateOfJoining = dateOfJoining || user.dateOfJoining;
+    user.dateOfBirth = dateOfBirth || user.dateOfBirth;
+    user.appPassword = appPassword || user.appPassword;
 
     // Update password if provided
     if (password) {
