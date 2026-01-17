@@ -798,22 +798,22 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   <InputLabel>Lead Recruiter</InputLabel>
                   <Select
                     value={
-                      typeof formData.leadRecruiter === "object"
-                        ? formData.leadRecruiter._id
+                      formData.leadRecruiter && typeof formData.leadRecruiter === "object"
+                        ? (formData.leadRecruiter as any)._id
                         : formData.leadRecruiter || ""
                     }
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
                         leadRecruiter:
-                          typeof e.target.value === "object"
+                          typeof e.target.value === "object" && e.target.value !== null
                             ? (e.target.value as any)?._id
                             : e.target.value,
                       }))
                     }
                   >
                     {(formData.assignedRecruiters || []).map((r) => {
-                      const id = typeof r === "object" ? r._id : r;
+                      const id = r && typeof r === "object" ? r._id : r;
                       const recruiter = recruiterUsers?.find(
                         (u: any) => u?._id === id
                       ) || users?.find((u) => u._id === id);
