@@ -52,7 +52,7 @@ const JobCard: React.FC<JobCardProps> = ({
 }) => {
     const { user } = useAuth(); // Assuming useAuth is available or imported
     const navigate = useNavigate();
-    const handleTitleClick = () => {
+    const handleTitleClick = (status?: string) => {
         if (id) {
             const basePath =
                 user?.designation === "Admin"
@@ -61,7 +61,7 @@ const JobCard: React.FC<JobCardProps> = ({
                         ? "/Manager"
                         : "/Mentor";
 
-            navigate(`${basePath}/jobs/${id}/candidates`);
+            navigate(`${basePath}/jobs/${id}/candidates`, { state: { status } });
         }
     };
     return (
@@ -87,7 +87,12 @@ const JobCard: React.FC<JobCardProps> = ({
 
                 <div>
                     {/* Title */}
-                    <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
+                    <h2
+                        className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition"
+                        onClick={() => handleTitleClick()}
+                    >
+                        {title}
+                    </h2>
 
                     {/* Location */}
                     <p className="text-sm text-gray-500 mt-1">{location}</p>
@@ -113,7 +118,7 @@ const JobCard: React.FC<JobCardProps> = ({
             <div className="col-span-4 flex justify-center gap-8 items-center">
                 <div
                     className="text-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
-                    onClick={handleTitleClick}
+                    onClick={() => handleTitleClick("all")}
                 >
                     <p className="text-lg font-semibold text-gray-800">
                         {totalResponses}
@@ -124,10 +129,14 @@ const JobCard: React.FC<JobCardProps> = ({
                     <p className="text-xs text-gray-500 mt-1">Total Responses</p>
                 </div>
 
-                <div className="text-center">
+                <div
+                    className="text-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
+                    onClick={() => handleTitleClick("Shortlisted")}
+                >
                     <p className="text-lg font-semibold text-gray-800">{shortlisted}</p>
                     <p className="text-xs text-gray-500 mt-1">Shortlisted</p>
                 </div>
+
 
                 {positions !== undefined && positions > 0 && (
                     <div className="text-center">

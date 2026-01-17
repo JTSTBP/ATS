@@ -155,6 +155,30 @@ router.get("/", async (req, res) => {
       }
     }
 
+    // Filter by Joining Date Range
+    const { joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
+    if (joinStartDate || joinEndDate) {
+      matchStage.joiningDate = {};
+      if (joinStartDate) matchStage.joiningDate.$gte = new Date(joinStartDate);
+      if (joinEndDate) {
+        const end = new Date(joinEndDate);
+        end.setHours(23, 59, 59, 999);
+        matchStage.joiningDate.$lte = end;
+      }
+    }
+
+    // Filter by Selection Date Range
+    if (selectStartDate || selectEndDate) {
+      matchStage.selectionDate = {};
+      if (selectStartDate) matchStage.selectionDate.$gte = new Date(selectStartDate);
+      if (selectEndDate) {
+        const end = new Date(selectEndDate);
+        end.setHours(23, 59, 59, 999);
+        matchStage.selectionDate.$lte = end;
+      }
+    }
+
+
     // Search (Candidate Name, Email, Phone, Skills) - stored in dynamicFields
     if (search) {
       const searchRegex = new RegExp(search, "i");
@@ -245,11 +269,16 @@ router.get("/", async (req, res) => {
                   resumeUrl: 1,
                   status: 1,
                   interviewStage: 1,
+                  joiningDate: 1,
+                  offerLetter: 1,
+                  selectionDate: 1,
+                  expectedJoiningDate: 1,
                   createdAt: 1,
                   // Reconstruct jobId object
                   jobId: {
                     _id: "$job._id",
                     title: "$job.title",
+                    stages: "$job.stages",
                     clientId: {
                       _id: "$client._id",
                       companyName: "$client.companyName"
@@ -442,13 +471,13 @@ router.post("/", upload.single("resume"), async (req, res) => {
 // 🟣 Get Candidates with Role-Based Access Control (Pagination & Filtering)
 router.get("/role-based-candidates", async (req, res) => {
   try {
-    const { userId, designation, page, limit, search, status, client, jobTitle, stage, startDate, endDate } = req.query;
+    const { userId, designation, page, limit, search, status, client, jobTitle, stage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
 
     console.log("🔍 Role-Based Candidates Request:", {
-      userId, designation, page, limit, startDate, endDate
+      userId, designation, page, limit, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate
     });
-
     const user = await User.findById(userId);
+
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     // 1️⃣ Determine Allowed User IDs (Creator Logic)
@@ -549,6 +578,29 @@ router.get("/role-based-candidates", async (req, res) => {
       }
     }
 
+    // Filter by Joining Date Range
+    if (joinStartDate || joinEndDate) {
+      matchStage.joiningDate = {};
+      if (joinStartDate) matchStage.joiningDate.$gte = new Date(joinStartDate);
+      if (joinEndDate) {
+        const end = new Date(joinEndDate);
+        end.setHours(23, 59, 59, 999);
+        matchStage.joiningDate.$lte = end;
+      }
+    }
+
+    // Filter by Selection Date Range
+    if (selectStartDate || selectEndDate) {
+      matchStage.selectionDate = {};
+      if (selectStartDate) matchStage.selectionDate.$gte = new Date(selectStartDate);
+      if (selectEndDate) {
+        const end = new Date(selectEndDate);
+        end.setHours(23, 59, 59, 999);
+        matchStage.selectionDate.$lte = end;
+      }
+    }
+
+
     // Search
     if (search) {
       const searchRegex = new RegExp(search, "i");
@@ -628,6 +680,8 @@ router.get("/role-based-candidates", async (req, res) => {
                 _id: 1,
                 status: 1,
                 interviewStage: 1,
+                joiningDate: 1, // Added
+                offerLetter: 1, // Added
                 createdAt: 1,
                 resumeUrl: 1,
                 linkedinUrl: 1,
@@ -639,6 +693,7 @@ router.get("/role-based-candidates", async (req, res) => {
                 jobId: {
                   _id: "$job._id",
                   title: "$job.title",
+                  stages: "$job.stages",
                   clientId: {
                     _id: "$client._id",
                     companyName: "$client.companyName"
@@ -675,6 +730,10 @@ router.get("/role-based-candidates", async (req, res) => {
                 _id: 1,
                 status: 1,
                 interviewStage: 1,
+                joiningDate: 1,
+                offerLetter: 1,
+                selectionDate: 1,
+                expectedJoiningDate: 1,
                 createdAt: 1,
                 resumeUrl: 1,
                 linkedinUrl: 1,
@@ -740,11 +799,12 @@ router.get("/role-based-candidates", async (req, res) => {
 router.get("/user/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
-    const { page, limit, search, status, startDate, endDate } = req.query;
+    const { page, limit, search, status, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
 
     console.log("🔍 Candidates User Request:", {
-      userId, page, limit, search, status, startDate, endDate
+      userId, page, limit, search, status, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate
     });
+
 
     // 1️⃣ Base Query: Candidates created by this user
     const query = { createdBy: userId };
@@ -767,6 +827,29 @@ router.get("/user/:userId", async (req, res) => {
         query.createdAt.$lte = end;
       }
     }
+
+    // Filter by Joining Date Range
+    if (joinStartDate || joinEndDate) {
+      query.joiningDate = {};
+      if (joinStartDate) query.joiningDate.$gte = new Date(joinStartDate);
+      if (joinEndDate) {
+        const end = new Date(joinEndDate);
+        end.setHours(23, 59, 59, 999);
+        query.joiningDate.$lte = end;
+      }
+    }
+
+    // Filter by Selection Date Range
+    if (selectStartDate || selectEndDate) {
+      query.selectionDate = {};
+      if (selectStartDate) query.selectionDate.$gte = new Date(selectStartDate);
+      if (selectEndDate) {
+        const end = new Date(selectEndDate);
+        end.setHours(23, 59, 59, 999);
+        query.selectionDate.$lte = end;
+      }
+    }
+
 
     // 3️⃣ Search Filter (Name, Email, Phone, Skills, Job Title)
     // Note: Job Title search requires lookup, which is harder in simple find().
@@ -884,7 +967,14 @@ router.get("/user/:userId", async (req, res) => {
     const totalCandidates = await Candidate.countDocuments(query);
 
     const paginatedCandidates = await Candidate.find(query)
-      .populate("createdBy", "name email")
+      .populate({
+        path: "createdBy",
+        select: "name email reporter",
+        populate: {
+          path: "reporter",
+          select: "name"
+        }
+      })
       .populate({
         path: "jobId",
         select: "title _id clientId stages candidateFields",
@@ -1124,9 +1214,9 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
 // ... existing update route ...
 
 // 🔁 Update candidate status only
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
   try {
-    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate } = req.body;
+    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate } = req.body;
 
     // Get existing candidate to detect changes
     const existingCandidate = await Candidate.findById(req.params.id).populate('jobId', 'title');
@@ -1198,6 +1288,43 @@ router.patch("/:id/status", async (req, res) => {
         oldValue: existingCandidate.joiningDate ? new Date(existingCandidate.joiningDate).toLocaleDateString() : 'N/A',
         newValue: new Date(joiningDate).toLocaleDateString()
       });
+
+      // Handle Offer Letter Upload
+      if (req.file) {
+        console.log('📄 Offer Letter File Uploaded:', {
+          filename: req.file.filename,
+          originalname: req.file.originalname,
+          path: req.file.path,
+          size: req.file.size
+        });
+        updateData.offerLetter = `/uploads/resumes/${req.file.filename}`;
+        console.log('✅ Offer Letter Path Saved:', updateData.offerLetter);
+        changes.push({
+          field: 'Offer Letter',
+          oldValue: existingCandidate.offerLetter ? 'Previous Offer Letter' : 'None',
+          newValue: 'New Offer Letter Uploaded'
+        });
+      }
+    }
+
+    // If status is "Selected" and selectionDate is provided, update it
+    if (status === "Selected" && selectionDate) {
+      updateData.selectionDate = selectionDate;
+      changes.push({
+        field: 'Selection Date',
+        oldValue: existingCandidate.selectionDate ? new Date(existingCandidate.selectionDate).toLocaleDateString() : 'N/A',
+        newValue: new Date(selectionDate).toLocaleDateString()
+      });
+
+      // Handle Expected Joining Date (optional)
+      if (expectedJoiningDate) {
+        updateData.expectedJoiningDate = expectedJoiningDate;
+        changes.push({
+          field: 'Expected Joining Date',
+          oldValue: existingCandidate.expectedJoiningDate ? new Date(existingCandidate.expectedJoiningDate).toLocaleDateString() : 'N/A',
+          newValue: new Date(expectedJoiningDate).toLocaleDateString()
+        });
+      }
     }
 
     // If stage status and notes are provided, add to history
@@ -1295,6 +1422,19 @@ router.delete("/:id/:role", async (req, res) => {
           console.log(`Deleted resume file: ${resumePath}`);
         } catch (err) {
           console.error(`Error deleting resume file: ${err.message}`);
+        }
+      }
+    }
+
+    // Delete the Offer Letter file if it exists
+    if (candidate.offerLetter) {
+      const offerLetterPath = path.join(__dirname, '..', candidate.offerLetter);
+      if (fs.existsSync(offerLetterPath)) {
+        try {
+          fs.unlinkSync(offerLetterPath);
+          console.log(`Deleted offer letter file: ${offerLetterPath}`);
+        } catch (err) {
+          console.error(`Error deleting offer letter file: ${err.message}`);
         }
       }
     }

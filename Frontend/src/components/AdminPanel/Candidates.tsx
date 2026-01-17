@@ -41,6 +41,11 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     const [filterStage, setFilterStage] = useState("all");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
+    const [joinStartDate, setJoinStartDate] = useState("");
+    const [joinEndDate, setJoinEndDate] = useState("");
+    const [selectStartDate, setSelectStartDate] = useState("");
+    const [selectEndDate, setSelectEndDate] = useState("");
+
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -102,16 +107,23 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 jobTitle: filterJobTitle,
                 stage: filterStage,
                 startDate,
-                endDate
+                endDate,
+                joinStartDate,
+                joinEndDate,
+                selectStartDate,
+                selectEndDate
             });
+
         }, 300); // Debounce search
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm, startDate, endDate]);
+    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+
 
     // Reset page to 1 on filter change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate]);
+    }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+
 
     // 3️⃣ Get unique job titles from JOBS CONTEXT instead of candidates (since candidates are paginated)
     const uniqueJobTitles = Array.from(
@@ -158,25 +170,46 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     const [pendingStatusChange, setPendingStatusChange] = useState<{
         candidateId: string;
         newStatus: string;
+        interviewStage?: string;
+        currentJoiningDate?: string;
+        currentSelectionDate?: string;
+        currentExpectedJoiningDate?: string;
     } | null>(null);
 
-    const handleStatusChange = (candidateId: string, newStatus: string) => {
-        setPendingStatusChange({ candidateId, newStatus });
+    const handleStatusChange = (
+        candidateId: string,
+        newStatus: string,
+        interviewStage?: string,
+        currentJoiningDate?: string,
+        currentSelectionDate?: string,
+        currentExpectedJoiningDate?: string
+    ) => {
+        setPendingStatusChange({
+            candidateId,
+            newStatus,
+            interviewStage,
+            currentJoiningDate,
+            currentSelectionDate,
+            currentExpectedJoiningDate
+        });
         setStatusModalOpen(true);
     };
 
-    const confirmStatusChange = async (comment: string, joiningDate?: string) => {
+    const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
         if (!pendingStatusChange) return;
 
         await updateStatus(
             pendingStatusChange.candidateId,
             pendingStatusChange.newStatus,
             user?._id || "",
-            undefined, // interviewStage
+            pendingStatusChange.interviewStage, // interviewStage
             undefined, // stageStatus
             undefined, // stageNotes
             comment, // comment
-            joiningDate
+            joiningDate,
+            offerLetter,
+            selectionDate,
+            expectedJoiningDate
         );
 
         // Optimistic update or refetch
@@ -187,7 +220,11 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             jobTitle: filterJobTitle,
             stage: filterStage,
             startDate,
-            endDate
+            endDate,
+            joinStartDate,
+            joinEndDate,
+            selectStartDate,
+            selectEndDate
         });
         setStatusModalOpen(false);
         setPendingStatusChange(null);
@@ -298,12 +335,62 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                         />
                     </div>
 
+                    {statusFilter === "Joined" && (
+                        <>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Join From</label>
+                                <input
+                                    type="date"
+                                    value={joinStartDate}
+                                    onChange={(e) => setJoinStartDate(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Join To</label>
+                                <input
+                                    type="date"
+                                    value={joinEndDate}
+                                    onChange={(e) => setJoinEndDate(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {statusFilter === "Selected" && (
+                        <>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Select From</label>
+                                <input
+                                    type="date"
+                                    value={selectStartDate}
+                                    onChange={(e) => setSelectStartDate(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Select To</label>
+                                <input
+                                    type="date"
+                                    value={selectEndDate}
+                                    onChange={(e) => setSelectEndDate(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                />
+                            </div>
+                        </>
+                    )}
+
                     <div className="flex items-end">
-                        {(startDate || endDate) ? (
+                        {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate) ? (
                             <button
                                 onClick={() => {
                                     setStartDate("");
                                     setEndDate("");
+                                    setJoinStartDate("");
+                                    setJoinEndDate("");
+                                    setSelectStartDate("");
+                                    setSelectEndDate("");
                                 }}
                                 className="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition text-sm font-semibold"
                             >
@@ -313,6 +400,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                             <div className="w-full h-9"></div> // Placeholder to keep height consistent
                         )}
                     </div>
+
                 </div>
             </div>
 
@@ -356,12 +444,28 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                 <th className="px-6 py-3 text-left text-sm font-semibold">
                                     Contact
                                 </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
-                                    Experience
-                                </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
-                                    Skills
-                                </th>
+                                {statusFilter === "Joined" && (
+                                    <>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                            Joining Date
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                            Offer Letter
+                                        </th>
+                                    </>
+                                )}
+
+                                {statusFilter === "Selected" && (
+                                    <>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                            Selection Date
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                            Expected Joining Date
+                                        </th>
+                                    </>
+                                )}
+
                                 <th className="px-6 py-3 text-left text-sm font-semibold">
                                     Resume
                                 </th>
@@ -413,32 +517,72 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                             </div>
                                         </td>
 
-                                        {/* EXPERIENCE */}
-                                        <td className="px-6 py-4 text-sm text-gray-700">
-                                            {candidate.dynamicFields?.Experience
-                                                ? `${candidate.dynamicFields.Experience} years`
-                                                : "-"}
-                                        </td>
+                                        {statusFilter === "Joined" && (
+                                            <>
+                                                {/* JOINING DATE */}
+                                                <td className="px-6 py-4 text-sm text-gray-700">
+                                                    <div className="flex items-center gap-2">
+                                                        {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
+                                                        {/* Edit Button for Joined Details */}
+                                                        <button
+                                                            onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
+                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                                                            title="Edit Joining Details"
+                                                        >
+                                                            <Edit className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </td>
 
-                                        {/* SKILLS */}
-                                        <td className="px-6 py-4">
-                                            {candidate.dynamicFields?.Skills ? (
-                                                <div className="flex flex-wrap gap-1">
-                                                    {candidate.dynamicFields.Skills.split(",").map(
-                                                        (skill: any, i: any) => (
-                                                            <span
-                                                                key={i}
-                                                                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                                                            >
-                                                                {skill.trim()}
-                                                            </span>
-                                                        )
+                                                {/* OFFER LETTER */}
+                                                <td className="px-6 py-4 text-sm text-gray-700">
+                                                    {candidate.offerLetter ? (
+                                                        <a
+                                                            href={`${API_BASE_URL}${candidate.offerLetter}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-blue-600 hover:underline flex items-center"
+                                                        >
+                                                            <Upload className="w-4 h-4 mr-1" /> View
+                                                        </a>
+                                                    ) : (
+                                                        "-"
                                                     )}
-                                                </div>
-                                            ) : (
-                                                <span className="text-gray-400 text-sm">No Skills</span>
-                                            )}
-                                        </td>
+                                                </td>
+                                            </>
+                                        )}
+
+
+                                        {statusFilter === "Selected" && (
+                                            <>
+                                                {/* SELECTION DATE */}
+                                                <td className="px-6 py-4 text-sm text-gray-700">
+                                                    <div className="flex items-center gap-2">
+                                                        {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : "-"}
+                                                        {/* Edit Button for Selection Details */}
+                                                        <button
+                                                            onClick={() => handleStatusChange(
+                                                                candidate._id,
+                                                                "Selected",
+                                                                undefined,
+                                                                undefined,
+                                                                candidate.selectionDate,
+                                                                candidate.expectedJoiningDate
+                                                            )}
+                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                                                            title="Edit Selection Details"
+                                                        >
+                                                            <Edit className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+
+                                                {/* EXPECTED JOINING DATE */}
+                                                <td className="px-6 py-4 text-sm text-gray-700">
+                                                    {candidate.expectedJoiningDate ? new Date(candidate.expectedJoiningDate).toLocaleDateString() : "-"}
+                                                </td>
+                                            </>
+                                        )}
 
                                         {/* RESUME */}
                                         <td className="px-6 py-4">
@@ -484,6 +628,11 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 <option value="Joined">Joined</option>
                                                 <option value="Rejected">Rejected</option>
                                             </select>
+                                            {candidate.status === "Interviewed" && candidate.interviewStage && (
+                                                <div className="mt-2 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 text-center">
+                                                    {candidate.interviewStage}
+                                                </div>
+                                            )}
                                             {candidate.status === "Joined" && candidate.joiningDate && (
                                                 <p className="text-[10px] text-green-600 mt-1 font-medium">
                                                     Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
@@ -571,7 +720,6 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 candidate={editingCandidate}
             />
 
-            {/* Status Comment Modal */}
             <StatusUpdateModal
                 isOpen={statusModalOpen}
                 onClose={() => {
@@ -581,6 +729,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 onConfirm={confirmStatusChange}
                 newStatus={pendingStatusChange?.newStatus || ""}
                 candidateName={paginatedCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+                currentJoiningDate={pendingStatusChange?.currentJoiningDate} // Pass currentJoiningDate
+                currentSelectionDate={pendingStatusChange?.currentSelectionDate}
+                currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
             />
         </div >
     );

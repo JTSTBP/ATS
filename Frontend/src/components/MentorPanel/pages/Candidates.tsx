@@ -61,25 +61,46 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     candidateId: string;
     newStatus: string;
+    interviewStage?: string;
+    currentJoiningDate?: string;
+    currentSelectionDate?: string;
+    currentExpectedJoiningDate?: string;
   } | null>(null);
 
-  const handleStatusChange = (candidateId: string, newStatus: string) => {
-    setPendingStatusChange({ candidateId, newStatus });
+  const handleStatusChange = (
+    candidateId: string,
+    newStatus: string,
+    interviewStage?: string,
+    currentJoiningDate?: string,
+    currentSelectionDate?: string,
+    currentExpectedJoiningDate?: string
+  ) => {
+    setPendingStatusChange({
+      candidateId,
+      newStatus,
+      interviewStage,
+      currentJoiningDate,
+      currentSelectionDate,
+      currentExpectedJoiningDate
+    });
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
       pendingStatusChange.candidateId,
       pendingStatusChange.newStatus,
       user?._id || "",
-      undefined, // interviewStage
+      pendingStatusChange.interviewStage,
       undefined, // stageStatus
       undefined, // stageNotes
-      comment, // comment
-      joiningDate
+      comment,
+      joiningDate,
+      offerLetter,
+      selectionDate,
+      expectedJoiningDate
     );
     // Refresh current page
     if (user?._id) {
@@ -340,12 +361,28 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                 <th className="px-6 py-3 text-left text-sm font-semibold">
                   Contact
                 </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
-                  Experience
-                </th>
-                <th className="px-6 py-3 text-left text-sm font-semibold">
-                  Skills
-                </th>
+                {statusFilter === "Joined" && (
+                  <>
+                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                      Joining Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                      Offer Letter
+                    </th>
+                  </>
+                )}
+
+                {statusFilter === "Selected" && (
+                  <>
+                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                      Selection Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold">
+                      Expected Joining Date
+                    </th>
+                  </>
+                )}
+
                 <th className="px-6 py-3 text-left text-sm font-semibold">
                   Resume
                 </th>
@@ -388,32 +425,73 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                     </div>
                   </td>
 
-                  {/* EXPERIENCE */}
-                  <td className="px-6 py-4 text-sm text-gray-700">
-                    {candidate.dynamicFields?.Experience
-                      ? `${candidate.dynamicFields.Experience} years`
-                      : "-"}
-                  </td>
+                  {statusFilter === "Joined" && (
+                    <>
+                      {/* JOINING DATE */}
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        <div className="flex items-center gap-2">
+                          {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
+                          {/* Edit Button for Joined Details */}
+                          <button
+                            onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
+                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                            title="Edit Joining Details"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
 
-                  {/* SKILLS */}
-                  <td className="px-6 py-4">
-                    {candidate.dynamicFields?.Skills ? (
-                      <div className="flex flex-wrap gap-1">
-                        {(candidate.dynamicFields.Skills as string).split(",").map(
-                          (skill: string, i: number) => (
-                            <span
-                              key={i}
-                              className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
-                            >
-                              {skill.trim()}
-                            </span>
-                          )
+                      {/* OFFER LETTER */}
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {candidate.offerLetter ? (
+                          <a
+                            href={`${API_BASE_URL}${candidate.offerLetter}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline flex items-center"
+                          >
+                            <Upload className="w-4 h-4 mr-1" /> View
+                          </a>
+                        ) : (
+                          "-"
                         )}
-                      </div>
-                    ) : (
-                      <span className="text-gray-400 text-sm">No Skills</span>
-                    )}
-                  </td>
+                      </td>
+                    </>
+                  )}
+
+                  {statusFilter === "Selected" && (
+                    <>
+                      {/* SELECTION DATE */}
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        <div className="flex items-center gap-2">
+                          {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : "-"}
+                          {/* Edit Button for Selection Details */}
+                          <button
+                            onClick={() => handleStatusChange(
+                              candidate._id,
+                              "Selected",
+                              undefined,
+                              undefined,
+                              candidate.selectionDate,
+                              candidate.expectedJoiningDate
+                            )}
+                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                            title="Edit Selection Details"
+                          >
+                            <Edit className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* EXPECTED JOINING DATE */}
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {candidate.expectedJoiningDate ? new Date(candidate.expectedJoiningDate).toLocaleDateString() : "-"}
+                      </td>
+                    </>
+                  )}
+
+
 
                   {/* RESUME */}
                   <td className="px-6 py-4">
@@ -459,6 +537,11 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                       <option value="Joined">Joined</option>
                       <option value="Rejected">Rejected</option>
                     </select>
+                    {candidate.status === "Interviewed" && candidate.interviewStage && (
+                      <div className="mt-2 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 text-center">
+                        {candidate.interviewStage}
+                      </div>
+                    )}
                     {candidate.status === "Joined" && candidate.joiningDate && (
                       <p className="text-[10px] text-green-600 mt-1 font-medium">
                         Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
@@ -590,7 +673,10 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         }}
         onConfirm={confirmStatusChange}
         newStatus={pendingStatusChange?.newStatus || ""}
-        candidateName={paginatedCandidates.find((c) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+        candidateName={paginatedCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+        currentJoiningDate={pendingStatusChange?.currentJoiningDate}
+        currentSelectionDate={pendingStatusChange?.currentSelectionDate}
+        currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
       />
     </div>
   );

@@ -33,6 +33,11 @@ export default function Candidates() {
   const urlJobTitle = searchParams.get('jobTitle');
   const [jobTitleFilter, setJobTitleFilter] = useState(urlJobTitle || "All");
   const [clientFilter, setClientFilter] = useState("");
+  const [joinStartDate, setJoinStartDate] = useState("");
+  const [joinEndDate, setJoinEndDate] = useState("");
+  const [selectStartDate, setSelectStartDate] = useState("");
+  const [selectEndDate, setSelectEndDate] = useState("");
+
 
   // Modals
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
@@ -41,6 +46,9 @@ export default function Candidates() {
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     candidateId: string;
     newStatus: string;
+    currentJoiningDate?: string;
+    currentSelectionDate?: string;
+    currentExpectedJoiningDate?: string;
   } | null>(null);
 
   // Debounce Search
@@ -73,11 +81,18 @@ export default function Candidates() {
           search: debouncedSearch,
           status: statusFilter === "All Status" ? undefined : statusFilter,
           client: clientFilter,
-          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter,
+          joinStartDate,
+          joinEndDate,
+          selectStartDate,
+          selectEndDate
         }
       );
     }
-  }, [user, debouncedSearch, statusFilter, clientFilter, jobTitleFilter]);
+  }, [user, debouncedSearch, statusFilter, clientFilter, jobTitleFilter, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+
+
+
 
   // Handle Page Change
   const handlePageChange = (newPage: number) => {
@@ -91,18 +106,37 @@ export default function Candidates() {
           search: debouncedSearch,
           status: statusFilter === "All Status" ? undefined : statusFilter,
           client: clientFilter,
-          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter,
+          joinStartDate,
+          joinEndDate,
+          selectStartDate,
+          selectEndDate
         }
       );
     }
   };
 
-  const handleStatusChange = (candidateId: string, newStatus: string) => {
-    setPendingStatusChange({ candidateId, newStatus });
+
+
+
+  const handleStatusChange = (
+    candidateId: string,
+    newStatus: string,
+    currentJoiningDate?: string,
+    currentSelectionDate?: string,
+    currentExpectedJoiningDate?: string
+  ) => {
+    setPendingStatusChange({
+      candidateId,
+      newStatus,
+      currentJoiningDate,
+      currentSelectionDate,
+      currentExpectedJoiningDate
+    });
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
@@ -113,7 +147,10 @@ export default function Candidates() {
       undefined, // stageStatus
       undefined, // stageNotes
       comment, // comment
-      joiningDate
+      joiningDate,
+      offerLetter,
+      selectionDate,
+      expectedJoiningDate
     );
 
     // Refetch current page after update
@@ -127,7 +164,12 @@ export default function Candidates() {
           search: debouncedSearch,
           status: statusFilter === "All Status" ? undefined : statusFilter,
           client: clientFilter,
-          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+          jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter,
+          joinStartDate,
+          joinEndDate,
+          selectStartDate,
+          selectEndDate
+
         }
       );
     }
@@ -239,6 +281,66 @@ export default function Candidates() {
                     <option>Hired</option>
                   </select>
                 </div>
+
+                {statusFilter === "Joined" && (
+                  <>
+                    <div className="relative flex-1">
+                      <input
+                        type="date"
+                        value={joinStartDate}
+                        onChange={(e) => setJoinStartDate(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm text-sm"
+                        title="Joining Date From"
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <input
+                        type="date"
+                        value={joinEndDate}
+                        onChange={(e) => setJoinEndDate(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm text-sm"
+                        title="Joining Date To"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {statusFilter === "Selected" && (
+                  <>
+                    <div className="relative flex-1">
+                      <input
+                        type="date"
+                        value={selectStartDate}
+                        onChange={(e) => setSelectStartDate(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm text-sm"
+                        title="Selection Date From"
+                      />
+                    </div>
+                    <div className="relative flex-1">
+                      <input
+                        type="date"
+                        value={selectEndDate}
+                        onChange={(e) => setSelectEndDate(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm text-sm"
+                        title="Selection Date To"
+                      />
+                    </div>
+                  </>
+                )}
+
+                {(joinStartDate || joinEndDate || selectStartDate || selectEndDate) && (
+                  <button
+                    onClick={() => {
+                      setJoinStartDate("");
+                      setJoinEndDate("");
+                      setSelectStartDate("");
+                      setSelectEndDate("");
+                    }}
+                    className="px-4 py-2 text-sm text-red-600 hover:text-red-700 font-medium whitespace-nowrap"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -364,7 +466,13 @@ export default function Candidates() {
                         <div className="col-span-12 md:col-span-2 min-w-0" onClick={(e) => e.stopPropagation()}>
                           <select
                             value={candidate.status || "New"}
-                            onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
+                            onChange={(e) => handleStatusChange(
+                              candidate._id || "",
+                              e.target.value,
+                              candidate.joiningDate,
+                              candidate.selectionDate,
+                              candidate.expectedJoiningDate
+                            )}
                             className={`w-full px-2 py-1.5 rounded-lg text-xs font-medium border outline-none cursor-pointer appearance-none ${candidate.status === "New"
                               ? "bg-blue-50 text-blue-700 border-blue-200"
                               : (candidate.status === "Interview" || candidate.status === "Interviewed")
@@ -388,9 +496,45 @@ export default function Candidates() {
                             <option value="Rejected">Rejected</option>
                           </select>
                           {candidate.status === "Joined" && candidate.joiningDate && (
-                            <p className="text-[10px] text-teal-600 mt-0.5 font-medium text-center">
-                              Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
-                            </p>
+                            <div className="flex items-center justify-center gap-1 mt-0.5">
+                              <p className="text-[10px] text-teal-600 font-medium whitespace-nowrap">
+                                Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                              </p>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleStatusChange(candidate._id, "Joined", candidate.joiningDate);
+                                }}
+                                className="text-teal-600 hover:text-teal-800"
+                                title="Edit Joining Date"
+                              >
+                                <Filter size={10} className="inline" /> {/* Using Filter as Edit icon placeholder since Edit isn't imported here? Wait, let me check imports. */}
+                              </button>
+                            </div>
+                          )}
+                          {candidate.status === "Selected" && candidate.selectionDate && (
+                            <div className="flex flex-col items-center mt-0.5 space-y-0.5">
+                              <div className="flex items-center justify-center gap-1">
+                                <p className="text-[10px] text-indigo-600 font-medium whitespace-nowrap">
+                                  Selected: {new Date(candidate.selectionDate).toLocaleDateString()}
+                                </p>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStatusChange(candidate._id, "Selected", undefined, candidate.selectionDate, candidate.expectedJoiningDate);
+                                  }}
+                                  className="text-indigo-600 hover:text-indigo-800"
+                                  title="Edit Selection Date"
+                                >
+                                  <Briefcase size={10} className="inline" /> {/* Placeholder icon */}
+                                </button>
+                              </div>
+                              {candidate.expectedJoiningDate && (
+                                <p className="text-[10px] text-indigo-500 font-medium whitespace-nowrap">
+                                  Exp. Join: {new Date(candidate.expectedJoiningDate).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
 
@@ -517,6 +661,9 @@ export default function Candidates() {
         onConfirm={confirmStatusChange}
         newStatus={pendingStatusChange?.newStatus || ""}
         candidateName={paginatedCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
+        currentJoiningDate={pendingStatusChange?.currentJoiningDate}
+        currentSelectionDate={pendingStatusChange?.currentSelectionDate}
+        currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
       />
     </>
   );

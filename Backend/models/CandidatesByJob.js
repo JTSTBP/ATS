@@ -39,6 +39,15 @@ const candidateSchema = new mongoose.Schema(
       type: Object,
       default: {},
     },
+    offerLetter: {
+      type: String, // Path to the uploaded offer letter
+    },
+    selectionDate: {
+      type: Date,
+    },
+    expectedJoiningDate: {
+      type: Date,
+    },
     interviewStage: {
       type: String,
       default: null,

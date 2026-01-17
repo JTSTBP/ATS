@@ -5,10 +5,13 @@ import { X } from "lucide-react";
 interface StatusUpdateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (comment: string, joiningDate?: string) => void;
+    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => void;
     newStatus: string;
     candidateName?: string;
     isCommentOnly?: boolean;
+    currentJoiningDate?: string;
+    currentSelectionDate?: string;
+    currentExpectedJoiningDate?: string;
 }
 
 export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
@@ -18,20 +21,30 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     newStatus,
     candidateName,
     isCommentOnly = false,
+    currentJoiningDate,
+    currentSelectionDate,
+    currentExpectedJoiningDate,
 }) => {
     const [comment, setComment] = useState("");
     const [joiningDate, setJoiningDate] = useState("");
+    const [offerLetter, setOfferLetter] = useState<File | undefined>(undefined);
+    const [selectionDate, setSelectionDate] = useState("");
+    const [expectedJoiningDate, setExpectedJoiningDate] = useState("");
 
     useEffect(() => {
         if (isOpen) {
             setComment("");
-            setJoiningDate("");
+            setJoiningDate(currentJoiningDate ? new Date(currentJoiningDate).toISOString().split('T')[0] : "");
+            setOfferLetter(undefined);
+            setSelectionDate(currentSelectionDate ? new Date(currentSelectionDate).toISOString().split('T')[0] : "");
+            setExpectedJoiningDate(currentExpectedJoiningDate ? new Date(currentExpectedJoiningDate).toISOString().split('T')[0] : "");
         }
-    }, [isOpen]);
+    }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate]);
 
     if (!isOpen) return null;
 
     const isJoined = newStatus === "Joined";
+    const isSelected = newStatus === "Selected";
 
     return (
         <AnimatePresence>
@@ -44,7 +57,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                 >
                     <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
                         <h3 className="text-lg font-bold text-gray-800">
-                            {isCommentOnly ? "Add Comment" : "Update Status"}
+                            {isCommentOnly ? "Add Comment" : (isJoined && currentJoiningDate ? "Update Joining Details" : "Update Status")}
                         </h3>
                         <button
                             onClick={onClose}
@@ -58,8 +71,42 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                         {!isCommentOnly && (
                             <p className="text-gray-600 mb-4">
                                 Changing status {candidateName ? `for ${candidateName}` : ""} to{" "}
+                                Changing status {candidateName ? `for ${candidateName}` : ""} to{" "}
                                 <span className="font-bold text-orange-600">{newStatus}</span>.
                             </p>
+                        )}
+                        {!isCommentOnly && isJoined && currentJoiningDate && (
+                            <p className="text-gray-600 mb-4">
+                                Update joining details {candidateName ? `for ${candidateName}` : ""}.
+                            </p>
+                        )}
+
+                        {isSelected && (
+                            <div className="mb-4 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Selection Date <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        required
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        value={selectionDate}
+                                        onChange={(e) => setSelectionDate(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Expected Joining Date (Optional)
+                                    </label>
+                                    <input
+                                        type="date"
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        value={expectedJoiningDate}
+                                        onChange={(e) => setExpectedJoiningDate(e.target.value)}
+                                    />
+                                </div>
+                            </div>
                         )}
 
                         {isJoined && (
@@ -73,6 +120,15 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                     className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                                     value={joiningDate}
                                     onChange={(e) => setJoiningDate(e.target.value)}
+                                />
+                                <label className="block text-sm font-medium text-gray-700 mt-3 mb-2">
+                                    Offer Letter (Optional)
+                                </label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx"
+                                    onChange={(e) => setOfferLetter(e.target.files?.[0])}
+                                    className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
                                 />
                             </div>
                         )}
@@ -101,7 +157,11 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                         alert("Please select a joining date");
                                         return;
                                     }
-                                    onConfirm(comment, joiningDate);
+                                    if (isSelected && !selectionDate) {
+                                        alert("Please select a selection date");
+                                        return;
+                                    }
+                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate);
                                 }}
                                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
                             >

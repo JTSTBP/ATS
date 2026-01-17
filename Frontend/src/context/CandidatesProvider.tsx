@@ -20,7 +20,10 @@ type Candidate = {
   updatedAt?: string;
   interviewStage?: string;
   joiningDate?: string;
+  selectionDate?: string;
+  expectedJoiningDate?: string;
 };
+
 
 type CandidateContextType = {
   candidates: Candidate[];
@@ -38,9 +41,30 @@ type CandidateContextType = {
       status?: string;
       startDate?: string;
       endDate?: string;
+      joinStartDate?: string;
+      joinEndDate?: string;
+      selectStartDate?: string;
+      selectEndDate?: string;
     }
   ) => Promise<void>;
-  fetchRoleBasedCandidates: (userId: string, designation: string, page: number, limit: number, filters?: any) => Promise<void>;
+  fetchRoleBasedCandidates: (
+    userId: string,
+    designation: string,
+    page: number,
+    limit: number,
+    filters?: {
+      search?: string;
+      status?: string;
+      client?: string;
+      jobTitle?: string;
+      joinStartDate?: string;
+      joinEndDate?: string;
+      selectStartDate?: string;
+      selectEndDate?: string;
+    }
+  ) => Promise<void>;
+
+
   createCandidate: (data: Candidate, file?: File) => Promise<Candidate | null>;
   updateCandidate: (
     id: string,
@@ -56,7 +80,10 @@ type CandidateContextType = {
     stageStatus?: "Selected" | "Rejected",
     stageNotes?: string,
     comment?: string,
-    joiningDate?: string
+    joiningDate?: string,
+    offerLetter?: File,
+    selectionDate?: string,
+    expectedJoiningDate?: string
   ) => Promise<Candidate | null>;
 
   // 🔹 Pagination
@@ -77,7 +104,12 @@ type CandidateContextType = {
       stage?: string;
       startDate?: string;
       endDate?: string;
+      joinStartDate?: string;
+      joinEndDate?: string;
+      selectStartDate?: string;
+      selectEndDate?: string;
     }
+
   ) => Promise<void>;
 };
 
@@ -364,18 +396,30 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     stageStatus?: "Selected" | "Rejected",
     stageNotes?: string,
     comment?: string,
-    joiningDate?: string
+    joiningDate?: string,
+    offerLetter?: File,
+    selectionDate?: string,
+    expectedJoiningDate?: string
   ) => {
     try {
-      const { data } = await axios.patch(`${API_URL}/${id}/status`, {
-        status,
-        role,
-        interviewStage,
-        stageStatus,
-        stageNotes,
-        comment,
-        joiningDate
+      // Use FormData if there's a file to upload
+      const formData = new FormData();
+      formData.append("status", status);
+      formData.append("role", role);
+
+      if (interviewStage) formData.append("interviewStage", interviewStage);
+      if (stageStatus) formData.append("stageStatus", stageStatus);
+      if (stageNotes) formData.append("stageNotes", stageNotes);
+      if (comment) formData.append("comment", comment);
+      if (joiningDate) formData.append("joiningDate", joiningDate);
+      if (offerLetter) formData.append("offerLetter", offerLetter);
+      if (selectionDate) formData.append("selectionDate", selectionDate);
+      if (expectedJoiningDate) formData.append("expectedJoiningDate", expectedJoiningDate);
+
+      const { data } = await axios.patch(`${API_URL}/${id}/status`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
       });
+
       if (data.success) {
         toast.success("Candidate status updated successfully");
         return data.candidate;

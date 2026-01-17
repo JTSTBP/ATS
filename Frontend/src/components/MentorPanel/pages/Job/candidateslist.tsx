@@ -13,13 +13,16 @@ import {
   Phone,
   Link,
   MessageSquare,
+  Edit, // Added
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthProvider";
 import { useCandidateContext } from "../../../../context/CandidatesProvider";
 import { useUserContext } from "../../../../context/UserProvider";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation, useNavigate } from "react-router-dom";
+
+
 import { toast } from "react-toastify";
 import { formatDate } from "../../../../utils/dateUtils";
 import { StatusUpdateModal } from "../../../Common/StatusUpdateModal";
@@ -40,13 +43,17 @@ import { StatusUpdateModal } from "../../../Common/StatusUpdateModal";
 
 const CandidatesList = () => {
   const { id } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
   // const [viewMode, setViewMode] = useState<"grid" | "list">("list"); // Unused
   const [sortBy, setSortBy] = useState("Relevance");
   const [showCount] = useState("40"); // setShowCount unused
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
   const [filteredList, setFilteredList] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(location.state?.status || "all");
   const [interviewStageFilter, setInterviewStageFilter] = useState("all");
+
   const [currentPage, setCurrentPage] = useState(1);
   const [fullFilteredList, setFullFilteredList] = useState([]);
   const [previewResumeUrl, setPreviewResumeUrl] = useState<string | null>(null);
@@ -56,6 +63,11 @@ const CandidatesList = () => {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedPocs, setSelectedPocs] = useState<string[]>([]);
   const [emailCandidates, setEmailCandidates] = useState<any[]>([]);
+  const [joinStartDate, setJoinStartDate] = useState("");
+  const [joinEndDate, setJoinEndDate] = useState("");
+  const [selectStartDate, setSelectStartDate] = useState("");
+  const [selectEndDate, setSelectEndDate] = useState("");
+
 
   // Status Modal State
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -63,6 +75,9 @@ const CandidatesList = () => {
     type: 'reject' | 'statusChange' | 'shortlist';
     candidateId: string;
     newStatus: string;
+    currentJoiningDate?: string;
+    currentSelectionDate?: string;
+    currentExpectedJoiningDate?: string;
   } | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
@@ -72,9 +87,10 @@ const CandidatesList = () => {
     updateStatus,
     candidates,
     fetchCandidatesByJob,
-    // loading, // Unused
+    loading,
     deleteCandidate,
   } = useCandidateContext();
+
   const { users } = useUserContext();
 
   // 1️⃣ Fetch all candidates on load
@@ -120,6 +136,37 @@ const CandidatesList = () => {
       );
     }
 
+    // Joining Date Filter
+    if (statusFilter === "Joined" && (joinStartDate || joinEndDate)) {
+      filtered = filtered.filter((c) => {
+        if (!c.joiningDate) return false;
+        const jDate = new Date(c.joiningDate);
+        if (joinStartDate && jDate < new Date(joinStartDate)) return false;
+        if (joinEndDate) {
+          const end = new Date(joinEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (jDate > end) return false;
+        }
+        return true;
+      });
+    }
+
+    // Selection Date Filter
+    if (statusFilter === "Selected" && (selectStartDate || selectEndDate)) {
+      filtered = filtered.filter((c) => {
+        if (!c.selectionDate) return false;
+        const sDate = new Date(c.selectionDate);
+        if (selectStartDate && sDate < new Date(selectStartDate)) return false;
+        if (selectEndDate) {
+          const end = new Date(selectEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (sDate > end) return false;
+        }
+        return true;
+      });
+    }
+
+
     // Sorting
     if (sortBy === "Name") {
       filtered = filtered.sort((a, b) =>
@@ -135,7 +182,8 @@ const CandidatesList = () => {
 
     // Save full filtered list before pagination
     setFullFilteredList(filtered as any);
-  }, [candidates, users, user, id, statusFilter, sortBy, interviewStageFilter]);
+  }, [candidates, users, user, id, statusFilter, sortBy, interviewStageFilter, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+
 
   useEffect(() => {
     const itemsPerPage = parseInt(showCount);
@@ -216,7 +264,7 @@ const CandidatesList = () => {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusAction = async (comment: string, joiningDate?: string) => {
+  const confirmStatusAction = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
     if (!pendingAction) return;
 
     if (pendingAction.type === 'reject' || pendingAction.type === 'statusChange') {
@@ -228,7 +276,10 @@ const CandidatesList = () => {
         undefined,
         undefined,
         comment,
-        joiningDate
+        joiningDate,
+        offerLetter,
+        selectionDate, // Add selectionDate
+        expectedJoiningDate // Add expectedJoiningDate
       );
 
       if (success) {
@@ -666,7 +717,18 @@ const CandidatesList = () => {
       )}
 
       <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition font-medium"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            Back to Jobs
+          </button>
+        </div>
+
         <div className="max-w-7xl mx-auto px-6">
+
           <div className="flex items-center gap-8 border-b border-gray-200">
             {/* ALL */}
             <button
@@ -836,6 +898,61 @@ const CandidatesList = () => {
               <option value="Date">Date</option>
               <option value="Name">Name</option>
             </select>
+
+            {statusFilter === "Joined" && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={joinStartDate}
+                  onChange={(e) => setJoinStartDate(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Joining Date From"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="date"
+                  value={joinEndDate}
+                  onChange={(e) => setJoinEndDate(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Joining Date To"
+                />
+              </div>
+            )}
+
+            {statusFilter === "Selected" && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectStartDate}
+                  onChange={(e) => setSelectStartDate(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Selection Date From"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="date"
+                  value={selectEndDate}
+                  onChange={(e) => setSelectEndDate(e.target.value)}
+                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  title="Selection Date To"
+                />
+              </div>
+            )}
+
+            {(joinStartDate || joinEndDate || selectStartDate || selectEndDate) && (
+              <button
+                onClick={() => {
+                  setJoinStartDate("");
+                  setJoinEndDate("");
+                  setSelectStartDate("");
+                  setSelectEndDate("");
+                }}
+                className="text-xs text-red-600 hover:text-red-700 font-medium"
+              >
+                Reset Dates
+              </button>
+            )}
+
 
             <button
               onClick={goPrev}
@@ -1025,7 +1142,12 @@ const CandidatesList = () => {
         </div>
 
         <div className="space-y-4">
-          {filteredList.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl shadow-md border border-gray-200">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+              <p className="text-gray-500 font-medium">Fetching candidates...</p>
+            </div>
+          ) : filteredList.length === 0 ? (
             <div className="bg-white rounded-xl p-12 text-center shadow-md border border-gray-200">
               <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">
@@ -1038,6 +1160,7 @@ const CandidatesList = () => {
             </div>
           ) : (
             filteredList.map((candidate: any) => (
+
               <div
                 key={candidate._id}
                 className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
@@ -1076,8 +1199,54 @@ const CandidatesList = () => {
 
                           {/* Joining Date Badge */}
                           {candidate.status === "Joined" && candidate.joiningDate && (
-                            <span className="px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200">
+                            <span className="px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200 flex items-center gap-1">
                               Joining: {formatDate(candidate.joiningDate)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent card click
+                                  setPendingAction({
+                                    type: 'statusChange',
+                                    candidateId: candidate._id,
+                                    newStatus: 'Joined',
+                                    currentJoiningDate: candidate.joiningDate
+                                  });
+                                  setStatusModalOpen(true);
+                                }}
+                                className="ml-1 p-0.5 hover:bg-green-200 rounded text-green-800"
+                                title="Edit Joining Details"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            </span>
+                          )}
+                          {/* Selection Date Badge */}
+                          {candidate.status === "Selected" && candidate.selectionDate && (
+                            <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded border border-indigo-200 flex items-center gap-1">
+                              Selected: {formatDate(candidate.selectionDate)}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPendingAction({
+                                    type: 'statusChange',
+                                    candidateId: candidate._id,
+                                    newStatus: 'Selected',
+                                    currentSelectionDate: candidate.selectionDate,
+                                    currentExpectedJoiningDate: candidate.expectedJoiningDate
+                                  });
+                                  setStatusModalOpen(true);
+                                }}
+                                className="ml-1 p-0.5 hover:bg-indigo-200 rounded text-indigo-800"
+                                title="Edit Selection Details"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                            </span>
+                          )}
+
+                          {/* Expected Joining Date (Optional, shown if Selected) */}
+                          {candidate.status === "Selected" && candidate.expectedJoiningDate && (
+                            <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 text-xs font-medium rounded border border-indigo-100 flex items-center gap-1">
+                              Exp. Join: {formatDate(candidate.expectedJoiningDate)}
                             </span>
                           )}
 
@@ -1111,6 +1280,17 @@ const CandidatesList = () => {
                             <span className="flex items-center gap-1">
                               📞 {candidate.dynamicFields.Phone}
                             </span>
+                          )}
+                          {/* Offer Letter Link */}
+                          {candidate.status === "Joined" && candidate.offerLetter && (
+                            <a
+                              href={`${API_BASE_URL}${candidate.offerLetter}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
+                            >
+                              <Users className="w-4 h-4" /> View Offer Letter
+                            </a>
                           )}
                         </div>
                       </div>
@@ -1202,7 +1382,10 @@ const CandidatesList = () => {
                             setPendingAction({
                               type: 'statusChange',
                               candidateId: candidate._id,
-                              newStatus: newStatus
+                              newStatus: newStatus,
+                              currentJoiningDate: candidate.joiningDate,
+                              currentSelectionDate: candidate.selectionDate,
+                              currentExpectedJoiningDate: candidate.expectedJoiningDate
                             });
                             setStatusModalOpen(true);
                           }}
@@ -1329,6 +1512,19 @@ const CandidatesList = () => {
                     {selectedCandidate.status === "Joined" && selectedCandidate.joiningDate && (
                       <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full border border-green-300 shadow-sm">
                         Joining: {formatDate(selectedCandidate.joiningDate)}
+                      </span>
+                    )}
+                    {/* Selection Date Badge */}
+                    {selectedCandidate.status === "Selected" && selectedCandidate.selectionDate && (
+                      <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full border border-indigo-300 shadow-sm">
+                        Selected: {formatDate(selectedCandidate.selectionDate)}
+                      </span>
+                    )}
+
+                    {/* Expected Joining Date Badge */}
+                    {selectedCandidate.status === "Selected" && selectedCandidate.expectedJoiningDate && (
+                      <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded-full border border-indigo-200 shadow-sm">
+                        Exp. Join: {formatDate(selectedCandidate.expectedJoiningDate)}
                       </span>
                     )}
 
@@ -1604,6 +1800,9 @@ const CandidatesList = () => {
             ? (fullFilteredList.find((c: any) => c._id === pendingAction.candidateId) as any)?.dynamicFields?.candidateName
             : ""
         }
+        currentJoiningDate={pendingAction?.currentJoiningDate}
+        currentSelectionDate={pendingAction?.currentSelectionDate}
+        currentExpectedJoiningDate={pendingAction?.currentExpectedJoiningDate}
       />
     </div>
   );

@@ -18,7 +18,6 @@ export default function Profile() {
         phone: user?.phone || '', // Ensure phone is mapped correctly if it exists in User type
         designation: user?.designation || '',
         department: user?.department || '', // Ensure department is mapped correctly
-        department: user?.department || '', // Ensure department is mapped correctly
         joinDate: user?.joinDate || '',
         appPassword: user?.appPassword || '',
     });
