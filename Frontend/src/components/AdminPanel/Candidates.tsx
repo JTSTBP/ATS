@@ -415,6 +415,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                         "Selected",
                         "Joined",
                         "Rejected",
+                        "Dropped",
                     ].map((status) => (
                         <button
                             key={status}
@@ -627,6 +628,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 <option value="Selected">Selected</option>
                                                 <option value="Joined">Joined</option>
                                                 <option value="Rejected">Rejected</option>
+                                                <option value="Dropped">Dropped</option>
                                             </select>
                                             {candidate.status === "Interviewed" && candidate.interviewStage && (
                                                 <div className="mt-2 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 text-center">

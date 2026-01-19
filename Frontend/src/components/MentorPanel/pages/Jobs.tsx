@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Plus,
   Briefcase,
   Search,
+  Users,
+  CalendarCheck,
 } from "lucide-react";
 import { JobForm } from "./JobForm";
 import { useJobContext } from "../../../context/DataProvider";
+import { useClientsContext } from "../../../context/ClientsProvider"; // Added
+import { useCandidateContext } from "../../../context/CandidatesProvider"; // Added
 import { JobDetailsModal } from "./JobDetailedView";
 import { useAuth } from "../../../context/AuthProvider";
 import JobCard from "./Job/listjobs";
@@ -56,8 +60,59 @@ export const JobsManager = ({
     updateJobStatus
   } = useJobContext();
 
+  const { jobs } = useJobContext(); // Get all jobs for stats
+  const { clients } = useClientsContext(); // Get all clients
+  const { candidates, fetchallCandidates } = useCandidateContext(); // Get all candidates
+
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Fetch candidates for stats calculation
+  useEffect(() => {
+    fetchallCandidates();
+  }, []);
+
+  // Calculate Stats
+  const stats = useMemo(() => {
+    // 1. Active Jobs
+    const activeJobsList = jobs.filter(j => j.status === 'Open');
+    const activeJobsCount = activeJobsList.length;
+
+    // 2. Active Clients (Clients with at least one Open job)
+    // We need to check the clientId of the active jobs. 
+    // Assuming job.clientId is populated or contains the ID.
+    const activeClientIds = new Set();
+    activeJobsList.forEach(job => {
+      if (job.clientId) {
+        const cId = typeof job.clientId === 'object' ? (job.clientId as any)._id : job.clientId;
+        if (cId) activeClientIds.add(cId);
+      }
+    });
+    const activeClientsCount = activeClientIds.size;
+
+    // 3. Positions Left
+    // Sum of noOfPositions for all Active Jobs
+    const totalPositions = activeJobsList.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
+
+    // Count Joined candidates for these Active Jobs
+    // We need to count candidates where status === 'Joined' AND candidate.jobId matches an active job
+    const activeJobIds = new Set(activeJobsList.map(j => j._id));
+    const joinedCandidatesCount = candidates.filter(c => {
+      if (c.status !== 'Joined') return false;
+      const jId = typeof c.jobId === 'object' ? (c.jobId as any)._id : c.jobId;
+      return activeJobIds.has(jId);
+    }).length;
+
+    const positionsLeftCount = Math.max(0, totalPositions - joinedCandidatesCount);
+
+    return {
+      activeJobs: activeJobsCount,
+      activeClients: activeClientsCount,
+      positionsLeft: positionsLeftCount
+    };
+  }, [jobs, candidates]); // Recalculate when jobs or candidates change
+
+
 
   const handleNavigateToCandidates = (jobTitle: string) => {
     if (onNavigateToCandidates) {
@@ -163,6 +218,43 @@ export const JobsManager = ({
           </button>
         )}
       </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Active Clients */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex justify-between items-center group hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-sm font-medium mb-1 group-hover:text-blue-600 transition-colors">Active Clients</p>
+            <h3 className="text-3xl font-bold text-slate-800">{stats.activeClients}</h3>
+          </div>
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+            <Users size={24} />
+          </div>
+        </div>
+
+        {/* Active Jobs */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex justify-between items-center group hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-sm font-medium mb-1 group-hover:text-amber-600 transition-colors">Active Jobs</p>
+            <h3 className="text-3xl font-bold text-slate-800">{stats.activeJobs}</h3>
+          </div>
+          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
+            <Briefcase size={24} />
+          </div>
+        </div>
+
+        {/* Positions Left */}
+        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex justify-between items-center group hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-sm font-medium mb-1 group-hover:text-emerald-600 transition-colors">Positions Left</p>
+            <h3 className="text-3xl font-bold text-slate-800">{stats.positionsLeft}</h3>
+          </div>
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+            <CalendarCheck size={24} />
+          </div>
+        </div>
+      </div>
+
 
       {/* Search + Filter */}
       <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">

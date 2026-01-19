@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { FileText, BarChart3, AlertTriangle, X, ChevronRight, Search, Filter, Check } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, Filter, Check, Users, Briefcase, CalendarCheck, X } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
@@ -8,14 +9,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "../../utils/dateUtils";
 
 export default function ReportsTab() {
-  const { users, leaves, fetchUsers, fetchAllLeaves } = useUserContext();
+  const { users, fetchUsers } = useUserContext();
   const { candidates, fetchallCandidates } = useCandidateContext();
   const { clients, fetchClients } = useClientsContext();
   const { jobs, fetchJobs } = useJobContext();
-  const [selectedReport, setSelectedReport] = useState<string | null>(null);
+  const navigate = useNavigate();
   const [candidatePopupData, setCandidatePopupData] = useState<{ title: string, clientName: string, candidates: any[] } | null>(null);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+
+  // Default to current month
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
 
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
@@ -37,115 +46,10 @@ export default function ReportsTab() {
 
   useEffect(() => {
     fetchUsers();
-    fetchAllLeaves();
     fetchallCandidates();
     fetchClients();
     fetchJobs();
   }, []);
-
-  const stats = {
-    totalUsers: users.length,
-    totalCandidates: candidates.length,
-    pendingLeaves: leaves.filter((l) => l.status === "Pending").length,
-    totalLeaves: leaves.length,
-  };
-
-  const reports = [
-    {
-      id: "pending_leaves",
-      name: "Pending Leave Requests",
-      category: "HR Management",
-      date: formatDate(new Date()),
-      status: stats.pendingLeaves > 0 ? "Action Required" : "Clear",
-      count: stats.pendingLeaves,
-      icon: AlertTriangle,
-      color: "text-orange-600",
-      bgColor: "bg-orange-100",
-    },
-    {
-      id: "users",
-      name: "User Directory",
-      category: "System",
-      date: formatDate(new Date()),
-      status: "Updated",
-      count: stats.totalUsers,
-      icon: FileText,
-      color: "text-green-600",
-      bgColor: "bg-green-100",
-    },
-    {
-      id: "all_leaves",
-      name: "Leave History Log",
-      category: "HR Management",
-      date: formatDate(new Date()),
-      status: "Available",
-      count: stats.totalLeaves,
-      icon: BarChart3,
-      color: "text-purple-600",
-      bgColor: "bg-purple-100",
-    },
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "New": return "bg-blue-100 text-blue-700 border border-blue-200";
-      case "Shortlisted": return "bg-orange-100 text-orange-700 border border-orange-200";
-      case "Interviewed": return "bg-purple-100 text-purple-700 border border-purple-200";
-      case "Selected": return "bg-green-100 text-green-700 border border-green-200";
-      case "Joined": return "bg-emerald-100 text-emerald-700 border border-emerald-200";
-      case "Rejected": return "bg-red-100 text-red-700 border border-red-200";
-      default: return "bg-slate-100 text-slate-700 border border-slate-200";
-    }
-  };
-
-  const getReportData = (reportId: string) => {
-    switch (reportId) {
-      case "pending_leaves":
-        return leaves
-          .filter((l) => l.status === "Pending")
-          .map((l: any) => ({
-            col1: l.name || "Unknown",
-            col2: l.reason || "N/A",
-            col3: `${formatDate(l.fromDate)} - ${formatDate(l.toDate)}`,
-            col4: l.reason || "N/A",
-            col5: "",
-            col6: "",
-          }));
-      case "users":
-        return users.map((u: any) => ({
-          col1: u.name,
-          col2: u.designation,
-          col3: u.email,
-          col4: "N/A",
-          col5: "",
-          col6: "",
-        }));
-      case "all_leaves":
-        return leaves.map((l: any) => ({
-          col1: l.name || "Unknown",
-          col2: l.reason || "N/A",
-          col3: l.status,
-          col4: formatDate(l.appliedAt),
-          col5: "",
-          col6: "",
-        }));
-      default:
-        return [];
-    }
-  };
-
-  const getHeaders = (reportId: string) => {
-    switch (reportId) {
-      case "pending_leaves":
-        return ["Employee", "Leave Type", "Duration", "Reason"];
-      case "users":
-        return ["Name", "Role", "Email", "Phone"];
-      case "all_leaves":
-        return ["Employee", "Type", "Status", "Applied On"];
-      default:
-        return [];
-    }
-  };
 
   const isWithinDateRange = (dateString: string) => {
     if (!startDate && !endDate) return true;
@@ -161,6 +65,66 @@ export default function ReportsTab() {
     if (end) return date <= end;
     return true;
   };
+
+  // Calculate statistics (Dashboard Style)
+  const dashboardStats = useMemo(() => {
+    // Filter functions
+    const filterByDate = (dateString: string | undefined) => {
+      if (!startDate && !endDate) return true;
+      return dateString ? isWithinDateRange(dateString) : false;
+    };
+
+    // Filter data based on selected date range
+    const filteredJobs = jobs.filter((j) => filterByDate(j.createdAt));
+    const filteredCandidates = candidates.filter((c) => filterByDate(c.createdAt));
+
+    const totalCandidates = filteredCandidates.length;
+    const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
+
+    // Calculate Total Positions and Remaining
+    const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+
+    // Count joined per job to get remaining positions
+    const joinedPerJob = candidates.reduce((acc, c) => {
+      if (c.status === "Joined") {
+        // Handle both populated object and ID string
+        const jid = typeof c.jobId === 'object' && c.jobId !== null
+          ? String((c.jobId as any)._id)
+          : String(c.jobId);
+        acc[jid] = (acc[jid] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalJoinedForFilteredJobs = filteredJobs.reduce((sum, j) => {
+      const jid = String(j._id);
+      return sum + (joinedPerJob[jid] || 0);
+    }, 0);
+
+    const remainingPositions = totalPositions - totalJoinedForFilteredJobs;
+
+    return {
+      totalCandidates,
+      activeJobs,
+      totalPositions,
+      remainingPositions,
+    };
+  }, [jobs, candidates, startDate, endDate]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "New": return "bg-blue-100 text-blue-700 border border-blue-200";
+      case "Shortlisted": return "bg-orange-100 text-orange-700 border border-orange-200";
+      case "Interviewed": return "bg-purple-100 text-purple-700 border border-purple-200";
+      case "Selected": return "bg-green-100 text-green-700 border border-green-200";
+      case "Joined": return "bg-emerald-100 text-emerald-700 border border-emerald-200";
+      case "Rejected": return "bg-red-100 text-red-700 border border-red-200";
+      case "Dropped": return "bg-gray-100 text-gray-700 border border-gray-200";
+      default: return "bg-slate-100 text-slate-700 border border-slate-200";
+    }
+  };
+
+
 
   const openCandidatePopup = (jobTitle: string, clientName: string, status: string | "Total", jobCandidates: any[]) => {
     setCandidatePopupData({
@@ -291,30 +255,120 @@ export default function ReportsTab() {
   return (
     <div className="text-slate-800 space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold">Reports & Insights</h1>
-        <p className="text-sm md:text-base text-slate-500 mt-1">
-          Real-time system overview and detailed reports.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Reports & Insights</h1>
+          <p className="text-sm md:text-base text-slate-500 mt-1">
+            Real-time system overview and detailed reports.
+          </p>
+        </div>
+
+        {/* Top Date Filter */}
+        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow border border-slate-200">
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase text-slate-500 font-bold ml-1">Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1"
+            />
+          </div>
+          <span className="text-slate-400">-</span>
+          <div className="flex flex-col">
+            <label className="text-[10px] uppercase text-slate-500 font-bold ml-1">End Date</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={() => { setStartDate(""); setEndDate(""); }}
+              className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 rounded transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {reports.map((report) => (
-          <div
-            key={report.id}
-            onClick={() => setSelectedReport(report.id)}
-            className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-blue-200"
-          >
-            <div>
-              <p className="text-slate-500 text-sm font-medium">{report.name}</p>
-              <h2 className="text-3xl font-bold mt-1 text-slate-800">{report.count}</h2>
-            </div>
-            <div className={`${report.bgColor} ${report.color} p-3 rounded-lg`}>
-              <report.icon size={24} />
-            </div>
+      {/* Stats Grid (Dashboard Style) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
+        {/* Total Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-indigo-600 transition-colors">
+              Total Candidates
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.totalCandidates}
+            </h2>
           </div>
-        ))}
+          <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-100 transition-colors">
+            <Users size={24} />
+          </div>
+        </div>
+
+        {/* Total Positions */}
+        <div
+          onClick={() => navigate("/Admin/jobs")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+              Total Positions
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.totalPositions}
+            </h2>
+          </div>
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+            <Briefcase size={24} />
+          </div>
+        </div>
+
+        {/* Positions Left */}
+        <div
+          onClick={() => navigate("/Admin/jobs")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+              Positions Left
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.remainingPositions}
+            </h2>
+          </div>
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+            <Briefcase size={24} />
+          </div>
+        </div>
+
+        {/* Active Jobs */}
+        <div
+          onClick={() => navigate("/Admin/jobs")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-amber-600 transition-colors">
+              Active Jobs
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.activeJobs}
+            </h2>
+          </div>
+          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
+            <CalendarCheck size={24} />
+          </div>
+        </div>
       </div>
 
 
@@ -453,6 +507,7 @@ export default function ReportsTab() {
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
                 <th className="py-3 px-4 text-center text-red-600 min-w-[80px]">Rejected</th>
+                <th className="py-3 px-4 text-center text-gray-600 min-w-[80px]">Dropped</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -488,8 +543,9 @@ export default function ReportsTab() {
                   const matchesClientSearch = clientSearch ? clientName.toLowerCase().includes(clientSearch.toLowerCase()) : true;
                   const matchesRecruiterSearch = recruiterSearch ? recruitersInvolved.some(r => r.toLowerCase().includes(recruiterSearch.toLowerCase())) : true;
                   const matchesJobSearch = jobSearch ? job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
+                  const matchesGlobalDate = job.createdAt ? isWithinDateRange(job.createdAt) : true;
 
-                  if (matchesDate && matchesClient && matchesJob && matchesRecruiter && matchesTotal && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch) {
+                  if (matchesDate && matchesClient && matchesJob && matchesRecruiter && matchesTotal && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch && matchesGlobalDate) {
                     reportRows.push({
                       job,
                       clientName,
@@ -510,50 +566,79 @@ export default function ReportsTab() {
                   );
                 }
 
-                return reportRows.map((row, i) => (
-                  <tr key={`${row.job._id}-${i}`} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-6 text-slate-600">{row.dateReceived}</td>
-                    <td className="py-4 px-6 font-medium text-slate-800">{row.clientName}</td>
-                    <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
-                    <td className="py-4 px-6 text-slate-600 text-center">{row.job.noOfPositions || '-'}</td>
-                    <td className="py-4 px-6 text-slate-600">
-                      <div className="flex flex-wrap gap-1">
-                        {row.recruitersInvolved.map((r: string) => (
-                          <span key={r} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] border border-slate-200">{r}</span>
-                        ))}
-                        {row.recruitersInvolved.length === 0 && <span className="text-slate-400 text-xs italic">No recruiters assigned</span>}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <button
-                        disabled={row.jobCandidates.length === 0}
-                        onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
-                        className={`px-2 py-0.5 rounded-full text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
-                          ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
-                          : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
-                      >
-                        {row.jobCandidates.length}
-                      </button>
-                    </td>
-                    {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected"].map(status => {
-                      const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
-                      const count = statusCandidates.length;
-                      return (
-                        <td key={status} className="py-4 px-4 text-center">
+                // Sort by date (newest first)
+                reportRows.sort((a, b) => new Date(b.job.createdAt || 0).getTime() - new Date(a.job.createdAt || 0).getTime());
+
+                const totals = reportRows.reduce((acc, row) => {
+                  acc.positions += (Number(row.job.noOfPositions) || 0);
+                  acc.uploads += row.jobCandidates.length;
+                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].forEach(status => {
+                    const count = row.jobCandidates.filter((c: any) => c.status === status).length;
+                    acc[status] = (acc[status] || 0) + count;
+                  });
+                  return acc;
+                }, { positions: 0, uploads: 0 } as Record<string, number>);
+
+                return (
+                  <>
+                    {reportRows.map((row, i) => (
+                      <tr key={`${row.job._id}-${i}`} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-6 text-slate-600">{row.dateReceived}</td>
+                        <td className="py-4 px-6 font-medium text-slate-800">{row.clientName}</td>
+                        <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
+                        <td className="py-4 px-6 text-slate-600 text-center">{row.job.noOfPositions || '-'}</td>
+                        <td className="py-4 px-6 text-slate-600">
+                          <div className="flex flex-wrap gap-1">
+                            {row.recruitersInvolved.map((r: string) => (
+                              <span key={r} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] border border-slate-200">{r}</span>
+                            ))}
+                            {row.recruitersInvolved.length === 0 && <span className="text-slate-400 text-xs italic">No recruiters assigned</span>}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4 text-center">
                           <button
-                            disabled={count === 0}
-                            onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                            className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                              ? `${getStatusColor(status)} hover:scale-110`
-                              : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                            disabled={row.jobCandidates.length === 0}
+                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
+                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                              : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
                           >
-                            {count}
+                            {row.jobCandidates.length}
                           </button>
                         </td>
-                      );
-                    })}
-                  </tr>
-                ));
+                        {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {/* Total Row */}
+                    <tr className="bg-slate-100 font-bold border-t-2 border-slate-200 sticky bottom-0 z-10 shadow-sm">
+                      <td colSpan={3} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
+                      <td className="py-4 px-6 text-center text-slate-800">{totals.positions}</td>
+                      <td className="py-4 px-6"></td>
+                      <td className="py-4 px-4 text-center text-slate-800">{totals.uploads}</td>
+                      {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => (
+                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                          {totals[status] || 0}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                );
               })()}
             </tbody>
           </table>
@@ -705,6 +790,7 @@ export default function ReportsTab() {
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
                 <th className="py-3 px-4 text-center text-red-600 min-w-[80px]">Rejected</th>
+                <th className="py-3 px-4 text-center text-gray-600 min-w-[80px]">Dropped</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -765,158 +851,74 @@ export default function ReportsTab() {
                   );
                 }
 
-                return reportRows.map((row, i) => (
-                  <tr key={`${row.recruiter._id}-${typeof row.job === 'object' ? row.job._id : row.job}-${i}`} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
-                    <td className="py-4 px-6 font-medium text-slate-800">{row.recruiter.name}</td>
-                    <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
-                    <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
-                    <td className="py-4 px-6 text-slate-600 text-center">{row.job.noOfPositions || '-'}</td>
-                    <td className="py-4 px-4 text-center">
-                      <button
-                        onClick={() => openCandidatePopup(row.job.title, row.clientName, "Uploaded", row.jobCandidates)}
-                        className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-xs font-bold border border-slate-200 min-w-[32px] hover:bg-slate-200"
-                      >
-                        {row.jobCandidates.length}
-                      </button>
-                    </td>
-                    {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected"].map(status => {
-                      const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
-                      const count = statusCandidates.length;
-                      return (
-                        <td key={status} className="py-4 px-4 text-center">
+                const totals = reportRows.reduce((acc, row) => {
+                  acc.positions += (Number(row.job.noOfPositions) || 0);
+                  acc.uploads += row.jobCandidates.length;
+                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].forEach(status => {
+                    const count = row.jobCandidates.filter((c: any) => c.status === status).length;
+                    acc[status] = (acc[status] || 0) + count;
+                  });
+                  return acc;
+                }, { positions: 0, uploads: 0 } as Record<string, number>);
+
+                return (
+                  <>
+                    {reportRows.map((row, i) => (
+                      <tr key={`${row.job._id}-${row.recruiter._id}-${i}`} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
+                        <td className="py-4 px-6 font-medium text-slate-800">{row.recruiter.name}</td>
+                        <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
+                        <td className="py-4 px-6 text-slate-600 max-w-[200px] truncate" title={row.job.title}>{row.job.title}</td>
+                        <td className="py-4 px-6 text-center text-slate-600">{row.job.noOfPositions || '-'}</td>
+                        <td className="py-4 px-4 text-center">
                           <button
-                            disabled={count === 0}
-                            onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                            className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                              ? `${getStatusColor(status)} hover:scale-110`
-                              : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                            disabled={row.jobCandidates.length === 0}
+                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
+                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                              : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
                           >
-                            {count}
+                            {row.jobCandidates.length}
                           </button>
                         </td>
-                      );
-                    })}
-                  </tr>
-                ));
+                        {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {/* Total Row */}
+                    <tr className="bg-slate-100 font-bold border-t-2 border-slate-200 sticky bottom-0 z-10 shadow-sm">
+                      <td colSpan={4} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
+                      <td className="py-4 px-6 text-center text-slate-800">{totals.positions}</td>
+                      <td className="py-4 px-4 text-center text-slate-800">{totals.uploads}</td>
+                      {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => (
+                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                          {totals[status] || 0}
+                        </td>
+                      ))}
+                    </tr>
+                  </>
+                );
               })()}
             </tbody>
           </table>
         </div>
       </div >
 
-      {/* Available Reports List */}
-      < div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden" >
-        <div className="p-6 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800">Available Reports</h2>
-        </div>
-        <div className="divide-y divide-slate-100">
-          {reports.map((report) => (
-            <div
-              key={report.id}
-              onClick={() => setSelectedReport(report.id)}
-              className="p-4 hover:bg-slate-50 transition-colors cursor-pointer flex items-center justify-between group"
-            >
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-lg ${report.bgColor} ${report.color} flex items-center justify-center`}>
-                  <report.icon size={24} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
-                    {report.name}
-                  </h3>
-                  <div className="flex items-center gap-3 text-sm text-slate-500">
-                    <span>{report.category}</span>
-                    <span className="w-1 h-1 rounded-full bg-slate-300" />
-                    <span>{report.count} Records</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${report.status === "Action Required"
-                  ? "bg-red-100 text-red-700"
-                  : "bg-green-100 text-green-700"
-                  }`}>
-                  {report.status}
-                </span>
-                <ChevronRight size={20} className="text-slate-400 group-hover:text-blue-600" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div >
-
-      {/* Report Modal */}
-      <AnimatePresence>
-        {
-          selectedReport && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-none md:rounded-xl shadow-xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[80vh] flex flex-col"
-              >
-                <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
-                  <div>
-                    <h2 className="text-lg md:text-xl font-bold text-slate-800">
-                      {reports.find(r => r.id === selectedReport)?.name}
-                    </h2>
-                    <p className="text-xs md:text-sm text-slate-500">Detailed View</p>
-                  </div>
-                  <button
-                    onClick={() => setSelectedReport(null)}
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-                  >
-                    <X size={20} className="text-slate-500 md:w-6 md:h-6" />
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-auto p-4 md:p-6">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
-                      <tr>
-                        {getHeaders(selectedReport).map((header, i) => (
-                          <th key={i} className="py-3 px-4">{header}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {getReportData(selectedReport).length > 0 ? (
-                        getReportData(selectedReport).map((row, i) => (
-                          <tr key={i} className="hover:bg-slate-50">
-                            <td className="py-3 px-4 font-medium text-slate-800">{row.col1}</td>
-                            <td className="py-3 px-4 text-slate-600">{row.col2}</td>
-                            {getHeaders(selectedReport).length > 2 && <td className="py-3 px-4 text-slate-600">{row.col3}</td>}
-                            {getHeaders(selectedReport).length > 3 && <td className="py-3 px-4 text-slate-600">{row.col4}</td>}
-                            {getHeaders(selectedReport).length > 4 && <td className="py-3 px-4 text-slate-600">{row.col5}</td>}
-                            {getHeaders(selectedReport).length > 5 && <td className="py-3 px-4 text-slate-600">{row.col6}</td>}
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={6} className="py-8 text-center text-slate-500">
-                            No records found for this report.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
-                  <button
-                    onClick={() => setSelectedReport(null)}
-                    className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium"
-                  >
-                    Close Report
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )
-        }
-      </AnimatePresence >
 
       {/* Candidate Details Popup */}
       <AnimatePresence>
@@ -945,53 +947,96 @@ export default function ReportsTab() {
                 </div>
 
                 <div className="flex-1 overflow-auto p-4 md:p-6">
-                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
-                      <tr>
-                        <th className="py-3 px-4">Name</th>
-                        <th className="py-3 px-4">Phone</th>
-                        <th className="py-3 px-4">Created By</th>
-                        <th className="py-3 px-4">Status</th>
-                        <th className="py-3 px-4 text-center">Applied On</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {candidatePopupData.candidates.length > 0 ? (
-                        candidatePopupData.candidates.map((c: any, i: number) => {
-                          const dynamicKeys = Object.keys(c.dynamicFields || {});
-                          const nameKey = dynamicKeys.find(k => k.toLowerCase().includes("name")) || dynamicKeys[0];
-                          const phoneKey = dynamicKeys.find(k => k.toLowerCase().includes("phone")) || dynamicKeys[1];
+                  {(() => {
+                    // Check if any candidate has status details worth showing
+                    const hasStatusDetails = candidatePopupData.candidates.some((c: any) =>
+                      (c.status === "Interviewed" && c.interviewStage) ||
+                      (c.status === "Selected" && (c.selectionDate || c.expectedJoiningDate || c.joiningDate)) ||
+                      (c.status === "Joined" && c.joiningDate)
+                    );
 
-                          const creatorId = typeof c.createdBy === 'object' ? c.createdBy._id : c.createdBy;
-                          const creatorName = users.find(u => u._id === creatorId)?.name || "Unknown";
+                    return (
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
+                          <tr>
+                            <th className="py-3 px-4">Name</th>
+                            <th className="py-3 px-4">Phone</th>
+                            <th className="py-3 px-4">Created By</th>
+                            <th className="py-3 px-4">Status</th>
+                            {hasStatusDetails && <th className="py-3 px-4">Status Details</th>}
+                            <th className="py-3 px-4 text-center">Applied On</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {candidatePopupData.candidates.length > 0 ? (
+                            candidatePopupData.candidates.map((c: any, i: number) => {
+                              const dynamicKeys = Object.keys(c.dynamicFields || {});
+                              const nameKey = dynamicKeys.find(k => k.toLowerCase().includes("name")) || dynamicKeys[0];
+                              const phoneKey = dynamicKeys.find(k => k.toLowerCase().includes("phone")) || dynamicKeys[1];
 
-                          return (
-                            <tr key={i} className="hover:bg-slate-50">
-                              <td className="py-3 px-4 font-medium text-slate-800">{c.dynamicFields?.[nameKey] || "N/A"}</td>
-                              <td className="py-3 px-4 text-slate-600">{c.dynamicFields?.[phoneKey] || "N/A"}</td>
-                              <td className="py-3 px-4 text-slate-600">
-                                <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-medium border border-slate-200">
-                                  {creatorName}
-                                </span>
+                              const creatorId = typeof c.createdBy === 'object' ? c.createdBy._id : c.createdBy;
+                              const creatorName = users.find(u => u._id === creatorId)?.name || "Unknown";
+
+                              return (
+                                <tr key={i} className="hover:bg-slate-50">
+                                  <td className="py-3 px-4 font-medium text-slate-800">{c.dynamicFields?.[nameKey] || "N/A"}</td>
+                                  <td className="py-3 px-4 text-slate-600">{c.dynamicFields?.[phoneKey] || "N/A"}</td>
+                                  <td className="py-3 px-4 text-slate-600">
+                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-medium border border-slate-200">
+                                      {creatorName}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(c.status)}`}>
+                                      {c.status}
+                                    </span>
+                                  </td>
+                                  {hasStatusDetails && (
+                                    <td className="py-3 px-4 text-slate-600">
+                                      {c.status === "Interviewed" && c.interviewStage && (
+                                        <div className="text-xs">
+                                          <span className="font-semibold">Stage:</span> {c.interviewStage}
+                                        </div>
+                                      )}
+                                      {c.status === "Selected" && (
+                                        <div className="text-xs space-y-1">
+                                          {c.selectionDate && (
+                                            <div>
+                                              <span className="font-semibold">Selected:</span> {formatDate(c.selectionDate)}
+                                            </div>
+                                          )}
+                                          {(c.expectedJoiningDate || c.joiningDate) && (
+                                            <div>
+                                              <span className="font-semibold">Joining:</span> {formatDate(c.expectedJoiningDate || c.joiningDate)}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                      {c.status === "Joined" && c.joiningDate && (
+                                        <div className="text-xs">
+                                          <span className="font-semibold">Joined:</span> {formatDate(c.joiningDate)}
+                                        </div>
+                                      )}
+                                      {!((c.status === "Interviewed" && c.interviewStage) || c.status === "Selected" || (c.status === "Joined" && c.joiningDate)) && (
+                                        <span className="text-slate-400">-</span>
+                                      )}
+                                    </td>
+                                  )}
+                                  <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={hasStatusDetails ? 6 : 5} className="py-8 text-center text-slate-500">
+                                No candidates found.
                               </td>
-                              <td className="py-3 px-4">
-                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(c.status)}`}>
-                                  {c.status}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
                             </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td colSpan={5} className="py-8 text-center text-slate-500">
-                            No candidates found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                          )}
+                        </tbody>
+                      </table>
+                    );
+                  })()}
                 </div>
 
                 <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">

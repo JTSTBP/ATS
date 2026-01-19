@@ -37,6 +37,7 @@ import CandidatesList from "./components/MentorPanel/pages/Job/candidateslist";
 import ManagerDashboard from "./components/ManagerPanel/Dashboard";
 import ManagerReports from "./components/ManagerPanel/Reports";
 import { MentorReports } from "./components/MentorPanel/pages/Reports";
+import AdminActivityLogs from "./components/AdminPanel/activitylogs";
 
 import Finance from "./components/AdminPanel/Finance";
 import { AdminCandidates } from "./components/AdminPanel/Candidates";
@@ -109,6 +110,7 @@ function App() {
             <Route path="/Admin" element={<AdminDashboard />} />
             <Route path="/Admin/reports" element={<ReportsTab />} />
             <Route path="/Admin/analytics" element={<AnalyticsTab />} />
+            <Route path="/Admin/activity" element={<AdminActivityLogs />} />
             <Route path="/Admin/jobs" element={<JobsManager />} />
             <Route path="/Admin/jobs/:id/candidates" element={<CandidatesList />} />
             <Route path="/Admin/clients" element={<ClientsManager />} />

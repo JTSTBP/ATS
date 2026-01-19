@@ -52,6 +52,7 @@ export default function AdminLayout() {
     { path: "/Admin/finance", label: "Finance", icon: DollarSign, roles: ["Admin", "Finance"] },
     { path: "/Admin/reports", label: "Reports", icon: FileText, roles: ["Admin"] },
     { path: "/Admin/analytics", label: "Analytics", icon: BarChart3, roles: ["Admin"] },
+    { path: "/Admin/activity", label: "Activity Logs", icon: ClipboardList, roles: ["Admin"] },
   ];
 
   const menuItems = allMenuItems.filter(item =>
