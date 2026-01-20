@@ -116,7 +116,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
         }, 300); // Debounce search
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, fetchPaginatedCandidates]);
 
 
     // Reset page to 1 on filter change

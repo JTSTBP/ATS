@@ -662,8 +662,8 @@ router.get("/role-based-candidates", async (req, res) => {
       // 3. Secondary Match (Client & Job Title Filters)
       {
         $match: {
-          ...(client && client !== "all" ? { "client.companyName": new RegExp(`^${client}$`, "i") } : {}),
-          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(`^${jobTitle}$`, "i") } : {})
+          ...(client && client !== "all" ? { "client.companyName": new RegExp(client, "i") } : {}),
+          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(jobTitle, "i") } : {})
         }
       },
 

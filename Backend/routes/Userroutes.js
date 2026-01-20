@@ -7,7 +7,7 @@ const router = express.Router();
 // ➕ Create New User
 router.post("/", async (req, res) => {
   try {
-    const { name, email, designation, password, reporter, isAdmin, personalEmail, phoneNumber, dateOfJoining, dateOfBirth, appPassword } = req.body;
+    const { name, email, designation, password, reporter, isAdmin, personalEmail, phoneNumber, phone, department, joinDate, dateOfJoining, dateOfBirth, appPassword } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -24,7 +24,10 @@ router.post("/", async (req, res) => {
       isAdmin: isAdmin || false,
       personalEmail,
       phoneNumber,
-      dateOfJoining,
+      phone: phone || (phoneNumber ? phoneNumber.official || phoneNumber.personal : ""),
+      department,
+      dateOfJoining: dateOfJoining || joinDate,
+      joinDate: joinDate || dateOfJoining,
       dateOfBirth,
       appPassword,
     });
@@ -101,7 +104,7 @@ router.get("/", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
-  const { name, email, designation, reporter, password, isAdmin, personalEmail, phoneNumber, dateOfJoining, dateOfBirth, appPassword } = req.body;
+  const { name, email, designation, reporter, password, isAdmin, personalEmail, phoneNumber, phone, department, joinDate, dateOfJoining, dateOfBirth, appPassword } = req.body;
 
   try {
     let user = await User.findById(req.params.id);
@@ -124,9 +127,18 @@ router.put("/:id", async (req, res) => {
     user.isAdmin = isAdmin !== undefined ? isAdmin : user.isAdmin;
     user.personalEmail = personalEmail || user.personalEmail;
     user.phoneNumber = phoneNumber || user.phoneNumber;
-    user.dateOfJoining = dateOfJoining || user.dateOfJoining;
+    user.phone = phone || user.phone;
+    user.department = department || user.department;
+    user.dateOfJoining = dateOfJoining || joinDate || user.dateOfJoining;
+    user.joinDate = joinDate || dateOfJoining || user.joinDate;
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
     user.appPassword = appPassword || user.appPassword;
+
+    // Sync sub-fields if phone is provided
+    if (phone && !phoneNumber) {
+      if (!user.phoneNumber) user.phoneNumber = {};
+      user.phoneNumber.official = phone;
+    }
 
     // Update password if provided
     if (password) {

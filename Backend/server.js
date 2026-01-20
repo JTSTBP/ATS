@@ -13,6 +13,7 @@ const sessionRoutes = require("./routes/Sessionroutes");
 const activityRoutes = require("./routes/Activityroutes");
 const invoiceRoutes = require("./routes/Invoiceroutes");
 const expenseRoutes = require("./routes/Expenseroutes");
+const attendanceRoutes = require("./routes/Attendanceroutes");
 
 
 // Load environment variables
@@ -45,6 +46,7 @@ app.use("/api/sessions", sessionRoutes);
 app.use("/api/activities", activityRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/expenses", expenseRoutes);
+app.use("/api/attendance", attendanceRoutes);
 
 
 

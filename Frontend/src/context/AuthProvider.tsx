@@ -26,6 +26,8 @@ interface User {
     designation: string;
   } | null;
   appPassword?: string;
+  personalEmail?: string;
+  dateOfBirth?: string;
 }
 
 interface AuthContextType {
@@ -155,12 +157,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // 🔹 LOGOUT FUNCTION
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    delete axios.defaults.headers.common["Authorization"];
-    toast.info("Logged out successfully");
+  const logout = async () => {
+    try {
+      // Call logout API to track attendance
+      const token = localStorage.getItem("token");
+      if (token) {
+        await axios.post(
+          `${API_BASE_URL}/api/auth/logout`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Error tracking logout:", error);
+      // Don't prevent logout if API call fails
+    } finally {
+      // Clear local state regardless of API call result
+      setUser(null);
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      delete axios.defaults.headers.common["Authorization"];
+      toast.info("Logged out successfully");
+    }
   };
 
   return (

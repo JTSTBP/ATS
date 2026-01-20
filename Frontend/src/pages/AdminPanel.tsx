@@ -14,6 +14,7 @@ import {
   Briefcase,
   DollarSign,
   Building2,
+  ClipboardCheck,
 } from "lucide-react";
 
 export default function AdminLayout() {
@@ -49,6 +50,7 @@ export default function AdminLayout() {
       icon: Calendar,
       roles: ["Admin"]
     },
+    { path: "/Admin/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["Admin"] },
     { path: "/Admin/finance", label: "Finance", icon: DollarSign, roles: ["Admin", "Finance"] },
     { path: "/Admin/reports", label: "Reports", icon: FileText, roles: ["Admin"] },
     { path: "/Admin/analytics", label: "Analytics", icon: BarChart3, roles: ["Admin"] },

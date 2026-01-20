@@ -15,12 +15,31 @@ export default function Profile() {
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
-        phone: user?.phone || '', // Ensure phone is mapped correctly if it exists in User type
+        phone: user?.phone || '',
         designation: user?.designation || '',
-        department: user?.department || '', // Ensure department is mapped correctly
+        department: user?.department || '',
         joinDate: user?.joinDate || '',
         appPassword: user?.appPassword || '',
+        personalEmail: user?.personalEmail || '',
+        dateOfBirth: user?.dateOfBirth || '',
     });
+
+    // Sync formData when user context changes
+    useEffect(() => {
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                designation: user.designation || '',
+                department: user.department || '',
+                joinDate: user.joinDate || '',
+                appPassword: user.appPassword || '',
+                personalEmail: user.personalEmail || '',
+                dateOfBirth: user.dateOfBirth || '',
+            });
+        }
+    }, [user]);
 
     // Initialize profile photo from user data
     useEffect(() => {
@@ -58,6 +77,8 @@ export default function Profile() {
         data.append('department', formData.department);
         data.append('joinDate', formData.joinDate);
         data.append('appPassword', formData.appPassword);
+        data.append('personalEmail', formData.personalEmail);
+        data.append('dateOfBirth', formData.dateOfBirth);
 
         if (removePhoto) {
             console.log('🗑️ Removing profile photo');
@@ -80,15 +101,19 @@ export default function Profile() {
     };
 
     const handleCancel = () => {
-        setFormData({
-            name: user?.name || '',
-            email: user?.email || '',
-            phone: user?.phone || '',
-            designation: user?.designation || '',
-            department: user?.department || '',
-            joinDate: user?.joinDate || '',
-            appPassword: user?.appPassword || '',
-        });
+        if (user) {
+            setFormData({
+                name: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                designation: user.designation || '',
+                department: user.department || '',
+                joinDate: user.joinDate || '',
+                appPassword: user.appPassword || '',
+                personalEmail: user.personalEmail || '',
+                dateOfBirth: user.dateOfBirth || '',
+            });
+        }
         setRemovePhoto(false);
         setSelectedFile(null);
         // Restore original photo
@@ -270,19 +295,94 @@ export default function Profile() {
                             </p>
                         </div>
 
+                        {/* Department */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <MapPin size={16} className="text-slate-400" />
+                                    DEPARTMENT
+                                </div>
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={formData.department}
+                                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    placeholder="Enter Department"
+                                />
+                            ) : (
+                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
+                                    {formData.department || 'Not provided'}
+                                </p>
+                            )}
+                        </div>
 
-
-                        {/* Join Date */}
+                        {/* Joining Date */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">
                                 <div className="flex items-center gap-2">
                                     <Calendar size={16} className="text-slate-400" />
-                                    JOIN DATE
+                                    JOINING DATE
                                 </div>
                             </label>
-                            <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                {formatDate(formData.joinDate)}
-                            </p>
+                            {isEditing ? (
+                                <input
+                                    type="date"
+                                    value={formData.joinDate ? formData.joinDate.split('T')[0] : ''}
+                                    onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                />
+                            ) : (
+                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
+                                    {formData.joinDate ? formatDate(formData.joinDate) : 'Not provided'}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Date of Birth */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Calendar size={16} className="text-slate-400" />
+                                    DATE OF BIRTH
+                                </div>
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="date"
+                                    value={formData.dateOfBirth ? formData.dateOfBirth.split('T')[0] : ''}
+                                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                />
+                            ) : (
+                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
+                                    {formData.dateOfBirth ? formatDate(formData.dateOfBirth) : 'Not provided'}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Personal Email */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Mail size={16} className="text-slate-400" />
+                                    PERSONAL EMAIL
+                                </div>
+                            </label>
+                            {isEditing ? (
+                                <input
+                                    type="email"
+                                    value={formData.personalEmail}
+                                    onChange={(e) => setFormData({ ...formData, personalEmail: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                                    placeholder="Enter Personal Email"
+                                />
+                            ) : (
+                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
+                                    {formData.personalEmail || 'Not provided'}
+                                </p>
+                            )}
                         </div>
 
                         {/* App Password */}

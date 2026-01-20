@@ -41,6 +41,8 @@ import AdminActivityLogs from "./components/AdminPanel/activitylogs";
 
 import Finance from "./components/AdminPanel/Finance";
 import { AdminCandidates } from "./components/AdminPanel/Candidates";
+import { ManagerCandidates } from "./components/ManagerPanel/Candidates";
+import Attendance from "./components/AdminPanel/attendance";
 import JobPreviewPage from "./components/RecruiterPanel/JobPreviewPage";
 import JobPreviewDetails from "./components/RecruiterPanel/JobPreviewDetails";
 import UploadCandidatePage from "./components/RecruiterPanel/UploadCandidatePage";
@@ -106,6 +108,7 @@ function App() {
               path="/Admin/leaveApplications"
               element={<MentorLeaveApplications />}
             />
+            <Route path="/Admin/attendance" element={<Attendance />} />
             <Route path="/Admin/finance" element={<Finance />} />
             <Route path="/Admin" element={<AdminDashboard />} />
             <Route path="/Admin/reports" element={<ReportsTab />} />
@@ -157,10 +160,10 @@ function App() {
               element={<JobsManager initialFormOpen={true} />}
             />
             <Route path="jobs/:id/candidates" element={<CandidatesList />} />
-            <Route path="candidates" element={<CandidatesManager />} />
+            <Route path="candidates" element={<ManagerCandidates />} />
             <Route
               path="candidates/add"
-              element={<CandidatesManager initialFormOpen={true} />}
+              element={<ManagerCandidates initialFormOpen={true} />}
             />
             <Route path="applications" element={<ApplicationsManager />} />
             <Route path="clients" element={<ClientsManager />} />

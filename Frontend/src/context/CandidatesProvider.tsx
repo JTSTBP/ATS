@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
 const API_BASE_URL =
@@ -57,6 +57,9 @@ type CandidateContextType = {
       status?: string;
       client?: string;
       jobTitle?: string;
+      stage?: string;
+      startDate?: string;
+      endDate?: string;
       joinStartDate?: string;
       joinEndDate?: string;
       selectStartDate?: string;
@@ -132,7 +135,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     totalCandidates: 0,
   });
 
-  const fetchPaginatedCandidates = async (
+  const fetchPaginatedCandidates = useCallback(async (
     page: number,
     limit: number,
     filters: any = {}
@@ -163,12 +166,12 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   /* 
    * 🟣 Fetch Role-Based Candidates with Pagination
    */
-  const fetchRoleBasedCandidates = async (
+  const fetchRoleBasedCandidates = useCallback(async (
     userId: string,
     designation: string,
     page: number,
@@ -203,9 +206,9 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchPaginatedCandidatesByUser = async (
+  const fetchPaginatedCandidatesByUser = useCallback(async (
     userId: string,
     page: number,
     limit: number,
@@ -237,9 +240,9 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchallCandidates = async () => {
+  const fetchallCandidates = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await axios.get(`${API_URL}`);
@@ -250,10 +253,10 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 🟢 Fetch candidates by jobId
-  const fetchCandidatesByJob = async (jobId: string) => {
+  const fetchCandidatesByJob = useCallback(async (jobId: string) => {
     setLoading(true);
     try {
       const { data } = await axios.get(`${API_URL}/job/${jobId}`);
@@ -264,9 +267,9 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchCandidatesByUser = async (userId: string) => {
+  const fetchCandidatesByUser = useCallback(async (userId: string) => {
     setLoading(true);
     try {
       const { data } = await axios.get(`${API_URL}/user/${userId}`);
@@ -277,9 +280,9 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const createCandidate = async (candidate: any, file?: File) => {
+  const createCandidate = useCallback(async (candidate: any, file?: File) => {
     try {
       const formData = new FormData();
 
@@ -321,10 +324,10 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return null;
     }
-  };
+  }, []);
 
   // 🟡 Update
-  const updateCandidate = async (id: string, updated: any, file?: File) => {
+  const updateCandidate = useCallback(async (id: string, updated: any, file?: File) => {
     try {
       const formData = new FormData();
 
@@ -369,10 +372,10 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return null;
     }
-  };
+  }, []);
 
   // 🔴 Delete
-  const deleteCandidate = async (id: string, role: string) => {
+  const deleteCandidate = useCallback(async (id: string, role: string) => {
     try {
       console.log(role, "ooo");
       const { data } = await axios.delete(`${API_URL}/${id}/${role}`);
@@ -385,10 +388,10 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(err.message);
       return false;
     }
-  };
+  }, []);
 
   // 🔵 Update Status
-  const updateStatus = async (
+  const updateStatus = useCallback(async (
     id: string,
     status: string,
     role: string,
@@ -429,7 +432,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       setError(err.message);
       return null;
     }
-  };
+  }, []);
 
   return (
     <CandidateContext.Provider

@@ -27,6 +27,7 @@ type Stats = {
   selected: number;
   joined: number;
   rejected: number;
+  positionsLeft: number;
 };
 
 export const Dashboard = () => {
@@ -47,7 +48,26 @@ export const Dashboard = () => {
     selected: 0,
     joined: 0,
     rejected: 0,
+    positionsLeft: 0,
   });
+
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number | null>(new Date().getFullYear());
+
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const years = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const result = [];
+    for (let i = 0; i < 5; i++) {
+      result.push(currentYear - i);
+    }
+    return result;
+  }, []);
+
   const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
 
   useEffect(() => {
@@ -58,13 +78,17 @@ export const Dashboard = () => {
   useEffect(() => {
     if (!user || !jobs || !candidates || !users) return;
 
-    // --- 1. Filter Jobs ---
-    let filteredJobs = [];
-    // Get direct reportees
+    // --- 1. Filter by Date Range (Selected Month/Year) ---
+    const isWithinSelectedMonth = (dateString: string) => {
+      if (selectedMonth === null || selectedYear === null) return true;
+      const date = new Date(dateString);
+      return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+    };
+
+    // --- 2. Filter Jobs ---
     const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
     let allReporteeIds = directReportees.map((u: any) => u._id);
 
-    // If Manager, get indirect reportees (reportees of reportees)
     if (user.designation === "Manager") {
       directReportees.forEach((mentor: any) => {
         const mentorReportees = users.filter(
@@ -77,20 +101,31 @@ export const Dashboard = () => {
       });
     }
 
-    // Filter jobs created by self or reportees
-    filteredJobs = jobs.filter((job: any) => {
+    const mentorOnlyJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 
-    // --- 2. Filter Candidates/Applications ---
-    const fCandidates = candidates.filter((c: any) => {
+    const filteredJobs = mentorOnlyJobs.filter((job: any) => isWithinSelectedMonth(job.createdAt));
+
+    // --- 3. Filter Candidates/Applications ---
+    const mentorOnlyCandidates = candidates.filter((c: any) => {
       const creatorId = c.createdBy?._id || c.createdBy;
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
+
+    const fCandidates = mentorOnlyCandidates.filter((c: any) => isWithinSelectedMonth(c.createdAt));
     setFilteredCandidates(fCandidates);
 
-    // --- 3. Calculate Stats ---
+    // --- 4. Calculate Positions Left (Based on mentor's jobs in this period) ---
+    let totalPositionsLeft = 0;
+    filteredJobs.forEach((job: any) => {
+      // For hired count, we check candidates for this job that joined
+      const hiredCount = candidates.filter((c: any) => (c.jobId?._id === job._id || c.jobId === job._id) && c.status === "Joined").length;
+      totalPositionsLeft += Math.max(0, (job.noOfPositions || 0) - hiredCount);
+    });
+
+    // --- 5. Calculate Stats ---
     const newStats: Stats = {
       totalJobs: filteredJobs.length,
       openJobs: filteredJobs.filter((j: any) => j.status === 'Open').length,
@@ -102,13 +137,25 @@ export const Dashboard = () => {
       selected: fCandidates.filter((c: any) => c.status === 'Selected').length,
       joined: fCandidates.filter((c: any) => c.status === 'Joined').length,
       rejected: fCandidates.filter((c: any) => c.status === 'Rejected').length,
+      positionsLeft: totalPositionsLeft,
     };
 
     setStats(newStats);
 
-    setStats(newStats);
+  }, [user, jobs, candidates, users, selectedMonth, selectedYear]);
 
-  }, [user, jobs, candidates, users]);
+  // --- Calculate Date Props for ActivityLogs ---
+  const { externalStartDate, externalEndDate } = useMemo(() => {
+    if (selectedMonth === null || selectedYear === null) return { externalStartDate: undefined, externalEndDate: undefined };
+
+    const start = new Date(selectedYear, selectedMonth, 1);
+    const end = new Date(selectedYear, selectedMonth + 1, 0);
+
+    return {
+      externalStartDate: start.toISOString().split('T')[0],
+      externalEndDate: end.toISOString().split('T')[0]
+    };
+  }, [selectedMonth, selectedYear]);
 
   // --- 4. Identify Team Members ---
   const teamMemberIds = useMemo(() => {
@@ -198,6 +245,14 @@ export const Dashboard = () => {
       bgColor: 'bg-emerald-50',
       path: '/Mentor/candidates' // Or applications, filtered by status
     },
+    {
+      label: 'Positions Left',
+      value: stats.positionsLeft,
+      icon: Briefcase,
+      color: 'from-purple-500 to-purple-600',
+      bgColor: 'bg-purple-50',
+      path: '/Mentor/jobs'
+    },
   ];
 
   const pipelineStages = [
@@ -215,16 +270,58 @@ export const Dashboard = () => {
 
   return (
     <div className="space-y-8 font-sans">
-      <div>
-        <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-          Mentor Dashboard
-        </h1>
-        <p className="text-gray-500 mt-2 text-lg">
-          Overview of your recruitment activities and pipeline.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+            Mentor Dashboard
+          </h1>
+          <p className="text-gray-500 mt-2 text-lg">
+            Overview of your recruitment activities and pipeline.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex flex-col">
+            <label className="text-xs font-bold text-gray-400 uppercase mb-1">Year</label>
+            <select
+              value={selectedYear === null ? "" : selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value === "" ? null : Number(e.target.value))}
+              className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+            >
+              <option value="">All</option>
+              {years.map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs font-bold text-gray-400 uppercase mb-1">Month</label>
+            <select
+              value={selectedMonth === null ? "" : selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value === "" ? null : Number(e.target.value))}
+              className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+            >
+              <option value="">All</option>
+              {months.map((month, index) => (
+                <option key={month} value={index}>{month}</option>
+              ))}
+            </select>
+          </div>
+          {(selectedMonth !== null || selectedYear !== null) && (
+            <button
+              onClick={() => {
+                setSelectedMonth(null);
+                setSelectedYear(null);
+              }}
+              className="mt-5 px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -366,7 +463,7 @@ export const Dashboard = () => {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                <ActivityLogs />
+                <ActivityLogs externalStartDate={externalStartDate} externalEndDate={externalEndDate} />
               </div>
             </div>
           </div>

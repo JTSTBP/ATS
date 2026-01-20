@@ -1,20 +1,37 @@
 // src/pages/ActivityLogs.jsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useUserContext } from "../../context/UserProvider";
 
-const ActivityLogs = () => {
+interface Log {
+  _id: string;
+  userId?: {
+    _id: string;
+    name: string;
+    email: string;
+  };
+  action: string;
+  description: string;
+  targetModel?: string;
+  targetId?: any;
+  createdAt: string;
+}
+
+const ActivityLogs = ({ externalStartDate, externalEndDate }: { externalStartDate?: string; externalEndDate?: string }) => {
   const { user, getactivitylog } = useAuth();
-  const { candidates, fetchallCandidates } = useCandidateContext();
+  const { fetchallCandidates } = useCandidateContext();
   const { users } = useUserContext();
-  const [logs, setLogs] = useState([]);
-  const [filteredlogs, setFilteredLogs] = useState([]);
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [filteredlogs, setFilteredLogs] = useState<Log[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Date filter state
+  // Date filter state (internal)
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+
+  const activeStartDate = externalStartDate || startDate;
+  const activeEndDate = externalEndDate || endDate;
 
   useEffect(() => {
     fetchallCandidates();
@@ -80,14 +97,14 @@ const ActivityLogs = () => {
     );
 
     // STEP 6: Date Filtering
-    if (startDate) {
+    if (activeStartDate) {
       finalLogs = finalLogs.filter(
-        (log) => new Date(log.createdAt) >= new Date(startDate)
+        (log) => new Date(log.createdAt) >= new Date(activeStartDate || "")
       );
     }
-    if (endDate) {
+    if (activeEndDate) {
       // Set end date to end of day for inclusive comparison
-      const end = new Date(endDate);
+      const end = new Date(activeEndDate || "");
       end.setHours(23, 59, 59, 999);
       finalLogs = finalLogs.filter(
         (log) => new Date(log.createdAt) <= end
@@ -95,7 +112,7 @@ const ActivityLogs = () => {
     }
 
     setFilteredLogs(finalLogs);
-  }, [logs, users, user, startDate, endDate]);
+  }, [logs, users, user, activeStartDate, activeEndDate]);
 
   console.log(filteredlogs, "filteredlogs", logs, "logs");
   if (loading)
@@ -106,38 +123,40 @@ const ActivityLogs = () => {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Activity Logs</h2>
 
-        {/* Date Filter Inputs */}
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Start Date:</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border rounded p-2 text-sm"
-            />
+        {/* Date Filter Inputs - Hide if external props provided */}
+        {!externalStartDate && !externalEndDate && (
+          <div className="flex gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Start Date:</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border rounded p-2 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">End Date:</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="border rounded p-2 text-sm"
+              />
+            </div>
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="text-sm text-red-600 hover:text-red-800 underline"
+              >
+                Clear
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">End Date:</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border rounded p-2 text-sm"
-            />
-          </div>
-          {(startDate || endDate) && (
-            <button
-              onClick={() => {
-                setStartDate("");
-                setEndDate("");
-              }}
-              className="text-sm text-red-600 hover:text-red-800 underline"
-            >
-              Clear
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       <div className="overflow-auto shadow-lg rounded-lg bg-white">

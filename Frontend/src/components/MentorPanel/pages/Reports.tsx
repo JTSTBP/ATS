@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, Users, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { BarChart3, TrendingUp, Users, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../../../context/AuthProvider';
 import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
@@ -30,6 +30,23 @@ export const MentorReports = () => {
     const { candidates, fetchallCandidates } = useCandidateContext();
     const { jobs, fetchJobs } = useJobContext();
 
+    const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
+    const [selectedYear, setSelectedYear] = useState<number | null>(new Date().getFullYear());
+
+    const months = [
+        "January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"
+    ];
+
+    const years = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        const result = [];
+        for (let i = 0; i < 5; i++) {
+            result.push(currentYear - i);
+        }
+        return result;
+    }, []);
+
     const [stats, setStats] = useState<ReportStats>({
         totalCandidates: 0,
         new: 0,
@@ -51,7 +68,12 @@ export const MentorReports = () => {
         if (!user || !jobs || !candidates || !users) return;
 
         // --- 1. Filter Logic (Same as Dashboard) ---
-        let filteredJobs = [];
+        const isWithinSelectedMonth = (dateString: string) => {
+            if (selectedMonth === null || selectedYear === null) return true;
+            const date = new Date(dateString);
+            return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+        };
+
         const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
         let allReporteeIds = directReportees.map((u: any) => u._id);
 
@@ -67,14 +89,16 @@ export const MentorReports = () => {
             });
         }
 
-        filteredJobs = jobs.filter((job: any) => {
+        const filteredJobs = jobs.filter((job: any) => {
             const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
-            return creatorId === user._id || allReporteeIds.includes(creatorId);
+            const isCreatorAllowed = creatorId === user._id || allReporteeIds.includes(creatorId);
+            return isCreatorAllowed && isWithinSelectedMonth(job.createdAt);
         });
 
         const filteredCandidates = candidates.filter((c: any) => {
             const creatorId = c.createdBy?._id || c.createdBy;
-            return creatorId === user._id || allReporteeIds.includes(creatorId);
+            const isCreatorAllowed = creatorId === user._id || allReporteeIds.includes(creatorId);
+            return isCreatorAllowed && isWithinSelectedMonth(c.createdAt);
         });
 
         // --- 2. Calculate Overall Stats ---
@@ -106,7 +130,7 @@ export const MentorReports = () => {
 
         setJobPerformance(performanceData);
 
-    }, [user, jobs, candidates, users]);
+    }, [user, jobs, candidates, users, selectedMonth, selectedYear]);
 
     const funnelData = [
         { label: 'New', value: stats.new, color: 'bg-yellow-400', width: '100%' },
@@ -118,9 +142,51 @@ export const MentorReports = () => {
 
     return (
         <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Reports & Analytics</h2>
-                <p className="text-gray-600">Detailed insights into recruitment performance</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Reports & Analytics</h2>
+                    <p className="text-gray-600">Detailed insights into recruitment performance</p>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <div className="flex flex-col">
+                        <label className="text-xs font-bold text-gray-400 uppercase mb-1">Year</label>
+                        <select
+                            value={selectedYear === null ? "" : selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value === "" ? null : Number(e.target.value))}
+                            className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+                        >
+                            <option value="">All</option>
+                            {years.map(year => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex flex-col">
+                        <label className="text-xs font-bold text-gray-400 uppercase mb-1">Month</label>
+                        <select
+                            value={selectedMonth === null ? "" : selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value === "" ? null : Number(e.target.value))}
+                            className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+                        >
+                            <option value="">All</option>
+                            {months.map((month, index) => (
+                                <option key={month} value={index}>{month}</option>
+                            ))}
+                        </select>
+                    </div>
+                    {(selectedMonth !== null || selectedYear !== null) && (
+                        <button
+                            onClick={() => {
+                                setSelectedMonth(null);
+                                setSelectedYear(null);
+                            }}
+                            className="mt-5 px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                            Clear
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Summary Cards */}

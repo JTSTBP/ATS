@@ -45,7 +45,16 @@ const UserSchema = new mongoose.Schema({
     personal: String,
     official: String,
   },
+  phone: {
+    type: String,
+  },
+  department: {
+    type: String,
+  },
   dateOfJoining: {
+    type: Date,
+  },
+  joinDate: {
     type: Date,
   },
   dateOfBirth: {
