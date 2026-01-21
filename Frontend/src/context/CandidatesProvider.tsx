@@ -2,6 +2,8 @@ import axios from "axios";
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 
+console.log("CandidatesProvider module initiating...");
+
 const API_BASE_URL =
   import.meta.env.VITE_BACKEND_URL;
 const API_URL = `${API_BASE_URL}/api/CandidatesJob`;
@@ -86,7 +88,8 @@ type CandidateContextType = {
     joiningDate?: string,
     offerLetter?: File,
     selectionDate?: string,
-    expectedJoiningDate?: string
+    expectedJoiningDate?: string,
+    rejectedBy?: string
   ) => Promise<Candidate | null>;
 
   // 🔹 Pagination
@@ -169,7 +172,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   /* 
-   * 🟣 Fetch Role-Based Candidates with Pagination
+   * Fetch Role-Based Candidates with Pagination
    */
   const fetchRoleBasedCandidates = useCallback(async (
     userId: string,
@@ -255,7 +258,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // 🟢 Fetch candidates by jobId
+  // Fetch candidates by jobId
   const fetchCandidatesByJob = useCallback(async (jobId: string) => {
     setLoading(true);
     try {
@@ -326,7 +329,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // 🟡 Update
+  // Update
   const updateCandidate = useCallback(async (id: string, updated: any, file?: File) => {
     try {
       const formData = new FormData();
@@ -374,7 +377,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // 🔴 Delete
+  // Delete
   const deleteCandidate = useCallback(async (id: string, role: string) => {
     try {
       console.log(role, "ooo");
@@ -390,7 +393,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // 🔵 Update Status
+  // Update Status
   const updateStatus = useCallback(async (
     id: string,
     status: string,
@@ -402,7 +405,8 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     joiningDate?: string,
     offerLetter?: File,
     selectionDate?: string,
-    expectedJoiningDate?: string
+    expectedJoiningDate?: string,
+    rejectedBy?: string
   ) => {
     try {
       // Use FormData if there's a file to upload
@@ -418,6 +422,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       if (offerLetter) formData.append("offerLetter", offerLetter);
       if (selectionDate) formData.append("selectionDate", selectionDate);
       if (expectedJoiningDate) formData.append("expectedJoiningDate", expectedJoiningDate);
+      if (rejectedBy) formData.append("rejectedBy", rejectedBy);
 
       const { data } = await axios.patch(`${API_URL}/${id}/status`, formData, {
         headers: { "Content-Type": "multipart/form-data" }
@@ -461,6 +466,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
 
 export const useCandidateContext = () => {
   const context = useContext(CandidateContext);
+  console.log("CandidateContext check:", !!context);
   if (!context)
     throw new Error(
       "useCandidateContext must be used within a CandidateProvider"

@@ -123,6 +123,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
     currentJoiningDate?: string;
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
+    currentRejectedBy?: string;
   } | null>(null);
 
   const handleStatusChange = (
@@ -131,7 +132,8 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
     interviewStage?: string,
     currentJoiningDate?: string,
     currentSelectionDate?: string,
-    currentExpectedJoiningDate?: string
+    currentExpectedJoiningDate?: string,
+    currentRejectedBy?: string
   ) => {
     setPendingStatusChange({
       candidateId,
@@ -139,12 +141,13 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
       interviewStage,
       currentJoiningDate,
       currentSelectionDate,
-      currentExpectedJoiningDate
+      currentExpectedJoiningDate,
+      currentRejectedBy
     });
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
@@ -158,7 +161,8 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
       joiningDate,
       offerLetter,
       selectionDate,
-      expectedJoiningDate
+      expectedJoiningDate,
+      rejectedBy
     );
 
     if (user?._id && user?.designation) {
@@ -479,7 +483,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                           <div className="flex items-center gap-2">
                             {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
                             <button
-                              onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
+                              onClick={() => handleStatusChange(candidate._id || "", "Joined", undefined, candidate.joiningDate)}
                               className="p-1 hover:bg-gray-100 rounded text-blue-600"
                               title="Edit Joining Details"
                             >

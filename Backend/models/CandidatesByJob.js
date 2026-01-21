@@ -35,6 +35,11 @@ const candidateSchema = new mongoose.Schema(
     joiningDate: {
       type: Date,
     },
+    rejectedBy: {
+      type: String,
+      enum: ["Client", "Mentor"],
+      default: null,
+    },
     dynamicFields: {
       type: Object,
       default: {},

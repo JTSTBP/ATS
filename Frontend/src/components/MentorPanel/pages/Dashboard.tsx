@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Users, FileText, TrendingUp, Clock, CheckCircle, Plus, UserPlus, Calendar } from 'lucide-react';
+import { Briefcase, Users, FileText, TrendingUp, Clock, CheckCircle, Plus, UserPlus, Calendar, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../../context/AuthProvider';
 import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
@@ -230,22 +230,6 @@ export const Dashboard = () => {
       path: '/Mentor/candidates'
     },
     {
-      label: 'Total Applications',
-      value: stats.totalApplications,
-      icon: FileText,
-      color: 'from-orange-500 to-orange-600',
-      bgColor: 'bg-orange-50',
-      path: '/Mentor/applications'
-    },
-    {
-      label: 'Hired',
-      value: stats.selected + stats.joined,
-      icon: CheckCircle,
-      color: 'from-emerald-500 to-emerald-600',
-      bgColor: 'bg-emerald-50',
-      path: '/Mentor/candidates' // Or applications, filtered by status
-    },
-    {
       label: 'Positions Left',
       value: stats.positionsLeft,
       icon: Briefcase,
@@ -253,11 +237,51 @@ export const Dashboard = () => {
       bgColor: 'bg-purple-50',
       path: '/Mentor/jobs'
     },
+    {
+      label: 'New',
+      value: stats.new,
+      icon: UserPlus,
+      color: 'from-blue-400 to-blue-500',
+      bgColor: 'bg-blue-50',
+      path: '/Mentor/candidates'
+    },
+    {
+      label: 'Screen',
+      value: stats.shortlisted,
+      icon: ClipboardCheck,
+      color: 'from-orange-400 to-orange-500',
+      bgColor: 'bg-orange-50',
+      path: '/Mentor/candidates'
+    },
+    {
+      label: 'Interviewed',
+      value: stats.interviewed,
+      icon: Clock,
+      color: 'from-purple-400 to-purple-500',
+      bgColor: 'bg-purple-50',
+      path: '/Mentor/candidates'
+    },
+    {
+      label: 'Selected',
+      value: stats.selected,
+      icon: CheckCircle,
+      color: 'from-green-400 to-green-500',
+      bgColor: 'bg-green-50',
+      path: '/Mentor/candidates'
+    },
+    {
+      label: 'Joined',
+      value: stats.joined,
+      icon: Users,
+      color: 'from-emerald-400 to-emerald-500',
+      bgColor: 'bg-emerald-50',
+      path: '/Mentor/candidates'
+    },
   ];
 
   const pipelineStages = [
     { label: 'New', value: stats.new, color: 'bg-yellow-400' },
-    { label: 'Shortlisted', value: stats.shortlisted, color: 'bg-blue-400' },
+    { label: 'Screen', value: stats.shortlisted, color: 'bg-blue-400' },
     { label: 'Interviewed', value: stats.interviewed, color: 'bg-cyan-400' },
     { label: 'Selected', value: stats.selected, color: 'bg-purple-400' },
     { label: 'Joined', value: stats.joined, color: 'bg-green-400' },
@@ -321,7 +345,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (

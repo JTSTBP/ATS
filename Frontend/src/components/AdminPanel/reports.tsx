@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, Check, Users, Briefcase, CalendarCheck, X } from "lucide-react";
+import { Search, Filter, Check, Users, Briefcase, CalendarCheck, X, UserPlus, ClipboardCheck, Clock, CheckCircle } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
@@ -81,6 +81,13 @@ export default function ReportsTab() {
     const totalCandidates = filteredCandidates.length;
     const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
 
+    // Status-specific counts
+    const newCandidates = filteredCandidates.filter((c) => c.status === "New").length;
+    const shortlistedCandidates = filteredCandidates.filter((c) => c.status === "Shortlisted").length;
+    const interviewedCandidates = filteredCandidates.filter((c) => c.status === "Interviewed").length;
+    const selectedCandidates = filteredCandidates.filter((c) => c.status === "Selected").length;
+    const joinedCandidates = filteredCandidates.filter((c) => c.status === "Joined").length;
+
     // Calculate Total Positions and Remaining
     const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
 
@@ -108,6 +115,11 @@ export default function ReportsTab() {
       activeJobs,
       totalPositions,
       remainingPositions,
+      newCandidates,
+      shortlistedCandidates,
+      interviewedCandidates,
+      selectedCandidates,
+      joinedCandidates,
     };
   }, [jobs, candidates, startDate, endDate]);
 
@@ -182,7 +194,7 @@ export default function ReportsTab() {
     setSelectedFilters(prev => ({ ...prev, [column]: [] }));
   };
 
-  const FilterDropdown = ({ column, options }: { column: string, options: string[] }) => {
+  const FilterDropdown = ({ column, options, align = 'left' }: { column: string, options: string[], align?: 'left' | 'right' }) => {
     if (openFilter !== column) return null;
 
     const filteredOptions = options.filter(opt =>
@@ -190,7 +202,7 @@ export default function ReportsTab() {
     );
 
     return (
-      <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden font-normal text-slate-700">
+      <div className={`absolute top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden font-normal text-slate-700 ${align === 'right' ? 'right-0' : 'left-0'}`}>
         <div className="p-3 border-b border-slate-100 bg-slate-50">
           <div className="relative">
             <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -369,6 +381,96 @@ export default function ReportsTab() {
             <CalendarCheck size={24} />
           </div>
         </div>
+
+        {/* New Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+              New
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.newCandidates}
+            </h2>
+          </div>
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+            <UserPlus size={24} />
+          </div>
+        </div>
+
+        {/* Shortlisted Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-orange-600 transition-colors">
+              Screen
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.shortlistedCandidates}
+            </h2>
+          </div>
+          <div className="bg-orange-50 text-orange-600 p-3 rounded-xl group-hover:bg-orange-100 transition-colors">
+            <ClipboardCheck size={24} />
+          </div>
+        </div>
+
+        {/* Interviewed Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-purple-600 transition-colors">
+              Interviewed
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.interviewedCandidates}
+            </h2>
+          </div>
+          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-100 transition-colors">
+            <Clock size={24} />
+          </div>
+        </div>
+
+        {/* Selected Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-green-600 transition-colors">
+              Selected
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.selectedCandidates}
+            </h2>
+          </div>
+          <div className="bg-green-50 text-green-600 p-3 rounded-xl group-hover:bg-green-100 transition-colors">
+            <CheckCircle size={24} />
+          </div>
+        </div>
+
+        {/* Joined Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+              Joined
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {dashboardStats.joinedCandidates}
+            </h2>
+          </div>
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+            <Users size={24} />
+          </div>
+        </div>
       </div>
 
 
@@ -414,7 +516,7 @@ export default function ReportsTab() {
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px]">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10">
+            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-[30]">
               <tr>
                 <th className="py-3 px-6 min-w-[150px] relative">
                   <div className="flex items-center justify-between">
@@ -478,11 +580,12 @@ export default function ReportsTab() {
                   <FilterDropdown
                     column="recruiter"
                     options={Array.from(new Set(users.filter(u => u.designation?.toLowerCase().includes("recruiter") || u.isAdmin).map(u => u.name))).sort()}
+                    align="right"
                   />
                 </th>
                 <th className="py-3 px-4 text-center min-w-[100px] relative">
                   <div className="flex items-center justify-center gap-2">
-                    <span>Total</span>
+                    <span>Total Lineups</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'total' ? null : 'total'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.total.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
@@ -499,10 +602,11 @@ export default function ReportsTab() {
                       });
                       return jobCandidates.length.toString();
                     }))).sort((a, b) => parseInt(a) - parseInt(b))}
+                    align="right"
                   />
                 </th>
                 <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
-                <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Shortlisted</th>
+                <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Screen</th>
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
@@ -698,7 +802,7 @@ export default function ReportsTab() {
         </div>
         <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px]">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10">
+            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-[30]">
               <tr>
                 <th className="py-3 px-6 min-w-[200px] relative">
                   <div className="flex items-center justify-between">
@@ -758,6 +862,7 @@ export default function ReportsTab() {
                   <FilterDropdown
                     column="daily_job"
                     options={Array.from(new Set(jobs.map(j => j.title))).sort()}
+                    align="right"
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[100px]">
@@ -765,7 +870,7 @@ export default function ReportsTab() {
                 </th>
                 <th className="py-3 px-4 text-center min-w-[120px] relative">
                   <div className="flex items-center justify-center gap-2">
-                    <span>Total Uploads</span>
+                    <span>Total Lineups</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_total' ? null : 'daily_total'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_total.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
@@ -782,10 +887,11 @@ export default function ReportsTab() {
                         return canCreatorId === creatorId;
                       }).length.toString();
                     }))).sort((a, b) => parseInt(a) - parseInt(b))}
+                    align="right"
                   />
                 </th>
                 <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
-                <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Shortlisted</th>
+                <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Screen</th>
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
@@ -959,12 +1065,13 @@ export default function ReportsTab() {
                       <table className="w-full text-sm text-left">
                         <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
                           <tr>
+                            <th className="py-3 px-4 text-center">Source Date</th>
                             <th className="py-3 px-4">Name</th>
                             <th className="py-3 px-4">Phone</th>
-                            <th className="py-3 px-4">Created By</th>
+                            <th className="py-3 px-4">Recruiter</th>
                             <th className="py-3 px-4">Status</th>
                             {hasStatusDetails && <th className="py-3 px-4">Status Details</th>}
-                            <th className="py-3 px-4 text-center">Applied On</th>
+                            <th className="py-3 px-4">Notes</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -979,6 +1086,7 @@ export default function ReportsTab() {
 
                               return (
                                 <tr key={i} className="hover:bg-slate-50">
+                                  <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
                                   <td className="py-3 px-4 font-medium text-slate-800">{c.dynamicFields?.[nameKey] || "N/A"}</td>
                                   <td className="py-3 px-4 text-slate-600">{c.dynamicFields?.[phoneKey] || "N/A"}</td>
                                   <td className="py-3 px-4 text-slate-600">
@@ -1022,13 +1130,17 @@ export default function ReportsTab() {
                                       )}
                                     </td>
                                   )}
-                                  <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
+                                  <td className="py-3 px-4 text-slate-600">
+                                    <div className="max-w-[200px] truncate" title={c.notes}>
+                                      {c.notes || <span className="text-slate-400">-</span>}
+                                    </div>
+                                  </td>
                                 </tr>
                               );
                             })
                           ) : (
                             <tr>
-                              <td colSpan={hasStatusDetails ? 6 : 5} className="py-8 text-center text-slate-500">
+                              <td colSpan={hasStatusDetails ? 7 : 6} className="py-8 text-center text-slate-500">
                                 No candidates found.
                               </td>
                             </tr>

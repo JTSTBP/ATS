@@ -72,8 +72,8 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
 
     // Auto Logout Logic
     useEffect(() => {
-        // Only trigger for Recruiters and Mentors
-        if (user?.designation !== 'Recruiter' && user?.designation !== 'Mentor') {
+        // Exclude Admin, Manager, and Finance
+        if (!user || ['Admin', 'Manager', 'Finance'].includes(user.designation)) {
             return;
         }
 

@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -157,7 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // 🔹 LOGOUT FUNCTION
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       // Call logout API to track attendance
       const token = localStorage.getItem("token");
@@ -183,7 +184,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       delete axios.defaults.headers.common["Authorization"];
       toast.info("Logged out successfully");
     }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider

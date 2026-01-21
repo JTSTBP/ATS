@@ -91,7 +91,7 @@ export default function ManagerDashboard() {
 
       color: "blue",
       icon: Users,
-  
+
       path: "/Manager/candidates"
     },
     {

@@ -1,4 +1,4 @@
-import { Users, Briefcase, CalendarCheck } from "lucide-react";
+import { Users, Briefcase, CalendarCheck, UserPlus, ClipboardCheck, Clock, CheckCircle } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { formatDate } from "../../utils/dateUtils";
@@ -59,6 +59,13 @@ export default function AdminDashboard() {
     const totalCandidates = filteredCandidates.length;
     const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
 
+    // Status-specific counts
+    const newCandidates = filteredCandidates.filter((c) => c.status === "New").length;
+    const shortlistedCandidates = filteredCandidates.filter((c) => c.status === "Shortlisted").length;
+    const interviewedCandidates = filteredCandidates.filter((c) => c.status === "Interviewed").length;
+    const selectedCandidates = filteredCandidates.filter((c) => c.status === "Selected").length;
+    const joinedCandidates = filteredCandidates.filter((c) => c.status === "Joined").length;
+
     // Calculate Total Positions and Remaining
     const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
 
@@ -86,6 +93,11 @@ export default function AdminDashboard() {
       activeJobs,
       totalPositions,
       remainingPositions,
+      newCandidates,
+      shortlistedCandidates,
+      interviewedCandidates,
+      selectedCandidates,
+      joinedCandidates,
     };
   }, [users, leaves, jobs, candidates, selectedMonth]);
 
@@ -231,6 +243,96 @@ export default function AdminDashboard() {
           </div>
           <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
             <CalendarCheck size={24} />
+          </div>
+        </div>
+
+        {/* New Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+              New
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.newCandidates}
+            </h2>
+          </div>
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+            <UserPlus size={24} />
+          </div>
+        </div>
+
+        {/* Shortlisted Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-orange-600 transition-colors">
+              Screen
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.shortlistedCandidates}
+            </h2>
+          </div>
+          <div className="bg-orange-50 text-orange-600 p-3 rounded-xl group-hover:bg-orange-100 transition-colors">
+            <ClipboardCheck size={24} />
+          </div>
+        </div>
+
+        {/* Interviewed Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-purple-600 transition-colors">
+              Interviewed
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.interviewedCandidates}
+            </h2>
+          </div>
+          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-100 transition-colors">
+            <Clock size={24} />
+          </div>
+        </div>
+
+        {/* Selected Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-green-600 transition-colors">
+              Selected
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.selectedCandidates}
+            </h2>
+          </div>
+          <div className="bg-green-50 text-green-600 p-3 rounded-xl group-hover:bg-green-100 transition-colors">
+            <CheckCircle size={24} />
+          </div>
+        </div>
+
+        {/* Joined Candidates */}
+        <div
+          onClick={() => navigate("/Admin/candidates")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+              Joined
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.joinedCandidates}
+            </h2>
+          </div>
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+            <Users size={24} />
           </div>
         </div>
       </div>

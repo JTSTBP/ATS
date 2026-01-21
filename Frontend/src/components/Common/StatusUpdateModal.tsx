@@ -5,13 +5,14 @@ import { X } from "lucide-react";
 interface StatusUpdateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => void;
+    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => void;
     newStatus: string;
     candidateName?: string;
     isCommentOnly?: boolean;
     currentJoiningDate?: string;
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
+    currentRejectedBy?: string;
 }
 
 export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
@@ -24,12 +25,14 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     currentJoiningDate,
     currentSelectionDate,
     currentExpectedJoiningDate,
+    currentRejectedBy,
 }) => {
     const [comment, setComment] = useState("");
     const [joiningDate, setJoiningDate] = useState("");
     const [offerLetter, setOfferLetter] = useState<File | undefined>(undefined);
     const [selectionDate, setSelectionDate] = useState("");
     const [expectedJoiningDate, setExpectedJoiningDate] = useState("");
+    const [rejectedBy, setRejectedBy] = useState("");
 
     useEffect(() => {
         if (isOpen) {
@@ -38,13 +41,15 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
             setOfferLetter(undefined);
             setSelectionDate(currentSelectionDate ? new Date(currentSelectionDate).toISOString().split('T')[0] : "");
             setExpectedJoiningDate(currentExpectedJoiningDate ? new Date(currentExpectedJoiningDate).toISOString().split('T')[0] : "");
+            setRejectedBy(currentRejectedBy || "");
         }
-    }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate]);
+    }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate, currentRejectedBy]);
 
     if (!isOpen) return null;
 
     const isJoined = newStatus === "Joined";
     const isSelected = newStatus === "Selected";
+    // const isRejected = newStatus === "Rejected" || newStatus === "Dropped"; 
 
     return (
         <AnimatePresence>
@@ -70,7 +75,6 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                     <div className="p-6">
                         {!isCommentOnly && (
                             <p className="text-gray-600 mb-4">
-                                Changing status {candidateName ? `for ${candidateName}` : ""} to{" "}
                                 Changing status {candidateName ? `for ${candidateName}` : ""} to{" "}
                                 <span className="font-bold text-orange-600">{newStatus}</span>.
                             </p>
@@ -133,6 +137,38 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             </div>
                         )}
 
+                        {newStatus === "Rejected" && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Rejected By <span className="text-red-500">*</span>
+                                </label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                            type="radio"
+                                            name="rejectedBy"
+                                            value="Client"
+                                            checked={rejectedBy === "Client"}
+                                            onChange={(e) => setRejectedBy(e.target.value)}
+                                            className="w-4 h-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                                        />
+                                        <span className="text-sm text-gray-700 group-hover:text-orange-600 transition-colors">Client</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                        <input
+                                            type="radio"
+                                            name="rejectedBy"
+                                            value="Mentor"
+                                            checked={rejectedBy === "Mentor"}
+                                            onChange={(e) => setRejectedBy(e.target.value)}
+                                            className="w-4 h-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                                        />
+                                        <span className="text-sm text-gray-700 group-hover:text-orange-600 transition-colors">Mentor</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Add a Comment (Optional)
                         </label>
@@ -161,7 +197,11 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                         alert("Please select a selection date");
                                         return;
                                     }
-                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate);
+                                    if (newStatus === "Rejected" && !rejectedBy) {
+                                        alert("Please select who rejected the candidate");
+                                        return;
+                                    }
+                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, rejectedBy);
                                 }}
                                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
                             >

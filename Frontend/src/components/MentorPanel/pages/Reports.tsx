@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { BarChart3, TrendingUp, Users, CheckCircle, XCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, CheckCircle, XCircle, UserPlus, ClipboardCheck, Clock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthProvider';
 import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
@@ -190,16 +190,58 @@ export const MentorReports = () => {
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
+
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <div className="flex items-center justify-between mb-4">
-                        <div className="bg-blue-100 p-3 rounded-lg">
-                            <Users className="w-6 h-6 text-blue-600" />
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                            <UserPlus className="w-6 h-6 text-blue-500" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">Total Candidates</span>
+                        <span className="text-sm font-medium text-gray-500">New</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.totalCandidates}</h3>
+                    <h3 className="text-3xl font-bold text-gray-800">{stats.new}</h3>
                 </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="bg-orange-50 p-3 rounded-lg">
+                            <ClipboardCheck className="w-6 h-6 text-orange-500" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500">Screen</span>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-800">{stats.shortlisted}</h3>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="bg-purple-50 p-3 rounded-lg">
+                            <Clock className="w-6 h-6 text-purple-500" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500">Interviewed</span>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-800">{stats.interviewed}</h3>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="bg-green-50 p-3 rounded-lg">
+                            <CheckCircle className="w-6 h-6 text-green-500" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500">Selected</span>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-800">{stats.selected}</h3>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="bg-emerald-50 p-3 rounded-lg">
+                            <Users className="w-6 h-6 text-emerald-500" />
+                        </div>
+                        <span className="text-sm font-medium text-gray-500">Joined</span>
+                    </div>
+                    <h3 className="text-3xl font-bold text-gray-800">{stats.joined}</h3>
+                </div>
+
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <div className="flex items-center justify-between mb-4">
                         <div className="bg-green-100 p-3 rounded-lg">
@@ -209,6 +251,7 @@ export const MentorReports = () => {
                     </div>
                     <h3 className="text-3xl font-bold text-gray-800">{stats.selected + stats.joined}</h3>
                 </div>
+
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <div className="flex items-center justify-between mb-4">
                         <div className="bg-red-100 p-3 rounded-lg">

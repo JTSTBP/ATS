@@ -195,7 +195,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         setStatusModalOpen(true);
     };
 
-    const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
+    const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => {
         if (!pendingStatusChange) return;
 
         await updateStatus(
@@ -209,7 +209,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             joiningDate,
             offerLetter,
             selectionDate,
-            expectedJoiningDate
+            expectedJoiningDate,
+            rejectedBy
         );
 
         // Optimistic update or refetch

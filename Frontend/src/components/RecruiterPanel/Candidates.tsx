@@ -136,7 +136,7 @@ export default function Candidates() {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
@@ -150,7 +150,8 @@ export default function Candidates() {
       joiningDate,
       offerLetter,
       selectionDate,
-      expectedJoiningDate
+      expectedJoiningDate,
+      rejectedBy
     );
 
     // Refetch current page after update
@@ -503,7 +504,7 @@ export default function Candidates() {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleStatusChange(candidate._id, "Joined", candidate.joiningDate);
+                                  handleStatusChange(candidate._id || "", "Joined", candidate.joiningDate);
                                 }}
                                 className="text-teal-600 hover:text-teal-800"
                                 title="Edit Joining Date"
@@ -521,7 +522,7 @@ export default function Candidates() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleStatusChange(candidate._id, "Selected", undefined, candidate.selectionDate, candidate.expectedJoiningDate);
+                                    handleStatusChange(candidate._id || "", "Selected", undefined, candidate.selectionDate, candidate.expectedJoiningDate);
                                   }}
                                   className="text-indigo-600 hover:text-indigo-800"
                                   title="Edit Selection Date"
