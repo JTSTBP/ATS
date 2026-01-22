@@ -54,9 +54,9 @@ router.get('/summary', async (req, res) => {
 // Create a new invoice
 router.post('/create', async (req, res) => {
     try {
-        const { client: clientId, candidates, agreementPercentage, createdBy, invoiceNumber, invoiceDate } = req.body;
+        const { client: clientId, candidates, agreementPercentage, createdBy, invoiceNumber, invoiceDate, billingAddress, billingState, gstNumber } = req.body;
 
-        // Fetch client details to check for Karnataka state
+        // Fetch client details to check for existence
         const clientDetails = await Client.findById(clientId);
         if (!clientDetails) {
             return res.status(404).json({ message: "Client not found" });
@@ -69,8 +69,9 @@ router.post('/create', async (req, res) => {
         let cgst = 0;
         let sgst = 0;
 
-        // Apply taxes based on state
-        if (clientDetails.state && clientDetails.state.toLowerCase() === 'karnataka') {
+        // Apply taxes based on the provided billing state (or fallback to client default)
+        const effectiveState = (billingState || clientDetails.state || '').toLowerCase();
+        if (effectiveState === 'karnataka') {
             cgst = Math.round(totalAmount * 0.09);
             sgst = Math.round(totalAmount * 0.09);
         } else {
@@ -81,10 +82,11 @@ router.post('/create', async (req, res) => {
             client: clientId,
             candidates,
             agreementPercentage,
-            gstNumber: clientDetails.gstNumber,
+            gstNumber: gstNumber || clientDetails.gstNumber,
+            billingAddress,
+            billingState,
             igst,
             cgst,
-            sgst,
             sgst,
             createdBy,
             invoiceNumber,

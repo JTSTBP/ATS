@@ -12,7 +12,15 @@ interface Client {
     state?: string;
     companyInfo?: string;
     agreementPercentage?: number;
+    payoutOption?: 'Agreement Percentage' | 'Flat Pay' | 'Both';
+    flatPayAmount?: number;
     gstNumber?: string;
+    billingDetails?: {
+        _id?: string;
+        address: string;
+        state: string;
+        gstNumber: string;
+    }[];
     pocs?: { name: string; email: string; phone?: string }[];
 }
 
@@ -27,6 +35,8 @@ interface Candidate {
         candidateName?: string;
         [key: string]: any;
     };
+    joiningDate?: string;
+    status?: string;
 }
 
 interface InvoiceCandidate {
@@ -42,6 +52,8 @@ interface Invoice {
     client: Client;
     candidates: InvoiceCandidate[];
     agreementPercentage: number;
+    payoutOption?: 'Agreement Percentage' | 'Flat Pay' | 'Both';
+    flatPayAmount?: number;
     gstNumber?: string;
     igst?: number;
     cgst?: number;
@@ -64,6 +76,88 @@ interface Payment {
         name: string;
     };
 }
+
+// Searchable Select Component
+const SearchableSelect = ({
+    options,
+    value,
+    onChange,
+    placeholder,
+    className = ""
+}: {
+    options: { value: string; label: string }[];
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    className?: string;
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const filteredOptions = options.filter(opt =>
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const selectedOption = options.find(opt => opt.value === value);
+
+    return (
+        <div className={`relative ${className}`} ref={dropdownRef}>
+            <div
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full p-2 border border-slate-300 rounded-lg bg-white cursor-pointer flex justify-between items-center focus:ring-2 focus:ring-blue-500"
+            >
+                <span className={selectedOption ? "text-slate-800" : "text-slate-400"}>
+                    {selectedOption ? selectedOption.label : placeholder}
+                </span>
+                <Plus className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-45' : ''}`} />
+            </div>
+            {isOpen && (
+                <div className="absolute z-[100] mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-hidden flex flex-col">
+                    <div className="p-2 border-b border-slate-100 bg-slate-50">
+                        <input
+                            autoFocus
+                            type="text"
+                            placeholder="Search..."
+                            className="w-full p-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="overflow-y-auto">
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map(opt => (
+                                <div
+                                    key={opt.value}
+                                    onClick={() => {
+                                        onChange(opt.value);
+                                        setIsOpen(false);
+                                        setSearchTerm("");
+                                    }}
+                                    className={`p-2 hover:bg-blue-50 cursor-pointer text-sm ${value === opt.value ? 'bg-blue-100 text-blue-700 font-medium' : 'text-slate-700'}`}
+                                >
+                                    {opt.label}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-4 text-center text-slate-400 text-sm">No results found</div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Finance = () => {
     const { user } = useAuth();
@@ -88,7 +182,11 @@ const Finance = () => {
         invoiceNumber: "",
         invoiceDate: new Date().toISOString().split('T')[0],
         agreementPercentage: "",
+        payoutOption: "Agreement Percentage" as "Agreement Percentage" | "Flat Pay" | "Both",
+        flatPayAmount: "",
         gstNumber: "",
+        billingAddress: "",
+        billingState: "",
         candidates: [
             { candidateId: "", designation: "", doj: "", ctc: "", amount: "" }
         ]
@@ -309,7 +407,11 @@ const Finance = () => {
                 invoiceNumber: "",
                 invoiceDate: new Date().toISOString().split('T')[0],
                 agreementPercentage: "",
+                payoutOption: "Agreement Percentage",
+                flatPayAmount: "",
                 gstNumber: "",
+                billingAddress: "",
+                billingState: "",
                 candidates: [{ candidateId: "", designation: "", doj: "", ctc: "", amount: "" }]
             });
             fetchInvoices();
@@ -333,16 +435,66 @@ const Finance = () => {
         setInvoiceFormData({ ...invoiceFormData, candidates: newCandidates });
     };
 
+    const calculateAmount = (ctc: any, percentage: any, flatAmount: any, option: string) => {
+        const c = parseFloat(ctc) || 0;
+        const p = parseFloat(percentage) || 0;
+        const f = parseFloat(flatAmount) || 0;
+
+        let amount = 0;
+        if (option === 'Agreement Percentage') {
+            amount = (c * p) / 100;
+        } else if (option === 'Flat Pay') {
+            amount = f;
+        } else if (option === 'Both') {
+            amount = ((c * p) / 100) + f;
+        }
+        return Math.round(amount);
+    };
+
     const handleCandidateChange = (index: number, field: string, value: string) => {
         const newCandidates = [...invoiceFormData.candidates];
         (newCandidates[index] as any)[field] = value;
 
-        // Auto-fill designation if candidate is selected
+        // Auto-fill details if candidate is selected
         if (field === 'candidateId') {
             const selectedCandidate = candidates.find(c => c._id === value);
             if (selectedCandidate) {
                 newCandidates[index].designation = selectedCandidate.jobId?.title || "";
+                // Auto-fill Joining Date (DOJ)
+                if (selectedCandidate.joiningDate) {
+                    newCandidates[index].doj = selectedCandidate.joiningDate.split('T')[0];
+                }
+
+                // Auto-fill CTC from dynamicFields
+                const df = (selectedCandidate as any).dynamicFields || {};
+                const ctcKeys = ["Agreed CTC", "Offered CTC", "Final CTC", "Fixed CTC", "CTC", "expectedCTC", "currentCTC"];
+                let foundCTC = "";
+                for (const key of ctcKeys) {
+                    if (df[key]) {
+                        foundCTC = df[key].toString();
+                        break;
+                    }
+                }
+
+                if (!foundCTC) {
+                    const anyCTCKey = Object.keys(df).find(k => k.toLowerCase().includes('ctc'));
+                    if (anyCTCKey) foundCTC = df[anyCTCKey].toString();
+                }
+
+                if (foundCTC) {
+                    newCandidates[index].ctc = foundCTC;
+                }
             }
+        }
+
+        // Auto-calculate amount if CTC or candidate changes 
+        if (field === 'ctc' || field === 'candidateId') {
+            newCandidates[index].amount = calculateAmount(
+                newCandidates[index].ctc,
+                invoiceFormData.agreementPercentage,
+                invoiceFormData.flatPayAmount,
+                invoiceFormData.payoutOption
+            ).toString();
         }
 
         setInvoiceFormData({ ...invoiceFormData, candidates: newCandidates });
@@ -580,38 +732,34 @@ const Finance = () => {
                 <>
                     <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
                         <h3 className="text-lg font-semibold text-gray-700 mr-2">Filters:</h3>
-                        <select
+                        <SearchableSelect
+                            options={clients.map(c => ({ value: c._id, label: c.companyName }))}
                             value={filterInvoiceClient}
-                            onChange={(e) => setFilterInvoiceClient(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                            <option value="">All Clients</option>
-                            {clients.map(client => (
-                                <option key={client._id} value={client._id}>{client.companyName}</option>
-                            ))}
-                        </select>
-                        <select
+                            onChange={(val) => setFilterInvoiceClient(val)}
+                            placeholder="All Clients"
+                            className="w-48"
+                        />
+                        <SearchableSelect
+                            options={candidates.map(c => ({
+                                value: c._id,
+                                label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
+                            }))}
                             value={filterInvoiceCandidate}
-                            onChange={(e) => setFilterInvoiceCandidate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                            <option value="">All Candidates</option>
-                            {candidates.map(candidate => (
-                                <option key={candidate._id} value={candidate._id}>
-                                    {candidate.dynamicFields?.candidateName || candidate.dynamicFields?.Name || "Unknown"}
-                                </option>
-                            ))}
-                        </select>
-                        <select
+                            onChange={(val) => setFilterInvoiceCandidate(val)}
+                            placeholder="All Candidates"
+                            className="w-48"
+                        />
+                        <SearchableSelect
+                            options={[
+                                { value: "Pending", label: "Pending" },
+                                { value: "Paid", label: "Paid" },
+                                { value: "Overdue", label: "Overdue" }
+                            ]}
                             value={filterInvoiceStatus}
-                            onChange={(e) => setFilterInvoiceStatus(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                            <option value="">All Statuses</option>
-                            <option value="Pending">Pending</option>
-                            <option value="Paid">Paid</option>
-                            <option value="Overdue">Overdue</option>
-                        </select>
+                            onChange={(val) => setFilterInvoiceStatus(val)}
+                            placeholder="All Statuses"
+                            className="w-40"
+                        />
                         <input
                             type="date"
                             value={filterInvoiceStartDate}
@@ -646,7 +794,7 @@ const Finance = () => {
                                     <th className="p-4 font-semibold text-gray-600">Client</th>
                                     <th className="p-4 font-semibold text-gray-600">Candidate</th>
                                     <th className="p-4 font-semibold text-gray-600">Amount</th>
-                                    <th className="p-4 font-semibold text-gray-600">Agreement %</th>
+                                    <th className="p-4 font-semibold text-gray-600 truncate">Payout Terms</th>
                                     <th className="p-4 font-semibold text-gray-600">Status</th>
                                     <th className="p-4 font-semibold text-gray-600">Date</th>
                                     <th className="p-4 font-semibold text-gray-600">Time Left</th>
@@ -665,7 +813,20 @@ const Finance = () => {
                                             {invoice.candidates?.length > 1 && ` (+${invoice.candidates.length - 1} more)`}
                                         </td>
                                         <td className="p-4">₹{(invoice.candidates?.reduce((sum, c) => sum + (c.amount || 0), 0) || 0).toLocaleString()}</td>
-                                        <td className="p-4">{invoice.agreementPercentage}%</td>
+                                        <td className="p-4">
+                                            <div className="flex flex-col gap-1">
+                                                {(invoice.payoutOption === 'Agreement Percentage' || invoice.payoutOption === 'Both' || !invoice.payoutOption) && (
+                                                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded w-fit">
+                                                        {invoice.agreementPercentage}%
+                                                    </span>
+                                                )}
+                                                {(invoice.payoutOption === 'Flat Pay' || invoice.payoutOption === 'Both') && (
+                                                    <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded w-fit">
+                                                        ₹{Number(invoice.flatPayAmount).toLocaleString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="p-4">
                                             <span
                                                 className={`px-3 py-1 rounded-full text-xs font-medium ${invoice.status === "Paid"
@@ -735,28 +896,23 @@ const Finance = () => {
                 <>
                     <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
                         <h3 className="text-lg font-semibold text-gray-700 mr-2">Filters:</h3>
-                        <select
+                        <SearchableSelect
+                            options={clients.map(c => ({ value: c._id, label: c.companyName }))}
                             value={filterPaymentClient}
-                            onChange={(e) => setFilterPaymentClient(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                            <option value="">All Clients</option>
-                            {clients.map(client => (
-                                <option key={client._id} value={client._id}>{client.companyName}</option>
-                            ))}
-                        </select>
-                        <select
+                            onChange={(val) => setFilterPaymentClient(val)}
+                            placeholder="All Clients"
+                            className="w-48"
+                        />
+                        <SearchableSelect
+                            options={candidates.map(c => ({
+                                value: c._id,
+                                label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
+                            }))}
                             value={filterPaymentCandidate}
-                            onChange={(e) => setFilterPaymentCandidate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                            <option value="">All Candidates</option>
-                            {candidates.map(candidate => (
-                                <option key={candidate._id} value={candidate._id}>
-                                    {candidate.dynamicFields?.candidateName || candidate.dynamicFields?.Name || "Unknown"}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFilterPaymentCandidate(val)}
+                            placeholder="All Candidates"
+                            className="w-48"
+                        />
                         <input
                             type="date"
                             value={filterPaymentStartDate}
@@ -959,22 +1115,37 @@ const Finance = () => {
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Client</label>
                                             <div className="flex items-center gap-2">
-                                                <select
+                                                <SearchableSelect
+                                                    options={clients.map(c => ({ value: c._id, label: c.companyName }))}
                                                     value={invoiceFormData.client}
-                                                    onChange={(e) => {
-                                                        const selectedClient = clients.find(c => c._id === e.target.value);
+                                                    placeholder="Select Client"
+                                                    className="flex-1"
+                                                    onChange={(clientId) => {
+                                                        const selectedClient = clients.find(c => c._id === clientId);
+                                                        const defaultBilling = selectedClient?.billingDetails?.[0];
+                                                        const percentage = selectedClient?.agreementPercentage?.toString() || "";
+                                                        const option = selectedClient?.payoutOption || "Agreement Percentage";
+                                                        const flat = selectedClient?.flatPayAmount?.toString() || "";
+
+                                                        // Recalculate all candidate amounts with new client's payout info
+                                                        const updatedCandidates = invoiceFormData.candidates.map(cand => ({
+                                                            ...cand,
+                                                            amount: calculateAmount(cand.ctc, percentage, flat, option).toString()
+                                                        }));
+
                                                         setInvoiceFormData({
                                                             ...invoiceFormData,
-                                                            client: e.target.value,
-                                                            agreementPercentage: selectedClient?.agreementPercentage?.toString() || "",
-                                                            gstNumber: selectedClient?.gstNumber || ""
+                                                            client: clientId,
+                                                            agreementPercentage: percentage,
+                                                            payoutOption: option,
+                                                            flatPayAmount: flat,
+                                                            gstNumber: defaultBilling?.gstNumber || selectedClient?.gstNumber || "",
+                                                            billingAddress: defaultBilling?.address || selectedClient?.address || "",
+                                                            billingState: defaultBilling?.state || selectedClient?.state || "",
+                                                            candidates: updatedCandidates
                                                         });
                                                     }}
-                                                    className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                >
-                                                    <option value="">Select Client</option>
-                                                    {clients.map(c => <option key={c._id} value={c._id}>{c.companyName}</option>)}
-                                                </select>
+                                                />
                                                 <a
                                                     href="/Admin/clients/add"
                                                     target="_blank"
@@ -994,16 +1165,167 @@ const Finance = () => {
                                                 </button>
                                             </div>
                                         </div>
+                                        {invoiceFormData.client && (() => {
+                                            const selectedClient = clients.find(c => c._id === invoiceFormData.client);
+                                            return selectedClient?.billingDetails && selectedClient.billingDetails.length > 0 && (
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Billing Location</label>
+                                                    <SearchableSelect
+                                                        options={selectedClient.billingDetails.map((detail, idx) => ({
+                                                            value: idx.toString(),
+                                                            label: `${detail.address} (${detail.state})`
+                                                        }))}
+                                                        value={invoiceFormData.billingAddress ? (selectedClient.billingDetails.findIndex(d => d.address === invoiceFormData.billingAddress).toString()) : ""}
+                                                        placeholder="Select Billing Location"
+                                                        className="w-full"
+                                                        onChange={(idxStr) => {
+                                                            const idx = parseInt(idxStr);
+                                                            const detail = selectedClient.billingDetails![idx];
+                                                            if (detail) {
+                                                                setInvoiceFormData({
+                                                                    ...invoiceFormData,
+                                                                    gstNumber: detail.gstNumber || "",
+                                                                    billingAddress: detail.address || "",
+                                                                    billingState: detail.state || ""
+                                                                });
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            );
+                                        })()}
                                         <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Agreement %</label>
-                                            <input
-                                                type="number"
-                                                value={invoiceFormData.agreementPercentage}
-                                                onChange={(e) => setInvoiceFormData({ ...invoiceFormData, agreementPercentage: e.target.value })}
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Billing Address</label>
+                                            <textarea
+                                                value={invoiceFormData.billingAddress}
+                                                onChange={(e) => setInvoiceFormData({ ...invoiceFormData, billingAddress: e.target.value })}
                                                 className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                placeholder="e.g. 8.33"
+                                                placeholder="Billing Address for this invoice"
+                                                rows={2}
                                             />
                                         </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Billing State</label>
+                                            <SearchableSelect
+                                                options={[
+                                                    { value: "Andhra Pradesh", label: "Andhra Pradesh" },
+                                                    { value: "Arunachal Pradesh", label: "Arunachal Pradesh" },
+                                                    { value: "Assam", label: "Assam" },
+                                                    { value: "Bihar", label: "Bihar" },
+                                                    { value: "Chhattisgarh", label: "Chhattisgarh" },
+                                                    { value: "Goa", label: "Goa" },
+                                                    { value: "Gujarat", label: "Gujarat" },
+                                                    { value: "Haryana", label: "Haryana" },
+                                                    { value: "Himachal Pradesh", label: "Himachal Pradesh" },
+                                                    { value: "Jharkhand", label: "Jharkhand" },
+                                                    { value: "Karnataka", label: "Karnataka" },
+                                                    { value: "Kerala", label: "Kerala" },
+                                                    { value: "Madhya Pradesh", label: "Madhya Pradesh" },
+                                                    { value: "Maharashtra", label: "Maharashtra" },
+                                                    { value: "Manipur", label: "Manipur" },
+                                                    { value: "Meghalaya", label: "Meghalaya" },
+                                                    { value: "Mizoram", label: "Mizoram" },
+                                                    { value: "Nagaland", label: "Nagaland" },
+                                                    { value: "Odisha", label: "Odisha" },
+                                                    { value: "Punjab", label: "Punjab" },
+                                                    { value: "Rajasthan", label: "Rajasthan" },
+                                                    { value: "Sikkim", label: "Sikkim" },
+                                                    { value: "Tamil Nadu", label: "Tamil Nadu" },
+                                                    { value: "Telangana", label: "Telangana" },
+                                                    { value: "Tripura", label: "Tripura" },
+                                                    { value: "Uttar Pradesh", label: "Uttar Pradesh" },
+                                                    { value: "Uttarakhand", label: "Uttarakhand" },
+                                                    { value: "West Bengal", label: "West Bengal" },
+                                                    { value: "Andaman and Nicobar Islands", label: "Andaman and Nicobar Islands" },
+                                                    { value: "Chandigarh", label: "Chandigarh" },
+                                                    { value: "Dadra and Nagar Haveli and Daman and Diu", label: "Dadra and Nagar Haveli and Daman and Diu" },
+                                                    { value: "Delhi", label: "Delhi" },
+                                                    { value: "Jammu and Kashmir", label: "Jammu and Kashmir" },
+                                                    { value: "Ladakh", label: "Ladakh" },
+                                                    { value: "Lakshadweep", label: "Lakshadweep" },
+                                                    { value: "Puducherry", label: "Puducherry" }
+                                                ]}
+                                                value={invoiceFormData.billingState}
+                                                placeholder="Select State"
+                                                className="w-full"
+                                                onChange={(val) => setInvoiceFormData({ ...invoiceFormData, billingState: val })}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Payout Method</label>
+                                            <select
+                                                value={invoiceFormData.payoutOption}
+                                                onChange={(e) => {
+                                                    const newOption = e.target.value as any;
+                                                    const newPercentage = (newOption === 'Flat Pay') ? "" : invoiceFormData.agreementPercentage;
+                                                    const newFlat = (newOption === 'Agreement Percentage') ? "" : invoiceFormData.flatPayAmount;
+
+                                                    const updatedCandidates = invoiceFormData.candidates.map(cand => ({
+                                                        ...cand,
+                                                        amount: calculateAmount(cand.ctc, newPercentage, newFlat, newOption).toString()
+                                                    }));
+
+                                                    setInvoiceFormData({
+                                                        ...invoiceFormData,
+                                                        payoutOption: newOption,
+                                                        agreementPercentage: newPercentage,
+                                                        flatPayAmount: newFlat,
+                                                        candidates: updatedCandidates
+                                                    });
+                                                }}
+                                                className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
+                                            >
+                                                <option value="Agreement Percentage">Agreement Percentage</option>
+                                                <option value="Flat Pay">Flat Pay</option>
+                                                <option value="Both">Both</option>
+                                            </select>
+                                        </div>
+                                        {(invoiceFormData.payoutOption === 'Agreement Percentage' || invoiceFormData.payoutOption === 'Both') && (
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Agreement %</label>
+                                                <input
+                                                    type="number"
+                                                    value={invoiceFormData.agreementPercentage}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        const updatedCandidates = invoiceFormData.candidates.map(cand => ({
+                                                            ...cand,
+                                                            amount: calculateAmount(cand.ctc, val, invoiceFormData.flatPayAmount, invoiceFormData.payoutOption).toString()
+                                                        }));
+                                                        setInvoiceFormData({
+                                                            ...invoiceFormData,
+                                                            agreementPercentage: val,
+                                                            candidates: updatedCandidates
+                                                        });
+                                                    }}
+                                                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="e.g. 8.33"
+                                                />
+                                            </div>
+                                        )}
+                                        {(invoiceFormData.payoutOption === 'Flat Pay' || invoiceFormData.payoutOption === 'Both') && (
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Flat Pay Amount (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    value={invoiceFormData.flatPayAmount}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        const updatedCandidates = invoiceFormData.candidates.map(cand => ({
+                                                            ...cand,
+                                                            amount: calculateAmount(cand.ctc, invoiceFormData.agreementPercentage, val, invoiceFormData.payoutOption).toString()
+                                                        }));
+                                                        setInvoiceFormData({
+                                                            ...invoiceFormData,
+                                                            flatPayAmount: val,
+                                                            candidates: updatedCandidates
+                                                        });
+                                                    }}
+                                                    className="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                                    placeholder="e.g. 50000"
+                                                />
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Invoice Number</label>
                                             <input
@@ -1064,18 +1386,18 @@ const Finance = () => {
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Candidate</label>
                                                         <div className="flex items-center gap-2">
-                                                            <select
+                                                            <SearchableSelect
+                                                                options={candidates
+                                                                    .filter(c => c.status?.toLowerCase() === 'selected' || c.status?.toLowerCase() === 'joined')
+                                                                    .map(c => ({
+                                                                        value: c._id,
+                                                                        label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"} (${c.status})`
+                                                                    }))}
                                                                 value={row.candidateId}
-                                                                onChange={(e) => handleCandidateChange(index, 'candidateId', e.target.value)}
-                                                                className="flex-1 p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                                            >
-                                                                <option value="">Select Candidate</option>
-                                                                {candidates.map(c => (
-                                                                    <option key={c._id} value={c._id}>
-                                                                        {c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
+                                                                placeholder="Select Candidate"
+                                                                className="flex-1"
+                                                                onChange={(val) => handleCandidateChange(index, 'candidateId', val)}
+                                                            />
                                                             <a
                                                                 href="/Admin/candidates/add"
                                                                 target="_blank"
@@ -1165,14 +1487,15 @@ const Finance = () => {
                                             <p className="font-bold text-lg mb-1">{clients.find(c => c._id === invoiceFormData.client)?.companyName || "[Client Name]"}</p>
                                             <p className="text-slate-600 w-2/3">
                                                 {(() => {
+                                                    const addressParts = [];
+                                                    if (invoiceFormData.billingAddress) addressParts.push(invoiceFormData.billingAddress);
+                                                    if (invoiceFormData.billingState) addressParts.push(invoiceFormData.billingState);
+
+                                                    if (addressParts.length > 0) return addressParts.join(', ');
+
                                                     const selectedClient = clients.find(c => c._id === invoiceFormData.client);
                                                     if (!selectedClient) return "Select a client to view address...";
-
-                                                    const addressParts = [];
-                                                    if (selectedClient.address) addressParts.push(selectedClient.address);
-                                                    if (selectedClient.state) addressParts.push(selectedClient.state);
-
-                                                    return addressParts.length > 0 ? addressParts.join(', ') : (selectedClient.companyInfo || "No address available");
+                                                    return selectedClient.companyInfo || "No address available";
                                                 })()}
                                             </p>
                                             <div className="mt-4 flex flex-col gap-1">
@@ -1222,8 +1545,7 @@ const Finance = () => {
                                                     <span>₹{invoiceFormData.candidates.reduce((sum, c) => sum + Number(c.amount || 0), 0).toLocaleString()}</span>
                                                 </div>
                                                 {(() => {
-                                                    const selectedClient = clients.find(c => c._id === invoiceFormData.client);
-                                                    const isKarnataka = selectedClient?.state?.toLowerCase() === 'karnataka';
+                                                    const isKarnataka = invoiceFormData.billingState?.toLowerCase() === 'karnataka';
                                                     const total = invoiceFormData.candidates.reduce((sum, c) => sum + Number(c.amount || 0), 0);
                                                     const tax = Math.round(total * 0.18);
 
@@ -1388,23 +1710,23 @@ const Finance = () => {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Category
                                 </label>
-                                <select
-                                    name="category"
+                                <SearchableSelect
+                                    options={[
+                                        { value: "Food", label: "Food" },
+                                        { value: "Transport", label: "Transport" },
+                                        { value: "Office Supplies", label: "Office Supplies" },
+                                        { value: "Utilities", label: "Utilities" },
+                                        { value: "Rent", label: "Rent" },
+                                        { value: "Salaries", label: "Salaries" },
+                                        { value: "Marketing", label: "Marketing" },
+                                        { value: "Software", label: "Software" },
+                                        { value: "Other", label: "Other" }
+                                    ]}
                                     value={expenseData.category}
-                                    onChange={handleExpenseChange}
-                                    required
-                                    className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                >
-                                    <option value="Food">Food</option>
-                                    <option value="Transport">Transport</option>
-                                    <option value="Office Supplies">Office Supplies</option>
-                                    <option value="Utilities">Utilities</option>
-                                    <option value="Rent">Rent</option>
-                                    <option value="Salaries">Salaries</option>
-                                    <option value="Marketing">Marketing</option>
-                                    <option value="Software">Software</option>
-                                    <option value="Other">Other</option>
-                                </select>
+                                    placeholder="Select Category"
+                                    className="w-full"
+                                    onChange={(val) => setExpenseData({ ...expenseData, category: val })}
+                                />
                             </div>
 
                             <div>

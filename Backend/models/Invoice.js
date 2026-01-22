@@ -21,7 +21,15 @@ const invoiceSchema = new mongoose.Schema({
         }
     }],
     agreementPercentage: Number,
+    payoutOption: {
+        type: String,
+        enum: ['Agreement Percentage', 'Flat Pay', 'Both'],
+        default: 'Agreement Percentage'
+    },
+    flatPayAmount: Number,
     gstNumber: String,
+    billingAddress: String,
+    billingState: String,
     igst: {
         type: Number,
         default: 0

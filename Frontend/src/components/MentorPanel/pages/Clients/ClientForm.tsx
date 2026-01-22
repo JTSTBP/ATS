@@ -24,7 +24,14 @@ interface ClientFormData {
     address?: string;
     state?: string;
     agreementPercentage?: number | string;
+    payoutOption?: 'Agreement Percentage' | 'Flat Pay' | 'Both';
+    flatPayAmount?: number | string;
     gstNumber?: string;
+    billingDetails: {
+        address: string;
+        state: string;
+        gstNumber: string;
+    }[];
     pocs: POC[];
 }
 
@@ -46,7 +53,10 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
         address: '',
         state: '',
         agreementPercentage: '',
+        payoutOption: 'Agreement Percentage',
+        flatPayAmount: '',
         gstNumber: '',
+        billingDetails: [{ address: '', state: '', gstNumber: '' }],
         pocs: [{ name: '', email: '', phone: '', altPhone: '', linkedinUrl: '' }]
     });
     const [loading, setLoading] = useState(false);
@@ -289,86 +299,177 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                                 />
                             </div>
 
-                            {(user?.isAdmin || user?.designation === 'Admin') && (
-                                <>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                                        <textarea
-                                            value={formData.address}
-                                            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                            rows={2}
-                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
-                                    </div>
+                            <div className="md:col-span-2 border-t pt-4">
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Payout Options</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Payout Method</label>
                                         <select
-                                            value={formData.state}
-                                            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            value={formData.payoutOption}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                payoutOption: e.target.value as any,
+                                                // Reset values if not selected
+                                                agreementPercentage: e.target.value === 'Flat Pay' ? '' : formData.agreementPercentage,
+                                                flatPayAmount: e.target.value === 'Agreement Percentage' ? '' : formData.flatPayAmount
+                                            })}
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-700"
                                         >
-                                            <option value="">Select State</option>
-                                            <option value="Andhra Pradesh">Andhra Pradesh</option>
-                                            <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                                            <option value="Assam">Assam</option>
-                                            <option value="Bihar">Bihar</option>
-                                            <option value="Chhattisgarh">Chhattisgarh</option>
-                                            <option value="Goa">Goa</option>
-                                            <option value="Gujarat">Gujarat</option>
-                                            <option value="Haryana">Haryana</option>
-                                            <option value="Himachal Pradesh">Himachal Pradesh</option>
-                                            <option value="Jharkhand">Jharkhand</option>
-                                            <option value="Karnataka">Karnataka</option>
-                                            <option value="Kerala">Kerala</option>
-                                            <option value="Madhya Pradesh">Madhya Pradesh</option>
-                                            <option value="Maharashtra">Maharashtra</option>
-                                            <option value="Manipur">Manipur</option>
-                                            <option value="Meghalaya">Meghalaya</option>
-                                            <option value="Mizoram">Mizoram</option>
-                                            <option value="Nagaland">Nagaland</option>
-                                            <option value="Odisha">Odisha</option>
-                                            <option value="Punjab">Punjab</option>
-                                            <option value="Rajasthan">Rajasthan</option>
-                                            <option value="Sikkim">Sikkim</option>
-                                            <option value="Tamil Nadu">Tamil Nadu</option>
-                                            <option value="Telangana">Telangana</option>
-                                            <option value="Tripura">Tripura</option>
-                                            <option value="Uttar Pradesh">Uttar Pradesh</option>
-                                            <option value="Uttarakhand">Uttarakhand</option>
-                                            <option value="West Bengal">West Bengal</option>
-                                            <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
-                                            <option value="Chandigarh">Chandigarh</option>
-                                            <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
-                                            <option value="Delhi">Delhi</option>
-                                            <option value="Jammu and Kashmir">Jammu and Kashmir</option>
-                                            <option value="Ladakh">Ladakh</option>
-                                            <option value="Lakshadweep">Lakshadweep</option>
-                                            <option value="Puducherry">Puducherry</option>
+                                            <option value="Agreement Percentage">Agreement Percentage</option>
+                                            <option value="Flat Pay">Flat Pay</option>
+                                            <option value="Both">Both</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Agreement Percentage (%)</label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={formData.agreementPercentage}
-                                            onChange={(e) => setFormData({ ...formData, agreementPercentage: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                                        <input
-                                            type="text"
-                                            value={formData.gstNumber}
-                                            onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        />
-                                    </div>
-                                </>
-                            )}
+
+                                    {(formData.payoutOption === 'Agreement Percentage' || formData.payoutOption === 'Both') && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 mb-1">Agreement Percentage (%)</label>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                value={formData.agreementPercentage}
+                                                onChange={(e) => setFormData({ ...formData, agreementPercentage: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="e.g. 8.33"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {(formData.payoutOption === 'Flat Pay' || formData.payoutOption === 'Both') && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 mb-1">Flat Pay Amount (₹)</label>
+                                            <input
+                                                type="number"
+                                                value={formData.flatPayAmount}
+                                                onChange={(e) => setFormData({ ...formData, flatPayAmount: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                                placeholder="e.g. 50000"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    {(user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Finance') && (
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-700">Billing Details</h3>
+                                    <p className="text-xs text-gray-500 mt-1">Add one or more billing locations/contract details</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormData({
+                                        ...formData,
+                                        billingDetails: [...(formData.billingDetails || []), { address: '', state: '', gstNumber: '' }]
+                                    })}
+                                    className="flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                >
+                                    <Plus className="w-4 h-4 mr-1" /> Add Billing Set
+                                </button>
+                            </div>
+
+                            {(formData.billingDetails || []).map((detail, index) => (
+                                <div key={index} className="bg-slate-50 p-4 rounded-lg border relative border-slate-200">
+                                    {(formData.billingDetails || []).length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({
+                                                ...formData,
+                                                billingDetails: (formData.billingDetails || []).filter((_, i) => i !== index)
+                                            })}
+                                            className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
+                                            <textarea
+                                                value={detail.address}
+                                                onChange={(e) => {
+                                                    const newDetails = [...(formData.billingDetails || [])];
+                                                    newDetails[index] = { ...newDetails[index], address: e.target.value };
+                                                    setFormData({ ...formData, billingDetails: newDetails });
+                                                }}
+                                                rows={2}
+                                                className="w-full px-3 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="Billing Address"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 mb-1">State</label>
+                                            <select
+                                                value={detail.state}
+                                                onChange={(e) => {
+                                                    const newDetails = [...(formData.billingDetails || [])];
+                                                    newDetails[index] = { ...newDetails[index], state: e.target.value };
+                                                    setFormData({ ...formData, billingDetails: newDetails });
+                                                }}
+                                                className="w-full px-3 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select State</option>
+                                                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                                                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                                                <option value="Assam">Assam</option>
+                                                <option value="Bihar">Bihar</option>
+                                                <option value="Chhattisgarh">Chhattisgarh</option>
+                                                <option value="Goa">Goa</option>
+                                                <option value="Gujarat">Gujarat</option>
+                                                <option value="Haryana">Haryana</option>
+                                                <option value="Himachal Pradesh">Himachal Pradesh</option>
+                                                <option value="Jharkhand">Jharkhand</option>
+                                                <option value="Karnataka">Karnataka</option>
+                                                <option value="Kerala">Kerala</option>
+                                                <option value="Madhya Pradesh">Madhya Pradesh</option>
+                                                <option value="Maharashtra">Maharashtra</option>
+                                                <option value="Manipur">Manipur</option>
+                                                <option value="Meghalaya">Meghalaya</option>
+                                                <option value="Mizoram">Mizoram</option>
+                                                <option value="Nagaland">Nagaland</option>
+                                                <option value="Odisha">Odisha</option>
+                                                <option value="Punjab">Punjab</option>
+                                                <option value="Rajasthan">Rajasthan</option>
+                                                <option value="Sikkim">Sikkim</option>
+                                                <option value="Tamil Nadu">Tamil Nadu</option>
+                                                <option value="Telangana">Telangana</option>
+                                                <option value="Tripura">Tripura</option>
+                                                <option value="Uttar Pradesh">Uttar Pradesh</option>
+                                                <option value="Uttarakhand">Uttarakhand</option>
+                                                <option value="West Bengal">West Bengal</option>
+                                                <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
+                                                <option value="Chandigarh">Chandigarh</option>
+                                                <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
+                                                <option value="Delhi">Delhi</option>
+                                                <option value="Jammu and Kashmir">Jammu and Kashmir</option>
+                                                <option value="Ladakh">Ladakh</option>
+                                                <option value="Lakshadweep">Lakshadweep</option>
+                                                <option value="Puducherry">Puducherry</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 mb-1">GST Number</label>
+                                            <input
+                                                type="text"
+                                                value={detail.gstNumber}
+                                                onChange={(e) => {
+                                                    const newDetails = [...(formData.billingDetails || [])];
+                                                    newDetails[index] = { ...newDetails[index], gstNumber: e.target.value };
+                                                    setFormData({ ...formData, billingDetails: newDetails });
+                                                }}
+                                                className="w-full px-3 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"
+                                                placeholder="GST Number"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     {/* POC Section */}
                     <div className="space-y-4">
@@ -387,7 +488,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                         </div>
 
                         {(formData.pocs || []).map((poc, index) => (
-                            <div key={index} className="bg-gray-50 p-4 rounded-lg border relative">
+                            <div key={index} className="bg-gray-50 p-4 rounded-lg border relative border-gray-200">
                                 {(formData.pocs || []).length > 1 && (
                                     <button
                                         type="button"

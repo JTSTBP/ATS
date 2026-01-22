@@ -13,7 +13,9 @@ import {
   Phone,
   Link,
   MessageSquare,
-  Edit, // Added
+  Edit,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
@@ -41,6 +43,94 @@ import { StatusUpdateModal } from "../../../Common/StatusUpdateModal";
 //   shortlisted: boolean;
 // }
 
+// 🔹 Searchable Select Component
+const SearchableSelect = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  className = "",
+  disabled = false
+}: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className?: string;
+  disabled?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const myRef = useState(() => ({ current: null as HTMLDivElement | null }))[0];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (myRef.current && !myRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [myRef]);
+
+  const filteredOptions = options.filter(opt =>
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  return (
+    <div className={`relative ${className}`} ref={myRef}>
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full p-2 border border-gray-300 rounded-lg bg-gray-50 flex justify-between items-center focus:ring-2 focus:ring-blue-500 transition-all ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+          }`}
+      >
+        <span className={`text-sm ${selectedOption && selectedOption.value !== 'all' ? "text-gray-800 font-medium" : "text-gray-500"}`}>
+          {selectedOption && selectedOption.value !== 'all' ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </div>
+      {isOpen && (
+        <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="p-2 border-b border-gray-100 bg-gray-50">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search..."
+                className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="overflow-y-auto custom-scrollbar">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map(opt => (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                    setSearchTerm("");
+                  }}
+                  className={`px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm transition-colors ${value === opt.value ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700'}`}
+                >
+                  {opt.label}
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-gray-400 text-xs italic">No matching results</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CandidatesList = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -67,6 +157,8 @@ const CandidatesList = () => {
   const [joinEndDate, setJoinEndDate] = useState("");
   const [selectStartDate, setSelectStartDate] = useState("");
   const [selectEndDate, setSelectEndDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [recruiterFilter, setRecruiterFilter] = useState("all");
 
 
   // Status Modal State
@@ -107,7 +199,6 @@ const CandidatesList = () => {
     if (user.designation === "Admin") {
       filtered = candidates.filter((c) => (c.jobId as any)?._id === id);
     } else {
-      // Other roles see candidates created by them or their reporting users
       // Other roles see candidates created by them or their reporting users
       const reportingUsers = users.filter((u) => (u?.reporter as any)?._id === user._id);
       const reportingUserIds = reportingUsers.map((u) => u._id);
@@ -167,6 +258,23 @@ const CandidatesList = () => {
     }
 
 
+    // Search Filter
+    if (searchTerm) {
+      const lowerSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter((c) => {
+        const name = (c.dynamicFields?.candidateName || "").toLowerCase();
+        const email = (c.dynamicFields?.[Object.keys(c.dynamicFields || {}).find(k => k.toLowerCase().includes("email")) || ""] || "").toLowerCase();
+        const phone = (c.dynamicFields?.[Object.keys(c.dynamicFields || {}).find(k => k.toLowerCase().includes("phone")) || ""] || "").toLowerCase();
+        const skills = (c.dynamicFields?.keySkills || "").toLowerCase();
+        return name.includes(lowerSearch) || email.includes(lowerSearch) || phone.includes(lowerSearch) || skills.includes(lowerSearch);
+      });
+    }
+
+    // Recruiter Filter
+    if (recruiterFilter !== "all") {
+      filtered = filtered.filter((c) => (c.createdBy as any)?._id === recruiterFilter);
+    }
+
     // Sorting
     if (sortBy === "Name") {
       filtered = filtered.sort((a, b) =>
@@ -182,7 +290,7 @@ const CandidatesList = () => {
 
     // Save full filtered list before pagination
     setFullFilteredList(filtered as any);
-  }, [candidates, users, user, id, statusFilter, sortBy, interviewStageFilter, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+  }, [candidates, users, user, id, statusFilter, sortBy, interviewStageFilter, joinStartDate, joinEndDate, selectStartDate, selectEndDate, searchTerm, recruiterFilter]);
 
 
   useEffect(() => {
@@ -264,7 +372,7 @@ const CandidatesList = () => {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusAction = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string) => {
+  const confirmStatusAction = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string) => {
     if (!pendingAction) return;
 
     if (pendingAction.type === 'reject' || pendingAction.type === 'statusChange') {
@@ -279,7 +387,9 @@ const CandidatesList = () => {
         joiningDate,
         offerLetter,
         selectionDate, // Add selectionDate
-        expectedJoiningDate // Add expectedJoiningDate
+        expectedJoiningDate, // Add expectedJoiningDate
+        rejectedBy,
+        offeredCTC
       );
 
       if (success) {
@@ -725,6 +835,39 @@ const CandidatesList = () => {
             <ChevronLeft className="w-5 h-5" />
             Back to Jobs
           </button>
+
+          <div className="flex items-center gap-4 flex-1 max-w-2xl ml-8">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search candidates by name, email, skills..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+              />
+              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            </div>
+
+            <div className="w-64">
+              <SearchableSelect
+                options={[
+                  { value: "all", label: "All Recruiters" },
+                  ...Array.from(new Set(candidates
+                    .filter(c => (c.jobId as any)?._id === id)
+                    .map(c => ({
+                      value: (c.createdBy as any)?._id,
+                      label: (c.createdBy as any)?.name
+                    }))
+                    .filter(r => r.value && r.label)
+                    .map(r => JSON.stringify(r))
+                  )).map(rJson => JSON.parse(rJson))
+                ]}
+                value={recruiterFilter}
+                onChange={(val) => setRecruiterFilter(val)}
+                placeholder="Select Recruiter"
+              />
+            </div>
+          </div>
         </div>
 
         <div className="max-w-7xl mx-auto px-6">

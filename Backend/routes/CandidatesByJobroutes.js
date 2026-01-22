@@ -1341,6 +1341,20 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
       }
     }
 
+    // Handle Offered CTC
+    const { offeredCTC } = req.body;
+    if (offeredCTC) {
+      if (!updateData.dynamicFields) {
+        updateData.dynamicFields = { ...existingCandidate.dynamicFields };
+      }
+      updateData.dynamicFields["Offered CTC"] = offeredCTC;
+      changes.push({
+        field: 'Offered CTC',
+        oldValue: existingCandidate.dynamicFields?.["Offered CTC"] || 'Not set',
+        newValue: offeredCTC
+      });
+    }
+
     // If stage status and notes are provided, add to history
     if (status === "Interviewed" && interviewStage && stageStatus) {
       const stageHistoryEntry = {

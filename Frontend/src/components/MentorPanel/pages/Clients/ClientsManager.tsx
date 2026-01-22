@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Building2, Globe, Linkedin, Phone, Mail, Pencil, Trash2, MapPin, FileText, Hash } from 'lucide-react';
+import { Plus, Search, Building2, Globe, Linkedin, Phone, Mail, Pencil, Trash2, MapPin, Hash } from 'lucide-react';
 // import { toast } from 'react-toastify'; // Not used in this component directly anymore if deleteClient handles toast
 import { useAuth } from '../../../../context/AuthProvider';
 import { useClientsContext, Client } from '../../../../context/ClientsProvider';
@@ -138,6 +138,23 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                                             <div>
                                                 <h3 className="text-xl font-bold text-gray-800">{client.companyName}</h3>
                                                 <p className="text-sm text-gray-500">{client.industry}</p>
+                                                {client.payoutOption && (
+                                                    <div className="flex flex-wrap gap-2 mt-2">
+                                                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold uppercase tracking-wider border border-blue-100 italic">
+                                                            {client.payoutOption}
+                                                        </span>
+                                                        {(client.payoutOption === 'Agreement Percentage' || client.payoutOption === 'Both') && client.agreementPercentage && (
+                                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold border border-slate-200">
+                                                                {client.agreementPercentage}%
+                                                            </span>
+                                                        )}
+                                                        {(client.payoutOption === 'Flat Pay' || client.payoutOption === 'Both') && client.flatPayAmount && (
+                                                            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[10px] font-bold border border-emerald-100">
+                                                                ₹{Number(client.flatPayAmount).toLocaleString()}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 {client.createdBy && typeof client.createdBy === 'object' && (
                                                     <p className="text-xs text-gray-400 mt-1">
                                                         Created by: <span className="font-medium text-gray-600">{(client.createdBy as any).name}</span>
@@ -182,44 +199,39 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
 
                                     <p className="text-gray-600 mb-6 text-sm">{client.companyInfo}</p>
 
-                                    {(user?.isAdmin || user?.designation === 'Admin') && (
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
-                                            {client.address && (
-                                                <div className="flex items-start gap-2">
-                                                    <MapPin className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-500 uppercase">Address</p>
-                                                        <p className="text-sm text-slate-700">{client.address}</p>
+                                    {(user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Finance') && client.billingDetails && client.billingDetails.length > 0 && (
+                                        <div className="space-y-4 mb-6">
+                                            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Billing Locations</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                {client.billingDetails.map((detail, idx) => (
+                                                    <div key={idx} className="bg-slate-50 p-4 rounded-lg border border-slate-100 flex flex-col gap-3">
+                                                        {detail.address && (
+                                                            <div className="flex items-start gap-2">
+                                                                <MapPin className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-slate-500 uppercase">Address</p>
+                                                                    <p className="text-xs text-slate-700 line-clamp-2">{detail.address}</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between items-center mt-auto">
+                                                            {detail.state && (
+                                                                <div className="flex items-center gap-1">
+                                                                    <MapPin className="w-3 h-3 text-slate-400" />
+                                                                    <p className="text-[10px] text-slate-700">{detail.state}</p>
+                                                                </div>
+                                                            )}
+
+                                                        </div>
+                                                        {detail.gstNumber && (
+                                                            <div className="flex items-center gap-1 border-t pt-2 mt-1">
+                                                                <Hash className="w-3 h-3 text-slate-400" />
+                                                                <p className="text-[10px] text-slate-700 font-medium">GST: {detail.gstNumber}</p>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            )}
-                                            {client.state && (
-                                                <div className="flex items-start gap-2">
-                                                    <MapPin className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-500 uppercase">State</p>
-                                                        <p className="text-sm text-slate-700">{client.state}</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {client.agreementPercentage !== undefined && (
-                                                <div className="flex items-start gap-2">
-                                                    <FileText className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-500 uppercase">Agreement %</p>
-                                                        <p className="text-sm text-slate-700">{client.agreementPercentage}%</p>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {client.gstNumber && (
-                                                <div className="flex items-start gap-2">
-                                                    <Hash className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
-                                                    <div>
-                                                        <p className="text-xs font-bold text-slate-500 uppercase">GST Number</p>
-                                                        <p className="text-sm text-slate-700">{client.gstNumber}</p>
-                                                    </div>
-                                                </div>
-                                            )}
+                                                ))}
+                                            </div>
                                         </div>
                                     )}
 

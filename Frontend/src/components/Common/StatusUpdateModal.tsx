@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 interface StatusUpdateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => void;
+    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, ctc?: string) => void;
     newStatus: string;
     candidateName?: string;
     isCommentOnly?: boolean;
@@ -13,6 +13,7 @@ interface StatusUpdateModalProps {
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
     currentRejectedBy?: string;
+    currentCTC?: string;
 }
 
 export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
@@ -26,6 +27,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     currentSelectionDate,
     currentExpectedJoiningDate,
     currentRejectedBy,
+    currentCTC,
 }) => {
     const [comment, setComment] = useState("");
     const [joiningDate, setJoiningDate] = useState("");
@@ -33,6 +35,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     const [selectionDate, setSelectionDate] = useState("");
     const [expectedJoiningDate, setExpectedJoiningDate] = useState("");
     const [rejectedBy, setRejectedBy] = useState("");
+    const [ctc, setCtc] = useState("");
 
     useEffect(() => {
         if (isOpen) {
@@ -42,8 +45,9 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
             setSelectionDate(currentSelectionDate ? new Date(currentSelectionDate).toISOString().split('T')[0] : "");
             setExpectedJoiningDate(currentExpectedJoiningDate ? new Date(currentExpectedJoiningDate).toISOString().split('T')[0] : "");
             setRejectedBy(currentRejectedBy || "");
+            setCtc(currentCTC || "");
         }
-    }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate, currentRejectedBy]);
+    }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate, currentRejectedBy, currentCTC]);
 
     if (!isOpen) return null;
 
@@ -137,6 +141,22 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             </div>
                         )}
 
+                        {(isSelected || isJoined) && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Offered CTC {isJoined && <span className="text-red-500">*</span>}
+                                </label>
+                                <input
+                                    type="number"
+                                    required={isJoined}
+                                    placeholder={`Enter CTC ${isSelected ? '(Optional)' : '(e.g. 500000)'}`}
+                                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                    value={ctc}
+                                    onChange={(e) => setCtc(e.target.value)}
+                                />
+                            </div>
+                        )}
+
                         {newStatus === "Rejected" && (
                             <div className="mb-4">
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -197,11 +217,15 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                         alert("Please select a selection date");
                                         return;
                                     }
+                                    if (isJoined && !ctc) {
+                                        alert("Please enter the offered CTC");
+                                        return;
+                                    }
                                     if (newStatus === "Rejected" && !rejectedBy) {
                                         alert("Please select who rejected the candidate");
                                         return;
                                     }
-                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, rejectedBy);
+                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, rejectedBy, ctc);
                                 }}
                                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
                             >

@@ -69,6 +69,15 @@ router.post('/', clientUpload.single('logo'), async (req, res) => {
             }
         }
 
+        // Parse billingDetails if it's a JSON string (from FormData)
+        if (typeof clientData.billingDetails === 'string') {
+            try {
+                clientData.billingDetails = JSON.parse(clientData.billingDetails);
+            } catch (e) {
+                return res.status(400).json({ message: 'Invalid billingDetails data format' });
+            }
+        }
+
         const newClient = new Client(clientData);
         const savedClient = await newClient.save();
         res.status(201).json({ success: true, client: savedClient });
@@ -196,6 +205,15 @@ router.put('/:id', clientUpload.single('logo'), async (req, res) => {
                 updateData.pocs = JSON.parse(updateData.pocs);
             } catch (e) {
                 return res.status(400).json({ message: 'Invalid POCs data format' });
+            }
+        }
+
+        // Parse billingDetails if it's a JSON string (from FormData)
+        if (typeof updateData.billingDetails === 'string') {
+            try {
+                updateData.billingDetails = JSON.parse(updateData.billingDetails);
+            } catch (e) {
+                return res.status(400).json({ message: 'Invalid billingDetails data format' });
             }
         }
 

@@ -8,6 +8,7 @@ import {
     Phone,
     Search,
     Upload,
+    ChevronDown,
 } from "lucide-react";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
@@ -16,6 +17,95 @@ import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
+
+
+// 🔹 Searchable Select Component
+const SearchableSelect = ({
+    options,
+    value,
+    onChange,
+    placeholder,
+    className = "",
+    disabled = false
+}: {
+    options: { value: string; label: string }[];
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    className?: string;
+    disabled?: boolean;
+}) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const myRef = useState(() => ({ current: null as HTMLDivElement | null }))[0];
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (myRef.current && !myRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [myRef]);
+
+    const filteredOptions = options.filter(opt =>
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const selectedOption = options.find(opt => opt.value === value);
+
+    return (
+        <div className={`relative ${className}`} ref={myRef}>
+            <div
+                onClick={() => !disabled && setIsOpen(!isOpen)}
+                className={`w-full p-2 border border-gray-300 rounded-lg bg-gray-50 flex justify-between items-center focus:ring-2 focus:ring-orange-500 transition-all ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    }`}
+            >
+                <span className={`text-sm ${selectedOption && selectedOption.value !== 'all' ? "text-gray-800 font-medium" : "text-gray-500"}`}>
+                    {selectedOption && selectedOption.value !== 'all' ? selectedOption.label : placeholder}
+                </span>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </div>
+            {isOpen && (
+                <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-2 border-b border-gray-100 bg-gray-50">
+                        <div className="relative">
+                            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3.5 h-3.5" />
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Search..."
+                                className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <div className="overflow-y-auto custom-scrollbar">
+                        {filteredOptions.length > 0 ? (
+                            filteredOptions.map(opt => (
+                                <div
+                                    key={opt.value}
+                                    onClick={() => {
+                                        onChange(opt.value);
+                                        setIsOpen(false);
+                                        setSearchTerm("");
+                                    }}
+                                    className={`px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm transition-colors ${value === opt.value ? 'bg-orange-100 text-orange-700 font-semibold' : 'text-gray-700'}`}
+                                >
+                                    {opt.label}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="p-4 text-center text-gray-400 text-xs italic">No matching results</div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen = false }: { initialJobTitleFilter?: string, initialFormOpen?: boolean }) => {
     const { user } = useAuth();
@@ -195,7 +285,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         setStatusModalOpen(true);
     };
 
-    const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => {
+    const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string) => {
         if (!pendingStatusChange) return;
 
         await updateStatus(
@@ -210,7 +300,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             offerLetter,
             selectionDate,
             expectedJoiningDate,
-            rejectedBy
+            rejectedBy,
+            offeredCTC
         );
 
         // Optimistic update or refetch
@@ -268,52 +359,42 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
                     <div className="space-y-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</label>
-                        <select
+                        <SearchableSelect
+                            options={[
+                                { value: 'all', label: 'All Clients' },
+                                ...clients.map(c => ({ value: c.companyName, label: c.companyName }))
+                            ]}
                             value={filterClient}
-                            onChange={(e) => setFilterClient(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 text-sm"
-                        >
-                            <option value="all">All Clients</option>
-                            {clients.map((client: any) => (
-                                <option key={client._id} value={client.companyName}>
-                                    {client.companyName}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFilterClient(val)}
+                            placeholder="Select Client"
+                        />
                     </div>
 
                     <div className="space-y-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Job Title</label>
-                        <select
+                        <SearchableSelect
+                            options={[
+                                { value: 'all', label: 'All Job Titles' },
+                                ...uniqueJobTitles.map(t => ({ value: t, label: t }))
+                            ]}
                             value={filterJobTitle}
-                            onChange={(e) => setFilterJobTitle(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-gray-50 text-sm"
-                        >
-                            <option value="all">All Job Titles</option>
-                            {uniqueJobTitles.map((title: any) => (
-                                <option key={title} value={title}>
-                                    {title}
-                                </option>
-                            ))}
-                        </select>
+                            onChange={(val) => setFilterJobTitle(val)}
+                            placeholder="Select Job Title"
+                        />
                     </div>
 
                     <div className="space-y-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stage</label>
-                        <select
+                        <SearchableSelect
+                            options={[
+                                { value: 'all', label: 'All Stages' },
+                                ...availableStages.map((s: any) => ({ value: s.name, label: s.name }))
+                            ]}
                             value={filterStage}
-                            onChange={(e) => setFilterStage(e.target.value)}
+                            onChange={(val) => setFilterStage(val)}
+                            placeholder="Select Stage"
                             disabled={filterJobTitle === "all"}
-                            className={`w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm ${filterJobTitle === "all" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-50"
-                                }`}
-                        >
-                            <option value="all">All Stages</option>
-                            {availableStages.map((stage: any, index: number) => (
-                                <option key={index} value={stage.name}>
-                                    {stage.name}
-                                </option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     <div className="space-y-1">
@@ -446,13 +527,36 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                 <th className="px-6 py-3 text-left text-sm font-semibold">
                                     Contact
                                 </th>
+                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                    Job
+                                </th>
+                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                    Client
+                                </th>
+
+
+                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                    Resume
+                                </th>
+
+                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                    Created By
+                                </th>
+                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                    Reportees
+                                </th>
+
+                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                    Status
+                                </th>
                                 {statusFilter === "Joined" && (
                                     <>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">
-                                            Joining Date
-                                        </th>
+
                                         <th className="px-6 py-3 text-left text-sm font-semibold">
                                             Offer Letter
+                                        </th>
+                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                            Joining Date
                                         </th>
                                     </>
                                 )}
@@ -467,23 +571,6 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         </th>
                                     </>
                                 )}
-
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
-                                    Resume
-                                </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
-                                    Job
-                                </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
-                                    Created By
-                                </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
-                                    Reportees
-                                </th>
-
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
-                                    Status
-                                </th>
                                 <th className="px-6 py-3 text-left text-sm font-semibold">
                                     Actions
                                 </th>
@@ -518,24 +605,71 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 {candidate.dynamicFields?.Phone || "No Phone"}
                                             </div>
                                         </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {candidate.jobId?.title || "-"}
 
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+
+                                            {candidate.jobId?.clientId?.companyName && (
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    Client: {candidate.jobId?.clientId?.companyName}
+                                                </p>
+                                            )}
+                                        </td>
+
+
+                                        {/* RESUME */}
+                                        <td className="px-6 py-4">
+                                            {candidate.resumeUrl ? (
+                                                <a
+                                                    href={`${API_BASE_URL}${candidate.resumeUrl}`} // prepend backend URL
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center text-blue-600"
+                                                >
+                                                    <Upload className="w-4 h-4 mr-1" />
+                                                    View Resume
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400 text-sm">No Resume</span>
+                                            )}
+                                        </td>
+
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {candidate.createdBy?.name || "-"}-
+                                            {candidate.createdBy?.designation}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            {candidate.createdBy?.reporter?.name}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                            <select
+                                                value={candidate.status || "New"}
+                                                onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
+                                                className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
+                                            >
+                                                <option value="New">New</option>
+                                                <option value="Shortlisted">Shortlisted</option>
+                                                <option value="Interviewed">Interviewed</option>
+                                                <option value="Selected">Selected</option>
+                                                <option value="Joined">Joined</option>
+                                                <option value="Rejected">Rejected</option>
+                                                <option value="Dropped">Dropped</option>
+                                            </select>
+                                            {candidate.status === "Interviewed" && candidate.interviewStage && (
+                                                <div className="mt-2 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 text-center">
+                                                    {candidate.interviewStage}
+                                                </div>
+                                            )}
+                                            {candidate.status === "Joined" && candidate.joiningDate && (
+                                                <p className="text-[10px] text-green-600 mt-1 font-medium">
+                                                    Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                                                </p>
+                                            )}
+                                        </td>
                                         {statusFilter === "Joined" && (
                                             <>
-                                                {/* JOINING DATE */}
-                                                <td className="px-6 py-4 text-sm text-gray-700">
-                                                    <div className="flex items-center gap-2">
-                                                        {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
-                                                        {/* Edit Button for Joined Details */}
-                                                        <button
-                                                            onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
-                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
-                                                            title="Edit Joining Details"
-                                                        >
-                                                            <Edit className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-
                                                 {/* OFFER LETTER */}
                                                 <td className="px-6 py-4 text-sm text-gray-700">
                                                     {candidate.offerLetter ? (
@@ -551,6 +685,22 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                         "-"
                                                     )}
                                                 </td>
+                                                {/* JOINING DATE */}
+                                                <td className="px-6 py-4 text-sm text-gray-700">
+                                                    <div className="flex items-center gap-2">
+                                                        {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
+                                                        {/* Edit Button for Joined Details */}
+                                                        <button
+                                                            onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
+                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                                                            title="Edit Joining Details"
+                                                        >
+                                                            <Edit className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+
+
                                             </>
                                         )}
 
@@ -585,63 +735,6 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 </td>
                                             </>
                                         )}
-
-                                        {/* RESUME */}
-                                        <td className="px-6 py-4">
-                                            {candidate.resumeUrl ? (
-                                                <a
-                                                    href={`${API_BASE_URL}${candidate.resumeUrl}`} // prepend backend URL
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center text-blue-600"
-                                                >
-                                                    <Upload className="w-4 h-4 mr-1" />
-                                                    View Resume
-                                                </a>
-                                            ) : (
-                                                <span className="text-gray-400 text-sm">No Resume</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
-                                            {candidate.jobId?.title || "-"}
-                                            {candidate.jobId?.clientId?.companyName && (
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Client: {candidate.jobId?.clientId?.companyName}
-                                                </p>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
-                                            {candidate.createdBy?.name || "-"}-
-                                            {candidate.createdBy?.designation}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
-                                            {candidate.createdBy?.reporter?.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
-                                            <select
-                                                value={candidate.status || "New"}
-                                                onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
-                                                className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
-                                            >
-                                                <option value="New">New</option>
-                                                <option value="Shortlisted">Shortlisted</option>
-                                                <option value="Interviewed">Interviewed</option>
-                                                <option value="Selected">Selected</option>
-                                                <option value="Joined">Joined</option>
-                                                <option value="Rejected">Rejected</option>
-                                                <option value="Dropped">Dropped</option>
-                                            </select>
-                                            {candidate.status === "Interviewed" && candidate.interviewStage && (
-                                                <div className="mt-2 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 text-center">
-                                                    {candidate.interviewStage}
-                                                </div>
-                                            )}
-                                            {candidate.status === "Joined" && candidate.joiningDate && (
-                                                <p className="text-[10px] text-green-600 mt-1 font-medium">
-                                                    Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
-                                                </p>
-                                            )}
-                                        </td>
 
                                         {/* ACTIONS */}
                                         <td className="px-6 py-4 flex space-x-2">

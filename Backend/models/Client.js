@@ -1,5 +1,11 @@
 const mongoose = require('mongoose');
 
+const billingDetailSchema = new mongoose.Schema({
+    address: { type: String },
+    state: { type: String },
+    gstNumber: { type: String }
+});
+
 const pocSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true },
@@ -19,7 +25,14 @@ const clientSchema = new mongoose.Schema(
         address: { type: String },
         state: { type: String },
         agreementPercentage: { type: Number },
+        payoutOption: {
+            type: String,
+            enum: ['Agreement Percentage', 'Flat Pay', 'Both'],
+            default: 'Agreement Percentage'
+        },
+        flatPayAmount: { type: Number },
         gstNumber: { type: String },
+        billingDetails: [billingDetailSchema],
         pocs: [pocSchema],
         jobCount: { type: Number, default: 0 },
         createdBy: {

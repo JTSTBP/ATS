@@ -607,10 +607,11 @@ export default function ReportsTab() {
                 </th>
                 <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
                 <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Screen</th>
+                <th className="py-3 px-4 text-center text-red-600 min-w-[100px]">Reject by Mentor</th>
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
-                <th className="py-3 px-4 text-center text-red-600 min-w-[80px]">Rejected</th>
+                <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
                 <th className="py-3 px-4 text-center text-gray-600 min-w-[80px]">Dropped</th>
               </tr>
             </thead>
@@ -676,12 +677,15 @@ export default function ReportsTab() {
                 const totals = reportRows.reduce((acc, row) => {
                   acc.positions += (Number(row.job.noOfPositions) || 0);
                   acc.uploads += row.jobCandidates.length;
-                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].forEach(status => {
+                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Dropped"].forEach(status => {
                     const count = row.jobCandidates.filter((c: any) => c.status === status).length;
                     acc[status] = (acc[status] || 0) + count;
                   });
+                  // Split rejection totals
+                  acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
+                  acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
                   return acc;
-                }, { positions: 0, uploads: 0 } as Record<string, number>);
+                }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0 } as Record<string, number>);
 
                 return (
                   <>
@@ -710,7 +714,7 @@ export default function ReportsTab() {
                             {row.jobCandidates.length}
                           </button>
                         </td>
-                        {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => {
+                        {["New", "Shortlisted"].map(status => {
                           const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
                           const count = statusCandidates.length;
                           return (
@@ -727,6 +731,76 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
+                        {/* Reject by Mentor Column */}
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const mentorRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor");
+                            const count = mentorRejected.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Mentor", mentorRejected)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-red-100 text-red-700 border border-red-200 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                        {["Interviewed", "Selected", "Joined"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
+                            const count = clientRejected.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Client", clientRejected)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-red-50 text-red-600 border border-red-100 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                        {/* Dropped Column */}
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const dropped = row.jobCandidates.filter((c: any) => c.status === "Dropped");
+                            const count = dropped.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Dropped", dropped)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
                       </tr>
                     ))}
                     {/* Total Row */}
@@ -735,11 +809,19 @@ export default function ReportsTab() {
                       <td className="py-4 px-6 text-center text-slate-800">{totals.positions}</td>
                       <td className="py-4 px-6"></td>
                       <td className="py-4 px-4 text-center text-slate-800">{totals.uploads}</td>
-                      {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => (
+                      {["New", "Shortlisted"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800">
                           {totals[status] || 0}
                         </td>
                       ))}
+                      <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
+                      {["Interviewed", "Selected", "Joined"].map(status => (
+                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                          {totals[status] || 0}
+                        </td>
+                      ))}
+                      <td className="py-4 px-4 text-center text-red-700 font-bold">{totals.rejectByClient}</td>
+                      <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.Dropped || 0}</td>
                     </tr>
                   </>
                 );
@@ -892,10 +974,11 @@ export default function ReportsTab() {
                 </th>
                 <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
                 <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Screen</th>
+                <th className="py-3 px-4 text-center text-red-600 min-w-[100px]">Reject by Mentor</th>
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
-                <th className="py-3 px-4 text-center text-red-600 min-w-[80px]">Rejected</th>
+                <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
                 <th className="py-3 px-4 text-center text-gray-600 min-w-[80px]">Dropped</th>
               </tr>
             </thead>
@@ -960,12 +1043,14 @@ export default function ReportsTab() {
                 const totals = reportRows.reduce((acc, row) => {
                   acc.positions += (Number(row.job.noOfPositions) || 0);
                   acc.uploads += row.jobCandidates.length;
-                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].forEach(status => {
+                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Dropped"].forEach(status => {
                     const count = row.jobCandidates.filter((c: any) => c.status === status).length;
                     acc[status] = (acc[status] || 0) + count;
                   });
+                  acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
+                  acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
                   return acc;
-                }, { positions: 0, uploads: 0 } as Record<string, number>);
+                }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0 } as Record<string, number>);
 
                 return (
                   <>
@@ -987,7 +1072,7 @@ export default function ReportsTab() {
                             {row.jobCandidates.length}
                           </button>
                         </td>
-                        {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => {
+                        {["New", "Shortlisted"].map(status => {
                           const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
                           const count = statusCandidates.length;
                           return (
@@ -1004,6 +1089,75 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
+                        {/* Reject by Mentor Column */}
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const mentorRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor");
+                            const count = mentorRejected.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Mentor", mentorRejected)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-red-100 text-red-700 border border-red-200 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                        {["Interviewed", "Selected", "Joined"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
+                            const count = clientRejected.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Client", clientRejected)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-red-50 text-red-600 border border-red-100 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const dropped = row.jobCandidates.filter((c: any) => c.status === "Dropped");
+                            const count = dropped.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Dropped", dropped)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
                       </tr>
                     ))}
                     {/* Total Row */}
@@ -1011,11 +1165,19 @@ export default function ReportsTab() {
                       <td colSpan={4} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
                       <td className="py-4 px-6 text-center text-slate-800">{totals.positions}</td>
                       <td className="py-4 px-4 text-center text-slate-800">{totals.uploads}</td>
-                      {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped"].map(status => (
+                      {["New", "Shortlisted"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800">
                           {totals[status] || 0}
                         </td>
                       ))}
+                      <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
+                      {["Interviewed", "Selected", "Joined"].map(status => (
+                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                          {totals[status] || 0}
+                        </td>
+                      ))}
+                      <td className="py-4 px-4 text-center text-red-700 font-bold">{totals.rejectByClient}</td>
+                      <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.Dropped || 0}</td>
                     </tr>
                   </>
                 );
@@ -1096,7 +1258,7 @@ export default function ReportsTab() {
                                   </td>
                                   <td className="py-3 px-4">
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(c.status)}`}>
-                                      {c.status}
+                                      {c.status === "Rejected" ? `Rejected (${c.rejectedBy || "Unknown"})` : c.status}
                                     </span>
                                   </td>
                                   {hasStatusDetails && (

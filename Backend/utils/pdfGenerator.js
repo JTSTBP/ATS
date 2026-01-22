@@ -45,7 +45,15 @@ function generateInvoicePDF(invoice, payment, path) {
         doc.fontSize(14).font('Helvetica-Bold').text(invoice.client.companyName, 50);
 
         // Display address and state if available
-        if (invoice.client.address || invoice.client.state) {
+        if (invoice.billingAddress || invoice.billingState) {
+            let addressText = '';
+            if (invoice.billingAddress) addressText += invoice.billingAddress;
+            if (invoice.billingState) {
+                if (addressText) addressText += ', ';
+                addressText += invoice.billingState;
+            }
+            doc.fontSize(10).font('Helvetica').text(addressText, 50, doc.y, { width: 300, align: 'left' });
+        } else if (invoice.client.address || invoice.client.state) {
             let addressText = '';
             if (invoice.client.address) addressText += invoice.client.address;
             if (invoice.client.state) {
@@ -118,7 +126,8 @@ function generateInvoicePDF(invoice, payment, path) {
 
         // --- Totals Section ---
         const totalTop = currentY + 15;
-        const isKarnataka = invoice.client.state?.toLowerCase() === 'karnataka';
+        const stateToCheck = invoice.billingState || invoice.client.state;
+        const isKarnataka = stateToCheck?.toLowerCase() === 'karnataka';
         let grandTotal = totalAmount;
 
         const labelX = 350;
