@@ -42,29 +42,29 @@ export default function AdminDashboard() {
     return <FinanceDashboard />;
   }
 
+  // Filter functions
+  const filterByMonth = (dateString: string | undefined) => {
+    if (!selectedMonth) return true;
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const month = date.toISOString().slice(0, 7); // YYYY-MM
+    return month === selectedMonth;
+  };
+
   // Calculate statistics
   const stats = useMemo(() => {
-    // Filter functions
-    const filterByMonth = (dateString: string | undefined) => {
-      if (!selectedMonth || !dateString) return true;
-      const date = new Date(dateString);
-      const month = date.toISOString().slice(0, 7); // YYYY-MM
-      return month === selectedMonth;
-    };
-
     // Filter data based on selected month
     const filteredJobs = jobs.filter((j) => filterByMonth(j.createdAt));
-    const filteredCandidates = candidates.filter((c) => filterByMonth(c.createdAt));
 
-    const totalCandidates = filteredCandidates.length;
+    const totalCandidates = candidates.filter((c) => filterByMonth(c.createdAt)).length;
     const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
 
     // Status-specific counts
-    const newCandidates = filteredCandidates.filter((c) => c.status === "New").length;
-    const shortlistedCandidates = filteredCandidates.filter((c) => c.status === "Shortlisted").length;
-    const interviewedCandidates = filteredCandidates.filter((c) => c.status === "Interviewed").length;
-    const selectedCandidates = filteredCandidates.filter((c) => c.status === "Selected").length;
-    const joinedCandidates = filteredCandidates.filter((c) => c.status === "Joined").length;
+    const newCandidates = candidates.filter((c) => c.status === "New" && filterByMonth(c.createdAt)).length;
+    const shortlistedCandidates = candidates.filter((c) => c.status === "Shortlisted" && filterByMonth(c.createdAt)).length;
+    const interviewedCandidates = candidates.filter((c) => c.status === "Interviewed" && filterByMonth(c.createdAt)).length;
+    const selectedCandidates = candidates.filter((c) => c.status === "Selected" && filterByMonth(c.selectionDate)).length;
+    const joinedCandidates = candidates.filter((c) => c.status === "Joined" && filterByMonth(c.joiningDate)).length;
 
     // Calculate Total Positions and Remaining
     const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
@@ -117,11 +117,6 @@ export default function AdminDashboard() {
     });
 
     candidates.forEach((c) => {
-      // Apply Month Filter to candidates for the chart too
-      if (selectedMonth) {
-        if (!c.createdAt || c.createdAt.slice(0, 7) !== selectedMonth) return;
-      }
-
       const creator = c.createdBy;
       if (!creator) return;
 
@@ -132,9 +127,21 @@ export default function AdminDashboard() {
         recruiterStats[creatorId] = { name: creatorName, uploaded: 0, shortlisted: 0, joined: 0 };
       }
 
-      recruiterStats[creatorId].uploaded += 1;
-      if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
-      if (c.status === "Joined" || c.status === "Selected") recruiterStats[creatorId].joined += 1;
+      // 1. Uploaded/Shortlisted check (by createdAt)
+      if (filterByMonth(c.createdAt)) {
+        recruiterStats[creatorId].uploaded += 1;
+        if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
+      }
+
+      // 2. Selected check (by selectionDate)
+      if (c.status === "Selected" && filterByMonth(c.selectionDate)) {
+        recruiterStats[creatorId].joined += 1;
+      }
+
+      // 3. Joined check (by joiningDate)
+      if (c.status === "Joined" && filterByMonth(c.joiningDate)) {
+        recruiterStats[creatorId].joined += 1;
+      }
     });
 
     return Object.values(recruiterStats)

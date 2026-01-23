@@ -70,6 +70,14 @@ export const Dashboard = () => {
 
   const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
 
+  // --- 1. Filter by Date Range (Selected Month/Year) ---
+  const isWithinSelectedMonth = (dateString: string | null | undefined) => {
+    if (selectedMonth === null || selectedYear === null) return true;
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+  };
+
   useEffect(() => {
     fetchJobs();
     fetchallCandidates();
@@ -77,13 +85,6 @@ export const Dashboard = () => {
 
   useEffect(() => {
     if (!user || !jobs || !candidates || !users) return;
-
-    // --- 1. Filter by Date Range (Selected Month/Year) ---
-    const isWithinSelectedMonth = (dateString: string) => {
-      if (selectedMonth === null || selectedYear === null) return true;
-      const date = new Date(dateString);
-      return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
-    };
 
     // --- 2. Filter Jobs ---
     const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
@@ -115,7 +116,7 @@ export const Dashboard = () => {
     });
 
     const fCandidates = mentorOnlyCandidates.filter((c: any) => isWithinSelectedMonth(c.createdAt));
-    setFilteredCandidates(fCandidates);
+    setFilteredCandidates(mentorOnlyCandidates); // Store ALL mentor candidates to filter them dynamically in chart/stats
 
     // --- 4. Calculate Positions Left (Based on mentor's jobs in this period) ---
     let totalPositionsLeft = 0;
@@ -132,10 +133,10 @@ export const Dashboard = () => {
       totalCandidates: fCandidates.length,
       totalApplications: fCandidates.length,
       new: fCandidates.filter((c: any) => c.status === 'New').length,
-      shortlisted: fCandidates.filter((c: any) => c.status === 'Shortlisted').length,
-      interviewed: fCandidates.filter((c: any) => c.status === 'Interviewed').length,
-      selected: fCandidates.filter((c: any) => c.status === 'Selected').length,
-      joined: fCandidates.filter((c: any) => c.status === 'Joined').length,
+      shortlisted: fCandidates.filter((c: any) => (c.status === 'Shortlisted' || c.status === 'Screen') && isWithinSelectedMonth(c.createdAt)).length,
+      interviewed: fCandidates.filter((c: any) => c.status === 'Interviewed' && isWithinSelectedMonth(c.createdAt)).length,
+      selected: mentorOnlyCandidates.filter((c: any) => c.status === 'Selected' && isWithinSelectedMonth(c.selectionDate)).length,
+      joined: mentorOnlyCandidates.filter((c: any) => c.status === 'Joined' && isWithinSelectedMonth(c.joiningDate)).length,
       rejected: fCandidates.filter((c: any) => c.status === 'Rejected').length,
       positionsLeft: totalPositionsLeft,
     };
@@ -202,14 +203,24 @@ export const Dashboard = () => {
         recruiterStats[creatorId] = { name: creatorName, uploaded: 0, shortlisted: 0, joined: 0 };
       }
 
-      recruiterStats[creatorId].uploaded += 1;
-      if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
-      if (c.status === "Joined" || c.status === "Selected") recruiterStats[creatorId].joined += 1;
+      // Check for upload/shortlist in selected period
+      if (isWithinSelectedMonth(c.createdAt)) {
+        recruiterStats[creatorId].uploaded += 1;
+        if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
+      }
+
+      // Check for join/select in selected period
+      if (c.status === "Selected" && isWithinSelectedMonth(c.selectionDate)) {
+        recruiterStats[creatorId].joined += 1;
+      }
+      if (c.status === "Joined" && isWithinSelectedMonth(c.joiningDate)) {
+        recruiterStats[creatorId].joined += 1;
+      }
     });
 
     return Object.values(recruiterStats)
       .sort((a, b) => b.uploaded - a.uploaded);
-  }, [filteredCandidates, users, teamMemberIds]);
+  }, [filteredCandidates, users, teamMemberIds, selectedMonth, selectedYear]);
 
   const statCards: Array<{ label: string; value: number; subValue?: string; icon: any; color: string; bgColor: string; path: string }> = [
     {

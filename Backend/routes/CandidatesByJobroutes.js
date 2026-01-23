@@ -142,16 +142,32 @@ router.get("/", async (req, res) => {
       matchStage.interviewStage = stage;
     }
 
-    // Filter by Date Range (createdAt)
+    // Filter by Date Range
     if (startDate || endDate) {
-      matchStage.createdAt = {};
-      if (startDate) {
-        matchStage.createdAt.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        matchStage.createdAt.$lte = end;
+      if (status === "Selected") {
+        matchStage.selectionDate = {};
+        if (startDate) matchStage.selectionDate.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          matchStage.selectionDate.$lte = end;
+        }
+      } else if (status === "Joined") {
+        matchStage.joiningDate = {};
+        if (startDate) matchStage.joiningDate.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          matchStage.joiningDate.$lte = end;
+        }
+      } else {
+        matchStage.createdAt = {};
+        if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          matchStage.createdAt.$lte = end;
+        }
       }
     }
 
@@ -565,16 +581,32 @@ router.get("/role-based-candidates", async (req, res) => {
       matchStage.interviewStage = stage;
     }
 
-    // Filter by Date Range (createdAt)
+    // Filter by Date Range
     if (startDate || endDate) {
-      matchStage.createdAt = {};
-      if (startDate) {
-        matchStage.createdAt.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        matchStage.createdAt.$lte = end;
+      if (status === "Selected") {
+        matchStage.selectionDate = {};
+        if (startDate) matchStage.selectionDate.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          matchStage.selectionDate.$lte = end;
+        }
+      } else if (status === "Joined") {
+        matchStage.joiningDate = {};
+        if (startDate) matchStage.joiningDate.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          matchStage.joiningDate.$lte = end;
+        }
+      } else {
+        matchStage.createdAt = {};
+        if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          matchStage.createdAt.$lte = end;
+        }
       }
     }
 
