@@ -34,6 +34,7 @@ export default function ReportsTab() {
     recruiter: [],
     total: [],
     daily_req: [],
+    daily_source: [],
     daily_recruiter: [],
     daily_client: [],
     daily_job: [],
@@ -87,6 +88,7 @@ export default function ReportsTab() {
     const interviewedCandidates = filteredCandidates.filter((c) => c.status === "Interviewed").length;
     const selectedCandidates = filteredCandidates.filter((c) => c.status === "Selected").length;
     const joinedCandidates = filteredCandidates.filter((c) => c.status === "Joined").length;
+    const holdCandidates = filteredCandidates.filter((c) => c.status === "Hold").length;
 
     // Calculate Total Positions and Remaining
     const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
@@ -120,6 +122,7 @@ export default function ReportsTab() {
       interviewedCandidates,
       selectedCandidates,
       joinedCandidates,
+      holdCandidates,
     };
   }, [jobs, candidates, startDate, endDate]);
 
@@ -130,6 +133,7 @@ export default function ReportsTab() {
       case "Interviewed": return "bg-purple-100 text-purple-700 border border-purple-200";
       case "Selected": return "bg-green-100 text-green-700 border border-green-200";
       case "Joined": return "bg-emerald-100 text-emerald-700 border border-emerald-200";
+      case "Hold": return "bg-amber-100 text-amber-700 border border-amber-200";
       case "Rejected": return "bg-red-100 text-red-700 border border-red-200";
       case "Dropped": return "bg-gray-100 text-gray-700 border border-gray-200";
       default: return "bg-slate-100 text-slate-700 border border-slate-200";
@@ -611,6 +615,7 @@ export default function ReportsTab() {
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
+                <th className="py-3 px-4 text-center text-amber-600 min-w-[80px]">Hold</th>
                 <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
                 <th className="py-3 px-4 text-center text-gray-600 min-w-[80px]">Dropped</th>
               </tr>
@@ -677,7 +682,7 @@ export default function ReportsTab() {
                 const totals = reportRows.reduce((acc, row) => {
                   acc.positions += (Number(row.job.noOfPositions) || 0);
                   acc.uploads += row.jobCandidates.length;
-                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Dropped"].forEach(status => {
+                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Hold", "Dropped"].forEach(status => {
                     const count = row.jobCandidates.filter((c: any) => c.status === status).length;
                     acc[status] = (acc[status] || 0) + count;
                   });
@@ -749,7 +754,7 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
-                        {["Interviewed", "Selected", "Joined"].map(status => {
+                        {["Interviewed", "Selected", "Joined", "Hold"].map(status => {
                           const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
                           const count = statusCandidates.length;
                           return (
@@ -815,7 +820,7 @@ export default function ReportsTab() {
                         </td>
                       ))}
                       <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
-                      {["Interviewed", "Selected", "Joined"].map(status => (
+                      {["Interviewed", "Selected", "Joined", "Hold"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800">
                           {totals[status] || 0}
                         </td>
@@ -888,7 +893,7 @@ export default function ReportsTab() {
               <tr>
                 <th className="py-3 px-6 min-w-[200px] relative">
                   <div className="flex items-center justify-between">
-                    <span>Requirement Received</span>
+                    <span>Requirement Received Date</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_req' ? null : 'daily_req'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_req.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
@@ -899,6 +904,21 @@ export default function ReportsTab() {
                   <FilterDropdown
                     column="daily_req"
                     options={Array.from(new Set(jobs.map(j => formatDate(j.createdAt)))).sort()}
+                  />
+                </th>
+                <th className="py-3 px-6 min-w-[200px] relative">
+                  <div className="flex items-center justify-between">
+                    <span>Source Date</span>
+                    <button
+                      onClick={() => { setOpenFilter(openFilter === 'daily_source' ? null : 'daily_source'); setFilterSearch(""); }}
+                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_source.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                    >
+                      <Filter size={14} fill={selectedFilters.daily_source.length > 0 ? "currentColor" : "none"} />
+                    </button>
+                  </div>
+                  <FilterDropdown
+                    column="daily_source"
+                    options={Array.from(new Set(candidates.filter(c => c.createdAt).map(c => formatDate(c.createdAt)))).sort()}
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[200px] relative">
@@ -994,12 +1014,16 @@ export default function ReportsTab() {
                     return cCreatorId === recruiter._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
                   });
 
-                  const jobIds = Array.from(new Set(recruiterCandidates.map(c => {
-                    return typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+                  const lineupKeys = Array.from(new Set(recruiterCandidates.map(c => {
+                    const date = c.createdAt ? formatDate(c.createdAt) : "N/A";
+                    const jobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+                    return `${jobId}|${date}`;
                   })));
 
-                  jobIds.forEach(jobId => {
-                    if (!jobId) return;
+                  lineupKeys.forEach(key => {
+                    const [jobId, sourceDate] = key.split('|');
+                    if (!jobId || jobId === 'undefined') return;
+
                     const job = jobs.find(j => j._id === jobId);
                     if (!job) return;
 
@@ -1008,22 +1032,25 @@ export default function ReportsTab() {
                     const clientName = client?.companyName || "Unknown";
                     const jobCandidates = recruiterCandidates.filter(c => {
                       const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-                      return cJobId === jobId;
+                      const cDate = c.createdAt ? formatDate(c.createdAt) : "N/A";
+                      return cJobId === jobId && cDate === sourceDate;
                     });
                     const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
 
                     const matchesReq = selectedFilters.daily_req.length > 0 ? selectedFilters.daily_req.includes(jobDate) : true;
+                    const matchesSource = selectedFilters.daily_source.length > 0 ? selectedFilters.daily_source.includes(sourceDate) : true;
                     const matchesRecruiter = selectedFilters.daily_recruiter.length > 0 ? selectedFilters.daily_recruiter.includes(recruiter.name) : true;
                     const matchesClient = selectedFilters.daily_client.length > 0 ? selectedFilters.daily_client.includes(clientName) : true;
                     const matchesJob = selectedFilters.daily_job.length > 0 ? selectedFilters.daily_job.includes(job.title) : true;
                     const matchesTotal = selectedFilters.daily_total.length > 0 ? selectedFilters.daily_total.includes(jobCandidates.length.toString()) : true;
 
-                    if (matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal) {
+                    if (matchesReq && matchesSource && matchesRecruiter && matchesClient && matchesJob && matchesTotal) {
                       reportRows.push({
                         recruiter,
                         job,
                         clientName,
                         jobDate,
+                        sourceDate,
                         jobCandidates
                       });
                     }
@@ -1033,7 +1060,7 @@ export default function ReportsTab() {
                 if (reportRows.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={11} className="py-8 text-center text-slate-500">
+                      <td colSpan={12} className="py-8 text-center text-slate-500">
                         No lineup data found for the selected criteria.
                       </td>
                     </tr>
@@ -1055,8 +1082,9 @@ export default function ReportsTab() {
                 return (
                   <>
                     {reportRows.map((row, i) => (
-                      <tr key={`${row.job._id}-${row.recruiter._id}-${i}`} className="hover:bg-slate-50 transition-colors">
+                      <tr key={`${row.job._id}-${row.recruiter._id}-${row.sourceDate}-${i}`} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
+                        <td className="py-4 px-6 text-slate-600">{row.sourceDate}</td>
                         <td className="py-4 px-6 font-medium text-slate-800">{row.recruiter.name}</td>
                         <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
                         <td className="py-4 px-6 text-slate-600 max-w-[200px] truncate" title={row.job.title}>{row.job.title}</td>
@@ -1162,7 +1190,7 @@ export default function ReportsTab() {
                     ))}
                     {/* Total Row */}
                     <tr className="bg-slate-100 font-bold border-t-2 border-slate-200 sticky bottom-0 z-10 shadow-sm">
-                      <td colSpan={4} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
+                      <td colSpan={5} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
                       <td className="py-4 px-6 text-center text-slate-800">{totals.positions}</td>
                       <td className="py-4 px-4 text-center text-slate-800">{totals.uploads}</td>
                       {["New", "Shortlisted"].map(status => (
@@ -1171,7 +1199,7 @@ export default function ReportsTab() {
                         </td>
                       ))}
                       <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
-                      {["Interviewed", "Selected", "Joined"].map(status => (
+                      {["Interviewed", "Selected", "Joined", "Hold"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800">
                           {totals[status] || 0}
                         </td>

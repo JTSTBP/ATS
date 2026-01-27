@@ -6,7 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
 
 export default function UserManagement() {
-  const { users, addUser, updateUser, deleteUser, paginatedUsers, pagination, fetchPaginatedUsers } = useUserContext();
+  const { users, addUser, updateUser, deleteUser, paginatedUsers, pagination, fetchPaginatedUsers, toggleUserStatus } = useUserContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -29,6 +29,7 @@ export default function UserManagement() {
     appPassword: "",
     reporter: "",
     isAdmin: false,
+    isDisabled: false,
     personalEmail: "",
     phoneNumber: {
       personal: "",
@@ -67,6 +68,7 @@ export default function UserManagement() {
       appPassword: "",
       reporter: "",
       isAdmin: false,
+      isDisabled: false,
       personalEmail: "",
       phoneNumber: {
         personal: "",
@@ -129,6 +131,7 @@ export default function UserManagement() {
       appPassword: user.appPassword || "",
       reporter: typeof user.reporter === 'object' && user.reporter !== null ? user.reporter._id : (user.reporter || ""),
       isAdmin: user.isAdmin,
+      isDisabled: user.isDisabled || false,
       personalEmail: user.personalEmail || "",
       phoneNumber: {
         personal: user.phoneNumber?.personal || "",
@@ -291,9 +294,12 @@ export default function UserManagement() {
                     </td>
 
                     <td className="px-6 py-4 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        Active
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${user.isDisabled
+                        ? "bg-rose-50 text-rose-700 border-rose-100"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                        }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${user.isDisabled ? "bg-rose-500" : "bg-emerald-500"}`}></span>
+                        {user.isDisabled ? "Disabled" : "Active"}
                       </span>
                     </td>
 
@@ -312,6 +318,16 @@ export default function UserManagement() {
                           title="Edit"
                         >
                           <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => toggleUserStatus(user._id)}
+                          className={`p-2 rounded-lg transition-colors ${user.isDisabled
+                            ? "text-emerald-500 hover:bg-emerald-50"
+                            : "text-rose-500 hover:bg-rose-50"
+                            }`}
+                          title={user.isDisabled ? "Enable User" : "Disable User"}
+                        >
+                          {user.isDisabled ? <Check size={16} /> : <EyeOff size={16} />}
                         </button>
                         <button
                           onClick={() => deleteUser(user._id)}
@@ -737,6 +753,20 @@ export default function UserManagement() {
                           className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                         />
                       </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="isDisabled"
+                        name="isDisabled"
+                        checked={formData.isDisabled}
+                        onChange={handleChange}
+                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="isDisabled" className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer">
+                        Disable User Account
+                      </label>
                     </div>
 
                   </div>

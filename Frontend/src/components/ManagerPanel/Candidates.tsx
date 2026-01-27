@@ -15,6 +15,7 @@ import { useJobContext } from "../../context/DataProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
+import { formatDate } from "../../utils/dateUtils";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 
 export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOpen = false }: { initialJobTitleFilter?: string, initialFormOpen?: boolean }) => {
@@ -406,6 +407,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
           "Joined",
           "Rejected",
           "Dropped",
+          "Hold",
         ].map((status) => (
           <button
             key={status}
@@ -481,7 +483,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                       <>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           <div className="flex items-center gap-2">
-                            {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
+                            {candidate.joiningDate ? formatDate(candidate.joiningDate) : "-"}
                             <button
                               onClick={() => handleStatusChange(candidate._id || "", "Joined", undefined, candidate.joiningDate)}
                               className="p-1 hover:bg-gray-100 rounded text-blue-600"
@@ -510,7 +512,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                       <>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           <div className="flex items-center gap-2">
-                            {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : "-"}
+                            {candidate.selectionDate ? formatDate(candidate.selectionDate) : "-"}
                             <button
                               onClick={() => handleStatusChange(
                                 candidate._id,
@@ -528,7 +530,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-700">
-                          {candidate.expectedJoiningDate ? new Date(candidate.expectedJoiningDate).toLocaleDateString() : "-"}
+                          {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "-"}
                         </td>
                       </>
                     )}
@@ -573,6 +575,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                         <option value="Joined">Joined</option>
                         <option value="Rejected">Rejected</option>
                         <option value="Dropped">Dropped</option>
+                        <option value="Hold">Hold</option>
                       </select>
                       {candidate.status === "Interviewed" && candidate.interviewStage && (
                         <div className="mt-2 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 text-center">
@@ -581,7 +584,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                       )}
                       {candidate.status === "Joined" && candidate.joiningDate && (
                         <p className="text-[10px] text-green-600 mt-1 font-medium">
-                          Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                          Joined: {formatDate(candidate.joiningDate)}
                         </p>
                       )}
                     </td>

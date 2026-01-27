@@ -10,6 +10,7 @@ import {
     Filter,
     Search,
 } from "lucide-react";
+import { formatDate } from "../../utils/dateUtils";
 
 interface Session {
     sessionId: string;
@@ -132,14 +133,7 @@ export default function Attendance() {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-        });
-    };
+    // Using global formatDate from utils
 
     const exportToCSV = () => {
         const headers = [

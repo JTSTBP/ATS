@@ -164,7 +164,7 @@ const CandidatesList = () => {
   // Status Modal State
   const [statusModalOpen, setStatusModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<{
-    type: 'reject' | 'statusChange' | 'shortlist';
+    type: 'reject' | 'statusChange' | 'shortlist' | 'commentOnly';
     candidateId: string;
     newStatus: string;
     currentJoiningDate?: string;
@@ -181,6 +181,7 @@ const CandidatesList = () => {
     fetchCandidatesByJob,
     loading,
     deleteCandidate,
+    addComment,
   } = useCandidateContext();
 
   const { users } = useUserContext();
@@ -400,6 +401,19 @@ const CandidatesList = () => {
         }
       } else {
         toast.error("Failed to update status");
+      }
+    } else if (pendingAction.type === 'commentOnly') {
+      const success = await addComment(
+        pendingAction.candidateId,
+        user?._id || "",
+        comment
+      );
+
+      if (success) {
+        toast.success("Comment added successfully");
+        if (id) fetchCandidatesByJob(id);
+      } else {
+        toast.error("Failed to add comment");
       }
     } else if (pendingAction.type === 'shortlist') {
       // Handle bulk shortlist if needed, or single
@@ -1505,7 +1519,17 @@ const CandidatesList = () => {
 
                     {/* BOTTOM BAR */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <button className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
+                      <button
+                        onClick={() => {
+                          setPendingAction({
+                            type: 'commentOnly',
+                            candidateId: candidate._id,
+                            newStatus: candidate.status,
+                          });
+                          setStatusModalOpen(true);
+                        }}
+                        className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                      >
                         <MessageSquare className="w-4 h-4" />
                         Add comment
                       </button>
@@ -1542,6 +1566,7 @@ const CandidatesList = () => {
                           <option value="Selected">Selected</option>
                           <option value="Joined">Joined</option>
                           <option value="Rejected">Rejected</option>
+                          <option value="Hold">Hold</option>
                         </select>
 
                         {/* Delete */}
@@ -1884,6 +1909,35 @@ const CandidatesList = () => {
                   </div>
                 )}
 
+              {/* Standalone Comments */}
+              {selectedCandidate.comments &&
+                selectedCandidate.comments.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                      <span className="text-blue-600">💬</span>
+                      Comments
+                    </h3>
+                    <div className="space-y-3">
+                      {selectedCandidate.comments.slice().reverse().map(
+                        (comm: any, index: number) => (
+                          <div
+                            key={index}
+                            className="p-4 rounded-xl border shadow-sm bg-white"
+                          >
+                            <p className="text-sm text-gray-700 mb-2">
+                              {comm.text}
+                            </p>
+                            <p className="text-[10px] text-gray-500 text-right">
+                              {comm.author?.name || "Unknown"} •{" "}
+                              {new Date(comm.timestamp).toLocaleString()}
+                            </p>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
               {/* Notes */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-3">
@@ -1938,6 +1992,7 @@ const CandidatesList = () => {
         }}
         onConfirm={confirmStatusAction}
         newStatus={pendingAction?.newStatus || ""}
+        isCommentOnly={pendingAction?.type === 'commentOnly'}
         candidateName={
           pendingAction?.candidateId
             ? (fullFilteredList.find((c: any) => c._id === pendingAction.candidateId) as any)?.dynamicFields?.candidateName

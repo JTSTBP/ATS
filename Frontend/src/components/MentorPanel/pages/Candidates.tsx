@@ -17,6 +17,7 @@ import { useCandidateContext } from "../../../context/CandidatesProvider";
 import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
 import { toast } from "react-toastify";
+import { formatDate } from "../../../utils/dateUtils";
 
 import { useSearchParams } from "react-router-dom";
 
@@ -443,6 +444,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           "Joined",
           "Rejected",
           "Dropped",
+          "Hold",
         ].map((status) => (
           <button
             key={status}
@@ -546,7 +548,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                       <>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           <div className="flex items-center gap-2">
-                            {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
+                            {candidate.joiningDate ? formatDate(candidate.joiningDate) : "-"}
                             <button
                               onClick={() => handleStatusChange(candidate._id || "", "Joined", undefined, candidate.joiningDate)}
                               className="p-1 hover:bg-gray-100 rounded text-blue-600"
@@ -578,7 +580,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                       <>
                         <td className="px-6 py-4 text-sm text-gray-700">
                           <div className="flex items-center gap-2">
-                            {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : "-"}
+                            {candidate.selectionDate ? formatDate(candidate.selectionDate) : "-"}
                             <button
                               onClick={() => handleStatusChange(
                                 candidate._id,
@@ -597,7 +599,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                         </td>
 
                         <td className="px-6 py-4 text-sm text-gray-700">
-                          {candidate.expectedJoiningDate ? new Date(candidate.expectedJoiningDate).toLocaleDateString() : "-"}
+                          {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "-"}
                         </td>
                       </>
                     )}
@@ -652,6 +654,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                         <option value="Joined">Joined</option>
                         <option value="Rejected">Rejected</option>
                         <option value="Dropped">Dropped</option>
+                        <option value="Hold">Hold</option>
                       </select>
                       {candidate.status === "Interviewed" && candidate.interviewStage && (
                         <div className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 text-center uppercase tracking-wider">
@@ -660,7 +663,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                       )}
                       {candidate.status === "Joined" && candidate.joiningDate && (
                         <p className="text-[10px] text-green-600 mt-1 font-medium">
-                          Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                          Joined: {formatDate(candidate.joiningDate)}
                         </p>
                       )}
                     </td>
@@ -729,19 +732,21 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       </div>
 
       {/* Empty UI */}
-      {paginatedCandidates.length === 0 && (
-        <div className="bg-white rounded-xl p-12 text-center shadow-md border border-gray-200">
-          <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">
-            No candidates found
-          </h3>
-          <p className="text-gray-500 max-w-md mx-auto">
-            {searchTerm || filterClient !== "all" || filterJobTitle !== "all" || statusFilter !== "all"
-              ? "No candidates match your current filters. Try adjusting your search or filters."
-              : "Get started by adding your first candidate to the system."}
-          </p>
-        </div>
-      )}
+      {
+        paginatedCandidates.length === 0 && (
+          <div className="bg-white rounded-xl p-12 text-center shadow-md border border-gray-200">
+            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+              No candidates found
+            </h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              {searchTerm || filterClient !== "all" || filterJobTitle !== "all" || statusFilter !== "all"
+                ? "No candidates match your current filters. Try adjusting your search or filters."
+                : "Get started by adding your first candidate to the system."}
+            </p>
+          </div>
+        )
+      }
 
       {/* Form */}
       <CandidateForm
@@ -764,6 +769,6 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         currentSelectionDate={pendingStatusChange?.currentSelectionDate}
         currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
       />
-    </div>
+    </div >
   );
 };

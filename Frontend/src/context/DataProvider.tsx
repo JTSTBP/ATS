@@ -71,6 +71,7 @@ type JobContextType = {
     limit: number,
     filters?: {
       search?: string;
+      clientSearch?: string;
       status?: string;
       userId?: string;
       role?: string;
@@ -110,8 +111,6 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
         ...filters
       };
 
-      // Use standard fetch or axios. Assuming fetch here based on file style
-      // but query params need to be constructed.
       const queryParams = new URLSearchParams(params as any).toString();
       const res = await fetch(`${API_URL}?${queryParams}`);
       const data = await res.json();

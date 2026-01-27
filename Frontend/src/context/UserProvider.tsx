@@ -28,6 +28,7 @@ interface User {
   dateOfJoining?: string;
   dateOfBirth?: string;
   appPassword?: string;
+  isDisabled: boolean;
 }
 
 interface UserFormData {
@@ -45,6 +46,7 @@ interface UserFormData {
   dateOfJoining?: string;
   dateOfBirth?: string;
   appPassword?: string;
+  isDisabled?: boolean;
 }
 
 interface Leave {
@@ -101,6 +103,7 @@ interface UserContextType {
     role?: string,
     isAdmin?: string
   ) => Promise<void>;
+  toggleUserStatus: (id: string) => Promise<boolean>;
 }
 
 const API_BASE_URL =
@@ -207,6 +210,26 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const toggleUserStatus = async (id: string) => {
+    try {
+      const res = await axios.patch(`${API_BASE_URL}/api/users/${id}/toggle-status`);
+      if (res.data.success) {
+        setUsers((prev) =>
+          prev.map((u) => (u._id === id ? { ...u, isDisabled: res.data.isDisabled } : u))
+        );
+        setPaginatedUsers((prev) =>
+          prev.map((u) => (u._id === id ? { ...u, isDisabled: res.data.isDisabled } : u))
+        );
+        toast.success(res.data.message);
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      toast.error(err.response?.data?.msg || "Failed to toggle user status");
+      return false;
+    }
+  };
+
   // ======================
   // 🔹 LEAVE MANAGEMENT
   // ======================
@@ -276,7 +299,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchUsers();
   }, []);
-  console.log(leaves, "leaves");
+
   return (
     <UserContext.Provider
       value={{
@@ -294,6 +317,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         paginatedUsers,
         pagination,
         fetchPaginatedUsers,
+        toggleUserStatus,
       }}
     >
       {children}

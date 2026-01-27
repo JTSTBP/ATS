@@ -73,16 +73,9 @@ router.get("/", async (req, res) => {
       query.status = status;
     }
 
-    // 2️⃣ Search Filter (Title, Dept, Location names, Client Name)
+    // 2️⃣ Search Filter (Title, Dept, Location names)
     if (search) {
       const searchRegex = new RegExp(search, "i");
-
-      // We need to look up client names if searching by client, 
-      // but simpler to search direct fields first. 
-      // For complex search like Client Name, we'd need an aggregation pipeline 
-      // or we fetch match IDs first.
-      // For now, let's search basic fields: title, department, employmentType
-      // To search location.name, we can use dot notation if it's an array of objects
 
       query.$or = [
         { title: searchRegex },
@@ -90,6 +83,25 @@ router.get("/", async (req, res) => {
         { employmentType: searchRegex },
         { "location.name": searchRegex }
       ];
+    }
+
+    // 3️⃣ Client Search Filter
+    if (req.query.clientSearch) {
+      const clientSearchRegex = new RegExp(req.query.clientSearch, "i");
+      const matchedClients = await Client.find({ companyName: clientSearchRegex }).select("_id");
+      const matchedClientIds = matchedClients.map(c => c._id);
+
+      if (query.$or) {
+        query = {
+          $and: [
+            { $or: query.$or },
+            { clientId: { $in: matchedClientIds } }
+          ],
+          ...Object.fromEntries(Object.entries(query).filter(([key]) => key !== '$or'))
+        };
+      } else {
+        query.clientId = { $in: matchedClientIds };
+      }
     }
 
     // 3️⃣ Role-Based Filtering
@@ -228,6 +240,25 @@ router.get("/assigned/:recruiterId", async (req, res) => {
         { title: searchRegex },
         { department: searchRegex }
       ];
+    }
+
+    // 3️⃣ Client Search Filter
+    if (req.query.clientSearch) {
+      const clientSearchRegex = new RegExp(req.query.clientSearch, "i");
+      const matchedClients = await Client.find({ companyName: clientSearchRegex }).select("_id");
+      const matchedClientIds = matchedClients.map(c => c._id);
+
+      if (query.$or) {
+        query = {
+          $and: [
+            { $or: query.$or },
+            { clientId: { $in: matchedClientIds } }
+          ],
+          ...Object.fromEntries(Object.entries(query).filter(([key]) => key !== '$or'))
+        };
+      } else {
+        query.clientId = { $in: matchedClientIds };
+      }
     }
 
     // Backward compatibility: If no pagination, return all

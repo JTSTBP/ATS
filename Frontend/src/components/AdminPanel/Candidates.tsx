@@ -17,6 +17,7 @@ import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
+import { formatDate } from "../../utils/dateUtils";
 
 
 // 🔹 Searchable Select Component
@@ -498,6 +499,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                         "Joined",
                         "Rejected",
                         "Dropped",
+                        "Hold",
                     ].map((status) => (
                         <button
                             key={status}
@@ -656,6 +658,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 <option value="Joined">Joined</option>
                                                 <option value="Rejected">Rejected</option>
                                                 <option value="Dropped">Dropped</option>
+                                                <option value="Hold">Hold</option>
                                             </select>
                                             {candidate.status === "Interviewed" && candidate.interviewStage && (
                                                 <div className="mt-2 text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200 text-center">
@@ -664,7 +667,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                             )}
                                             {candidate.status === "Joined" && candidate.joiningDate && (
                                                 <p className="text-[10px] text-green-600 mt-1 font-medium">
-                                                    Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                                                    Joined: {formatDate(candidate.joiningDate)}
                                                 </p>
                                             )}
                                         </td>
@@ -688,7 +691,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 {/* JOINING DATE */}
                                                 <td className="px-6 py-4 text-sm text-gray-700">
                                                     <div className="flex items-center gap-2">
-                                                        {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : "-"}
+                                                        {candidate.joiningDate ? formatDate(candidate.joiningDate) : "-"}
                                                         {/* Edit Button for Joined Details */}
                                                         <button
                                                             onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
@@ -710,7 +713,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 {/* SELECTION DATE */}
                                                 <td className="px-6 py-4 text-sm text-gray-700">
                                                     <div className="flex items-center gap-2">
-                                                        {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : "-"}
+                                                        {candidate.selectionDate ? formatDate(candidate.selectionDate) : "-"}
                                                         {/* Edit Button for Selection Details */}
                                                         <button
                                                             onClick={() => handleStatusChange(
@@ -731,7 +734,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
                                                 {/* EXPECTED JOINING DATE */}
                                                 <td className="px-6 py-4 text-sm text-gray-700">
-                                                    {candidate.expectedJoiningDate ? new Date(candidate.expectedJoiningDate).toLocaleDateString() : "-"}
+                                                    {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "-"}
                                                 </td>
                                             </>
                                         )}

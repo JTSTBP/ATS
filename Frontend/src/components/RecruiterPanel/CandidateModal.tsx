@@ -12,6 +12,7 @@ import {
 import { useAuth } from "../../context/AuthProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { toast } from "react-toastify";
+import { formatDate } from "../../utils/dateUtils";
 
 interface CandidateModalProps {
   job: JobOpening;
@@ -385,7 +386,7 @@ export default function CandidateModal({
                             </p>
                           </div>
                           <div className="text-xs text-slate-400 mt-1 sm:mt-0 text-right">
-                            <p>{new Date(history.timestamp).toLocaleDateString()}</p>
+                            <p>{formatDate(history.timestamp)}</p>
                             <p>{new Date(history.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                             <p className="text-slate-500 font-medium mt-0.5">
                               by {history.updatedBy?.name || "Unknown"}

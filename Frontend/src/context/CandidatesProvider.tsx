@@ -92,6 +92,7 @@ type CandidateContextType = {
     rejectedBy?: string,
     offeredCTC?: string
   ) => Promise<Candidate | null>;
+  addComment: (candidateId: string, authorId: string, text: string) => Promise<boolean>;
 
   // 🔹 Pagination
   paginatedCandidates: Candidate[];
@@ -442,6 +443,25 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  const addComment = useCallback(async (candidateId: string, authorId: string, text: string) => {
+    try {
+      const { data } = await axios.post(`${API_URL}/${candidateId}/comments`, {
+        text,
+        authorId
+      });
+      if (data.success) {
+        setCandidates((prev) =>
+          prev.map((c) => (c._id === candidateId ? data.candidate : c))
+        );
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error("Error adding comment:", err);
+      return false;
+    }
+  }, []);
+
   return (
     <CandidateContext.Provider
       value={{
@@ -455,6 +475,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
         updateCandidate,
         deleteCandidate,
         updateStatus,
+        addComment,
         paginatedCandidates,
         pagination,
         fetchPaginatedCandidates,

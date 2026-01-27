@@ -29,6 +29,7 @@ const candidateSchema = new mongoose.Schema(
         "Selected",
         "Joined",
         "Rejected",
+        "Hold",
       ],
       default: "New",
     },
@@ -100,6 +101,19 @@ const candidateSchema = new mongoose.Schema(
           type: mongoose.Schema.Types.ObjectId,
           ref: "User",
           required: true,
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    comments: [
+      {
+        text: String,
+        author: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
         },
         timestamp: {
           type: Date,

@@ -24,6 +24,14 @@ router.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Invalid password" });
 
+    // Check if user account is disabled
+    if (user.isDisabled) {
+      return res.status(403).json({
+        success: false,
+        message: "Your account has been disabled. Please contact the administrator."
+      });
+    }
+
     const token = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET,

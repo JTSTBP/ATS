@@ -6,7 +6,7 @@ export const formatDate = (date: string | number | Date | undefined | null): str
     const options: Intl.DateTimeFormatOptions = {
         day: '2-digit',
         month: 'short',
-        year: 'numeric',
+        year: '2-digit',
     };
 
     // Format using en-GB to get "12 Dec 2025" structure

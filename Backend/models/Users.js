@@ -66,7 +66,12 @@ const UserSchema = new mongoose.Schema({
   appPassword: {
     type: String,
   },
+  isDisabled: {
+    type: Boolean,
+    default: false,
+  },
 });
+
 
 // Encrypt password using bcrypt before saving
 UserSchema.pre("save", async function (next) {

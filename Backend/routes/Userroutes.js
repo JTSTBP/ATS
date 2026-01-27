@@ -104,7 +104,7 @@ router.get("/", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
-  const { name, email, designation, reporter, password, isAdmin, personalEmail, phoneNumber, phone, department, joinDate, dateOfJoining, dateOfBirth, appPassword } = req.body;
+  const { name, email, designation, reporter, password, isAdmin, personalEmail, phoneNumber, phone, department, joinDate, dateOfJoining, dateOfBirth, appPassword, isDisabled } = req.body;
 
   try {
     let user = await User.findById(req.params.id);
@@ -133,6 +133,7 @@ router.put("/:id", async (req, res) => {
     user.joinDate = joinDate || dateOfJoining || user.joinDate;
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
     user.appPassword = appPassword || user.appPassword;
+    user.isDisabled = isDisabled !== undefined ? isDisabled : user.isDisabled;
 
     // Sync sub-fields if phone is provided
     if (phone && !phoneNumber) {
@@ -171,6 +172,27 @@ router.delete("/:id", async (req, res) => {
     res.status(500).json({ msg: "Server error" });
   }
 });
+
+// 🔄 Toggle User Status (Enable/Disable)
+router.patch("/:id/toggle-status", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    user.isDisabled = !user.isDisabled;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `User ${user.isDisabled ? "disabled" : "enabled"} successfully`,
+      isDisabled: user.isDisabled
+    });
+  } catch (err) {
+    console.error("Error toggling user status:", err);
+    res.status(500).json({ msg: "Server error" });
+  }
+});
+
 
 
 

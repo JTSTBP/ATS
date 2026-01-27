@@ -8,6 +8,7 @@ import { useSearchParams } from "react-router-dom";
 import { useJobContext } from "../../context/DataProvider";
 import CandidateModal from "./CandidateModal";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
+import { formatDate } from "../../utils/dateUtils";
 
 export default function Candidates() {
   const {
@@ -279,7 +280,8 @@ export default function Candidates() {
                     <option>New</option>
                     <option>Rejected</option>
                     <option>Selected</option>
-                    <option>Hired</option>
+                    <option>Joined</option>
+                    <option>Hold</option>
                   </select>
                 </div>
 
@@ -495,11 +497,12 @@ export default function Candidates() {
                             <option value="Selected">Selected</option>
                             <option value="Joined">Joined</option>
                             <option value="Rejected">Rejected</option>
+                            <option value="Hold">Hold</option>
                           </select>
                           {candidate.status === "Joined" && candidate.joiningDate && (
                             <div className="flex items-center justify-center gap-1 mt-0.5">
                               <p className="text-[10px] text-teal-600 font-medium whitespace-nowrap">
-                                Joined: {new Date(candidate.joiningDate).toLocaleDateString()}
+                                Joined: {formatDate(candidate.joiningDate)}
                               </p>
                               <button
                                 onClick={(e) => {
@@ -517,7 +520,7 @@ export default function Candidates() {
                             <div className="flex flex-col items-center mt-0.5 space-y-0.5">
                               <div className="flex items-center justify-center gap-1">
                                 <p className="text-[10px] text-indigo-600 font-medium whitespace-nowrap">
-                                  Selected: {new Date(candidate.selectionDate).toLocaleDateString()}
+                                  Selected: {formatDate(candidate.selectionDate)}
                                 </p>
                                 <button
                                   onClick={(e) => {
@@ -532,7 +535,7 @@ export default function Candidates() {
                               </div>
                               {candidate.expectedJoiningDate && (
                                 <p className="text-[10px] text-indigo-500 font-medium whitespace-nowrap">
-                                  Exp. Join: {new Date(candidate.expectedJoiningDate).toLocaleDateString()}
+                                  Exp. Join: {formatDate(candidate.expectedJoiningDate)}
                                 </p>
                               )}
                             </div>

@@ -128,6 +128,7 @@ export const JobsManager = ({
   const [showForm, setShowForm] = useState(initialFormOpen);
   const [editingJob, setEditingJob] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
 
   useEffect(() => {
     if (initialSearchTerm) {
@@ -149,18 +150,19 @@ export const JobsManager = ({
     const timer = setTimeout(() => {
       fetchPaginatedJobs(currentPage, limit, {
         search: searchTerm,
+        clientSearch: clientSearchTerm,
         status: filterStatus,
         userId: user?._id || "",
         role: user?.designation || ""
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [currentPage, searchTerm, filterStatus, user]);
+  }, [currentPage, searchTerm, clientSearchTerm, filterStatus, user]);
 
   // Reset to page 1 on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus]);
+  }, [searchTerm, clientSearchTerm, filterStatus]);
 
   useEffect(() => {
     if (initialFormOpen) setShowForm(true);
@@ -172,6 +174,7 @@ export const JobsManager = ({
     // Refresh current page
     fetchPaginatedJobs(currentPage, limit, {
       search: searchTerm,
+      clientSearch: clientSearchTerm,
       status: filterStatus,
       userId: user?._id || "",
       role: user?.designation || ""
@@ -190,6 +193,7 @@ export const JobsManager = ({
     // Refresh to reflect changes
     fetchPaginatedJobs(currentPage, limit, {
       search: searchTerm,
+      clientSearch: clientSearchTerm,
       status: filterStatus,
       userId: user?._id || "",
       role: user?.designation || ""
@@ -269,6 +273,17 @@ export const JobsManager = ({
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
+
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search by client name..."
+              value={clientSearchTerm}
+              onChange={(e) => setClientSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            />
+          </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -328,6 +343,7 @@ export const JobsManager = ({
               onRefresh={() => {
                 fetchPaginatedJobs(currentPage, limit, {
                   search: searchTerm,
+                  clientSearch: clientSearchTerm,
                   status: filterStatus,
                   userId: user?._id || "",
                   role: user?.designation || ""

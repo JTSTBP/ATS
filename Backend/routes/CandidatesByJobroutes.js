@@ -10,8 +10,95 @@ const nodemailer = require("nodemailer");
 const fs = require('fs');
 const path = require('path');
 
+// Helper function to send email notification to mentor when a candidate is created
+async function sendCreateNotificationToMentor(recruiterId, candidateName, jobTitle) {
+  try {
+    console.log('📧 Attempting to send creation email notification...', {
+      recruiterId,
+      candidateName,
+      jobTitle
+    });
+
+    // Get the recruiter with reporter (mentor) populated
+    const recruiter = await User.findById(recruiterId).populate('reporter', 'name email');
+
+    if (!recruiter) {
+      console.log(`❌ Recruiter not found for ID: ${recruiterId}`);
+      return;
+    }
+
+    console.log('👤 Recruiter Details:', {
+      userId: recruiter._id,
+      userName: recruiter.name,
+      email: recruiter.email,
+      hasReporter: !!recruiter.reporter,
+      reporterName: recruiter.reporter?.name,
+      reporterEmail: recruiter.reporter?.email,
+      hasAppPassword: !!recruiter.appPassword,
+      appPasswordLength: recruiter.appPassword ? recruiter.appPassword.length : 0
+    });
+
+    if (!recruiter.reporter || !recruiter.reporter.email) {
+      console.log('⚠️ No reporter found for this recruiter or reporter has no email');
+      return;
+    }
+
+    // Check if recruiter has appPassword configured
+    if (!recruiter.appPassword) {
+      console.log(`⚠️ Recruiter ${recruiter.name} has no app password configured. Please set it in profile to enable notifications.`);
+      return;
+    }
+
+
+    const mentor = recruiter.reporter;
+
+    // Create email transporter using recruiter's credentials
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: recruiter.email,
+        pass: recruiter.appPassword,
+      },
+    });
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
+        <div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+          <h2 style="color: #2c3e50; margin-bottom: 20px; border-bottom: 3px solid #3498db; padding-bottom: 10px;">
+            🆕 New Candidate Uploaded
+          </h2>
+          
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 5px 0;"><strong>Recruiter:</strong> ${recruiter.name}</p>
+            <p style="margin: 5px 0;"><strong>Candidate Name:</strong> ${candidateName}</p>
+            <p style="margin: 5px 0;"><strong>Job Position:</strong> ${jobTitle}</p>
+          </div>
+
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+            <p>This is an automated notification. Please do not reply to this email.</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: recruiter.email,
+      to: mentor.email,
+      subject: `New Candidate Created: ${candidateName} by ${recruiter.name}`,
+      html: htmlContent,
+    };
+
+    console.log('📨 Sending email to mentor:', mentor.email);
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Email notification sent successfully to ${mentor.email}`);
+  } catch (error) {
+    console.error('❌ Error sending creation email notification:', error);
+  }
+}
+
 // Helper function to send email notification to reporter
 async function sendUpdateNotificationToReporter(updatingUserId, candidateName, jobTitle, changes) {
+
   try {
     console.log('📧 Attempting to send email notification...', {
       updatingUserId,
@@ -474,7 +561,14 @@ router.post("/", upload.single("resume"), async (req, res) => {
       );
     }
 
+    // 4️⃣ Send Email Notification to Mentor
+    const candidateName = parsedFields.candidateName || parsedFields.CandidateName || "New Candidate";
+    const jobTitle = job.title;
+    // We don't await this to avoid blocking the response
+    sendCreateNotificationToMentor(req.body.createdBy, candidateName, jobTitle);
+
     res.json({ success: true, candidate });
+
   } catch (error) {
     console.error("Error creating candidate:", error);
     res.status(500).json({
@@ -720,6 +814,7 @@ router.get("/role-based-candidates", async (req, res) => {
                 portfolioUrl: 1,
                 notes: 1,
                 dynamicFields: 1,
+                comments: 1,
 
                 // Reconstruct jobId object structure expected by frontend
                 jobId: {
@@ -773,6 +868,7 @@ router.get("/role-based-candidates", async (req, res) => {
                 notes: 1,
                 dynamicFields: 1,
                 jobId: 1,
+                comments: 1,
 
                 // Reconstruct createdBy object structure
                 createdBy: {
@@ -1060,6 +1156,10 @@ router.get("/job/:jobId", async (req, res) => {
       })
       .populate({
         path: "statusHistory.updatedBy",
+        select: "name email designation",
+      })
+      .populate({
+        path: "comments.author",
         select: "name email designation",
       })
       .sort({ createdAt: -1 });
@@ -1455,6 +1555,40 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to update status" });
+  }
+});
+
+// 💬 Add standalone comment
+router.post("/:id/comments", async (req, res) => {
+  try {
+    const { text, authorId } = req.body;
+
+    if (!text) {
+      return res.status(400).json({ success: false, message: "Comment text is required" });
+    }
+
+    const updatedCandidate = await Candidate.findByIdAndUpdate(
+      req.params.id,
+      {
+        $push: {
+          comments: {
+            text,
+            author: authorId,
+            timestamp: new Date()
+          }
+        }
+      },
+      { new: true }
+    ).populate("comments.author", "name email designation");
+
+    if (!updatedCandidate) {
+      return res.status(404).json({ success: false, message: "Candidate not found" });
+    }
+
+    res.json({ success: true, candidate: updatedCandidate });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ success: false, message: "Failed to add comment" });
   }
 });
 
