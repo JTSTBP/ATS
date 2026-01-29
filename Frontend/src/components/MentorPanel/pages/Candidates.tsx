@@ -68,6 +68,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
     currentRejectedBy?: string;
+    droppedBy?: string;
   } | null>(null);
 
   const handleStatusChange = (
@@ -77,7 +78,8 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     currentJoiningDate?: string,
     currentSelectionDate?: string,
     currentExpectedJoiningDate?: string,
-    currentRejectedBy?: string
+    currentRejectedBy?: string,
+    droppedBy?: string
   ) => {
     setPendingStatusChange({
       candidateId,
@@ -86,13 +88,19 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       currentJoiningDate,
       currentSelectionDate,
       currentExpectedJoiningDate,
-      currentRejectedBy
+      currentRejectedBy,
+      droppedBy
     });
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string) => {
     if (!pendingStatusChange) return;
+
+    // Determine if this is a drop or reject
+    const isDropped = pendingStatusChange.newStatus === "Dropped";
+    const droppedByValue = isDropped ? pendingStatusChange.droppedBy : undefined;
+    const rejectedByValue = !isDropped ? rejectedBy : undefined;
 
     await updateStatus(
       pendingStatusChange.candidateId,
@@ -106,7 +114,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       offerLetter,
       selectionDate,
       expectedJoiningDate,
-      rejectedBy
+      rejectedByValue,
+      offeredCTC,
+      droppedByValue
     );
 
     if (user?._id && user?.designation) {
@@ -644,7 +654,20 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                     <td className="px-6 py-4 text-sm text-gray-700">
                       <select
                         value={candidate.status || "New"}
-                        onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
+                        onChange={(e) => {
+                          const newStatus = e.target.value;
+                          let droppedByVal = undefined;
+                          if (newStatus === "Dropped") {
+                            if (candidate.status === "Shortlisted") {
+                              droppedByVal = "Mentor";
+                            } else if (candidate.status === "Interviewed") {
+                              droppedByVal = "Client";
+                            } else {
+                              droppedByVal = "Mentor";
+                            }
+                          }
+                          handleStatusChange(candidate._id || "", newStatus, undefined, candidate.joiningDate, candidate.selectionDate, candidate.expectedJoiningDate, undefined, droppedByVal);
+                        }}
                         className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                       >
                         <option value="New">New</option>
@@ -653,7 +676,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                         <option value="Selected">Selected</option>
                         <option value="Joined">Joined</option>
                         <option value="Rejected">Rejected</option>
-                        <option value="Dropped">Dropped</option>
+                        {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
+                          <option value="Dropped">Dropped</option>
+                        )}
                         <option value="Hold">Hold</option>
                       </select>
                       {candidate.status === "Interviewed" && candidate.interviewStage && (
@@ -768,6 +793,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         currentJoiningDate={pendingStatusChange?.currentJoiningDate}
         currentSelectionDate={pendingStatusChange?.currentSelectionDate}
         currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
+        droppedBy={pendingStatusChange?.droppedBy}
       />
     </div >
   );

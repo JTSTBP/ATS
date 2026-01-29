@@ -265,6 +265,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         currentJoiningDate?: string;
         currentSelectionDate?: string;
         currentExpectedJoiningDate?: string;
+        droppedBy?: string;
     } | null>(null);
 
     const handleStatusChange = (
@@ -273,7 +274,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         interviewStage?: string,
         currentJoiningDate?: string,
         currentSelectionDate?: string,
-        currentExpectedJoiningDate?: string
+        currentExpectedJoiningDate?: string,
+        droppedBy?: string
     ) => {
         setPendingStatusChange({
             candidateId,
@@ -281,13 +283,19 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             interviewStage,
             currentJoiningDate,
             currentSelectionDate,
-            currentExpectedJoiningDate
+            currentExpectedJoiningDate,
+            droppedBy
         });
         setStatusModalOpen(true);
     };
 
     const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string) => {
         if (!pendingStatusChange) return;
+
+        // Determine if this is a drop or reject
+        const isDropped = pendingStatusChange.newStatus === "Dropped";
+        const droppedByValue = isDropped ? pendingStatusChange.droppedBy : undefined;
+        const rejectedByValue = !isDropped ? rejectedBy : undefined;
 
         await updateStatus(
             pendingStatusChange.candidateId,
@@ -301,8 +309,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             offerLetter,
             selectionDate,
             expectedJoiningDate,
-            rejectedBy,
-            offeredCTC
+            rejectedByValue,
+            offeredCTC,
+            droppedByValue
         );
 
         // Optimistic update or refetch
@@ -648,7 +657,20 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         <td className="px-6 py-4 text-sm text-gray-700">
                                             <select
                                                 value={candidate.status || "New"}
-                                                onChange={(e) => handleStatusChange(candidate._id || "", e.target.value)}
+                                                onChange={(e) => {
+                                                    const newStatus = e.target.value;
+                                                    let droppedByVal = undefined;
+                                                    if (newStatus === "Dropped") {
+                                                        if (candidate.status === "Shortlisted") {
+                                                            droppedByVal = "Mentor";
+                                                        } else if (candidate.status === "Interviewed") {
+                                                            droppedByVal = "Client";
+                                                        } else {
+                                                            droppedByVal = "Mentor";
+                                                        }
+                                                    }
+                                                    handleStatusChange(candidate._id || "", newStatus, undefined, candidate.joiningDate, candidate.selectionDate, candidate.expectedJoiningDate, droppedByVal);
+                                                }}
                                                 className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                                             >
                                                 <option value="New">New</option>
@@ -657,7 +679,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 <option value="Selected">Selected</option>
                                                 <option value="Joined">Joined</option>
                                                 <option value="Rejected">Rejected</option>
-                                                <option value="Dropped">Dropped</option>
+                                                {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
+                                                    <option value="Dropped">Dropped</option>
+                                                )}
                                                 <option value="Hold">Hold</option>
                                             </select>
                                             {candidate.status === "Interviewed" && candidate.interviewStage && (
@@ -828,9 +852,10 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 onConfirm={confirmStatusChange}
                 newStatus={pendingStatusChange?.newStatus || ""}
                 candidateName={paginatedCandidates.find((c: any) => c._id === pendingStatusChange?.candidateId)?.dynamicFields?.candidateName}
-                currentJoiningDate={pendingStatusChange?.currentJoiningDate} // Pass currentJoiningDate
+                currentJoiningDate={pendingStatusChange?.currentJoiningDate}
                 currentSelectionDate={pendingStatusChange?.currentSelectionDate}
                 currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
+                droppedBy={pendingStatusChange?.droppedBy}
             />
         </div >
     );

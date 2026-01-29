@@ -14,6 +14,7 @@ interface StatusUpdateModalProps {
     currentExpectedJoiningDate?: string;
     currentRejectedBy?: string;
     currentCTC?: string;
+    droppedBy?: string; // New prop for auto-determined drop source
 }
 
 export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
@@ -28,6 +29,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     currentExpectedJoiningDate,
     currentRejectedBy,
     currentCTC,
+    droppedBy,
 }) => {
     const [comment, setComment] = useState("");
     const [joiningDate, setJoiningDate] = useState("");
@@ -53,6 +55,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
 
     const isJoined = newStatus === "Joined";
     const isSelected = newStatus === "Selected";
+    const isDropped = newStatus === "Dropped";
     // const isRejected = newStatus === "Rejected" || newStatus === "Dropped"; 
 
     return (
@@ -189,13 +192,21 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             </div>
                         )}
 
+                        {isDropped && droppedBy && (
+                            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
+                                <p className="text-sm text-red-700 font-medium">
+                                    This candidate will be marked as <span className="font-bold">Dropped by {droppedBy}</span>.
+                                </p>
+                            </div>
+                        )}
+
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Add a Comment (Optional)
+                            {isDropped ? "Reason for Drop" : "Add a Comment (Optional)"} {isDropped && <span className="text-red-500">*</span>}
                         </label>
                         <textarea
                             className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
                             rows={4}
-                            placeholder="Enter reason or notes for this status change..."
+                            placeholder={isDropped ? "Please explain why the candidate was dropped..." : "Enter reason or notes for this status change..."}
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                         />
@@ -225,11 +236,15 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                         alert("Please select who rejected the candidate");
                                         return;
                                     }
-                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, rejectedBy, ctc);
+                                    if (isDropped && !comment) {
+                                        alert("Please provide a reason for dropping the candidate");
+                                        return;
+                                    }
+                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, isDropped ? droppedBy : rejectedBy, ctc);
                                 }}
                                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
                             >
-                                Confirm Update
+                                {isDropped ? "Confirm Drop" : "Confirm Update"}
                             </button>
                         </div>
                     </div>

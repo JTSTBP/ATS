@@ -1348,7 +1348,7 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
 // 🔁 Update candidate status only
 router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
   try {
-    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate, rejectedBy } = req.body;
+    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate, rejectedBy, droppedBy } = req.body;
 
     // Get existing candidate to detect changes
     const existingCandidate = await Candidate.findById(req.params.id).populate('jobId', 'title');
@@ -1366,7 +1366,9 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
       interviewStage,
       stageStatus,
       stageNotes,
+      stageNotes,
       rejectedBy,
+      droppedBy,
       willAddToHistory: status === "Interviewed" && interviewStage && stageStatus
     });
 
@@ -1386,6 +1388,14 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
         field: 'Rejected By',
         oldValue: existingCandidate.rejectedBy || 'Not set',
         newValue: rejectedBy
+      });
+    }
+
+    if (status === "Dropped" && droppedBy) {
+      changes.push({
+        field: 'Dropped By',
+        oldValue: existingCandidate.droppedBy || 'Not set',
+        newValue: droppedBy
       });
     }
 
@@ -1418,6 +1428,11 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
     // Handle RejectedBy
     if (status === "Rejected" && rejectedBy) {
       updateData.rejectedBy = rejectedBy;
+    }
+
+    // Handle DroppedBy
+    if (status === "Dropped" && droppedBy) {
+      updateData.droppedBy = droppedBy;
     }
 
     // If moving to an interview stage, update the current stage
@@ -1510,6 +1525,7 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
       comment: req.body.comment || "",
       joiningDate: status === "Joined" ? joiningDate : undefined,
       rejectedBy: status === "Rejected" ? rejectedBy : undefined,
+      droppedBy: status === "Dropped" ? droppedBy : undefined,
       updatedBy: role,
       timestamp: new Date(),
     };
@@ -1528,11 +1544,12 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
       .populate("statusHistory.updatedBy", "name email");
 
     // Activity Log
+    // Activity Log
     logActivity(
       role,
       "updated",
       "candidate-status",
-      `Updated candidate status to "${status}"${interviewStage ? ` (${interviewStage} - ${stageStatus || "N/A"})` : ""}${status === "Rejected" && rejectedBy ? ` (Rejected by: ${rejectedBy})` : ""}`,
+      `Updated candidate status to "${status}"${interviewStage ? ` (${interviewStage} - ${stageStatus || "N/A"})` : ""}${status === "Rejected" && rejectedBy ? ` (Rejected by: ${rejectedBy})` : ""}${status === "Dropped" && droppedBy ? ` (Dropped by: ${droppedBy})` : ""}`,
       req.params.id,
       "CandidateByJob"
     );

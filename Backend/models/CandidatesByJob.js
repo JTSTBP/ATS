@@ -29,6 +29,7 @@ const candidateSchema = new mongoose.Schema(
         "Selected",
         "Joined",
         "Rejected",
+        "Dropped",
         "Hold",
       ],
       default: "New",
@@ -37,6 +38,11 @@ const candidateSchema = new mongoose.Schema(
       type: Date,
     },
     rejectedBy: {
+      type: String,
+      enum: ["Client", "Mentor"],
+      default: null,
+    },
+    droppedBy: {
       type: String,
       enum: ["Client", "Mentor"],
       default: null,

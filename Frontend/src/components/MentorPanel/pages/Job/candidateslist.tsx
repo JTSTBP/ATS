@@ -170,6 +170,7 @@ const CandidatesList = () => {
     currentJoiningDate?: string;
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
+    droppedBy?: string;
   } | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
@@ -377,6 +378,11 @@ const CandidatesList = () => {
     if (!pendingAction) return;
 
     if (pendingAction.type === 'reject' || pendingAction.type === 'statusChange') {
+      // Determine if this is a drop or reject
+      const isDropped = pendingAction.newStatus === "Dropped";
+      const droppedByValue = isDropped ? pendingAction.droppedBy : undefined;
+      const rejectedByValue = !isDropped ? rejectedBy : undefined;
+
       const success = await updateStatus(
         pendingAction.candidateId,
         pendingAction.newStatus,
@@ -389,8 +395,9 @@ const CandidatesList = () => {
         offerLetter,
         selectionDate, // Add selectionDate
         expectedJoiningDate, // Add expectedJoiningDate
-        rejectedBy,
-        offeredCTC
+        rejectedByValue,
+        offeredCTC,
+        droppedByValue
       );
 
       if (success) {
@@ -872,7 +879,12 @@ const CandidatesList = () => {
                       value: (c.createdBy as any)?._id,
                       label: (c.createdBy as any)?.name
                     }))
-                    .filter(r => r.value && r.label)
+                    .filter(r => {
+                      if (!r.value || !r.label) return false;
+                      // Check if this recruiter is not disabled
+                      const recruiterUser = users.find(u => u._id === r.value);
+                      return recruiterUser && !recruiterUser.isDisabled;
+                    })
                     .map(r => JSON.stringify(r))
                   )).map(rJson => JSON.parse(rJson))
                 ]}
@@ -1552,7 +1564,10 @@ const CandidatesList = () => {
                               newStatus: newStatus,
                               currentJoiningDate: candidate.joiningDate,
                               currentSelectionDate: candidate.selectionDate,
-                              currentExpectedJoiningDate: candidate.expectedJoiningDate
+                              currentExpectedJoiningDate: candidate.expectedJoiningDate,
+                              droppedBy: newStatus === 'Dropped'
+                                ? (candidate.status === 'Shortlisted' ? 'Mentor' : (candidate.status === 'Interviewed' ? 'Client' : 'Mentor')) // Default to Mentor if neither
+                                : undefined
                             });
                             setStatusModalOpen(true);
                           }}
@@ -1566,6 +1581,9 @@ const CandidatesList = () => {
                           <option value="Selected">Selected</option>
                           <option value="Joined">Joined</option>
                           <option value="Rejected">Rejected</option>
+                          {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
+                            <option value="Dropped">Dropped</option>
+                          )}
                           <option value="Hold">Hold</option>
                         </select>
 
@@ -1973,6 +1991,47 @@ const CandidatesList = () => {
                 >
                   Reject
                 </button>
+                <select
+                  value={selectedCandidate.status}
+                  onChange={(e) => {
+                    const newStatus = e.target.value;
+                    let droppedByVal = undefined;
+                    if (newStatus === "Dropped") {
+                      if (selectedCandidate.status === "Shortlisted") {
+                        droppedByVal = "Mentor";
+                      } else if (selectedCandidate.status === "Interviewed") {
+                        droppedByVal = "Client";
+                      } else {
+                        droppedByVal = "Mentor"; // Fallback
+                      }
+                    }
+
+                    setPendingAction({
+                      type: 'statusChange',
+                      candidateId: selectedCandidate._id,
+                      newStatus: newStatus,
+                      currentJoiningDate: selectedCandidate.joiningDate,
+                      currentSelectionDate: selectedCandidate.selectionDate,
+                      currentExpectedJoiningDate: selectedCandidate.expectedJoiningDate,
+                      droppedBy: droppedByVal
+                    });
+                    setStatusModalOpen(true);
+                  }}
+                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 bg-white
+                                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                                     hover:bg-gray-50 transition-all shadow-sm"
+                >
+                  <option value="New">New</option>
+                  <option value="Shortlisted">Shortlisted</option>
+                  <option value="Interviewed">Interviewed</option>
+                  <option value="Selected">Selected</option>
+                  <option value="Joined">Joined</option>
+                  <option value="Rejected">Rejected</option>
+                  {(selectedCandidate.status === "Shortlisted" || selectedCandidate.status === "Interviewed" || selectedCandidate.status === "Dropped") && (
+                    <option value="Dropped">Dropped</option>
+                  )}
+                  <option value="Hold">Hold</option>
+                </select>
                 <button
                   onClick={onMoveToNextClick}
                   className="px-6 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
@@ -2001,6 +2060,7 @@ const CandidatesList = () => {
         currentJoiningDate={pendingAction?.currentJoiningDate}
         currentSelectionDate={pendingAction?.currentSelectionDate}
         currentExpectedJoiningDate={pendingAction?.currentExpectedJoiningDate}
+        droppedBy={pendingAction?.droppedBy}
       />
     </div>
   );

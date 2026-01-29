@@ -189,21 +189,22 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
   const getAllowedRecruiters = (loggedUser: any, allUsers: any[]) => {
     const designation = loggedUser?.designation?.toLowerCase();
 
-    // 1️⃣ ADMIN → all recruiters
+    // 1️⃣ ADMIN → all active recruiters
     if (designation === "admin") {
-      return allUsers.filter(u => u.designation?.toLowerCase() === "recruiter");
+      return allUsers.filter(u => u.designation?.toLowerCase() === "recruiter" && !u.isDisabled);
     }
 
-    // 2️⃣ MENTOR → only recruiters directly under this mentor
+    // 2️⃣ MENTOR → only active recruiters directly under this mentor
     if (designation === "mentor") {
       return allUsers.filter(
         (u) =>
           u.designation?.toLowerCase() === "recruiter" &&
-          (u.reporter?._id === loggedUser._id || u.reporter === loggedUser._id)
+          (u.reporter?._id === loggedUser._id || u.reporter === loggedUser._id) &&
+          !u.isDisabled
       );
     }
 
-    // 3️⃣ MANAGER → recruiters under all mentors reporting to this manager
+    // 3️⃣ MANAGER → active recruiters under all mentors reporting to this manager
     if (designation === "manager") {
       const mentors = allUsers.filter(
         (u) =>
@@ -216,14 +217,15 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
       const recruiters = allUsers.filter(
         (u) =>
           u.designation?.toLowerCase() === "recruiter" &&
-          mentorIds.includes(u.reporter?._id || u.reporter)
+          mentorIds.includes(u.reporter?._id || u.reporter) &&
+          !u.isDisabled
       );
 
       return recruiters;
     }
 
-    // 4️⃣ Recruiter → sees only themselves
-    return allUsers.filter((u) => u._id === loggedUser._id);
+    // 4️⃣ Recruiter → sees only themselves (if active)
+    return allUsers.filter((u) => u._id === loggedUser._id && !u.isDisabled);
   };
   const recruiterUsers = getAllowedRecruiters(user, users);
 
