@@ -54,7 +54,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
   const fetchActivities = async () => {
     if (!user?._id) return;
 
-    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+    const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
     try {
       setLoading(true);

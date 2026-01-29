@@ -947,20 +947,8 @@ export default function ReportsTab() {
                     options={Array.from(new Set(jobs.map(j => formatDate(j.createdAt)))).sort()}
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
-                    <span>Date Of Joining</span>
-                    <button
-                      onClick={() => { setOpenFilter(openFilter === 'daily_source' ? null : 'daily_source'); setFilterSearch(""); }}
-                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_source.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
-                    >
-                      <Filter size={14} fill={selectedFilters.daily_source.length > 0 ? "currentColor" : "none"} />
-                    </button>
-                  </div>
-                  <FilterDropdown
-                    column="daily_source"
-                    options={Array.from(new Set(candidates.filter(c => c.createdAt).map(c => formatDate(c.createdAt)))).sort()}
-                  />
+                <th className="py-3 px-6 min-w-[150px]">
+                  <span>Joining Date</span>
                 </th>
                 <th className="py-3 px-6 min-w-[200px] relative">
                   <div className="flex items-center justify-between">
@@ -1129,7 +1117,7 @@ export default function ReportsTab() {
                     {reportRows.map((row, i) => (
                       <tr key={`${row.job._id}-${row.recruiter._id}-${row.sourceDate}-${i}`} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
-                        <td className="py-4 px-6 text-slate-600">{row.sourceDate}</td>
+                        <td className="py-4 px-6 text-slate-600">{formatDate(row.recruiter.dateOfJoining || row.recruiter.joinDate)}</td>
                         <td className="py-4 px-6 font-medium text-slate-800">{row.recruiter.name}</td>
                         <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
                         <td className="py-4 px-6 text-slate-600 max-w-[200px] truncate" title={row.job.title}>{row.job.title}</td>
