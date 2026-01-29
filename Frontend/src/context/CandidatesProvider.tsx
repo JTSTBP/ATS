@@ -91,7 +91,8 @@ type CandidateContextType = {
     expectedJoiningDate?: string,
     rejectedBy?: string,
     offeredCTC?: string,
-    droppedBy?: string
+    droppedBy?: string,
+    rejectionReason?: string
   ) => Promise<Candidate | null>;
   addComment: (candidateId: string, authorId: string, text: string) => Promise<boolean>;
 
@@ -411,7 +412,8 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     expectedJoiningDate?: string,
     rejectedBy?: string,
     offeredCTC?: string,
-    droppedBy?: string
+    droppedBy?: string,
+    rejectionReason?: string
   ) => {
     try {
       // Use FormData if there's a file to upload
@@ -430,6 +432,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       if (rejectedBy) formData.append("rejectedBy", rejectedBy);
       if (offeredCTC) formData.append("offeredCTC", offeredCTC);
       if (droppedBy) formData.append("droppedBy", droppedBy);
+      if (rejectionReason) formData.append("rejectionReason", rejectionReason);
 
       const { data } = await axios.patch(`${API_URL}/${id}/status`, formData, {
         headers: { "Content-Type": "multipart/form-data" }

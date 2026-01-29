@@ -1,337 +1,795 @@
-import { useEffect, useState } from 'react';
-import {
-  Download,
-  TrendingUp,
-  Users,
-  FileText,
-  CheckCircle,
-  Calendar,
-} from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { Search, Info, Check, Users, Briefcase, CalendarCheck, X, UserPlus, ClipboardCheck, Clock, CheckCircle, Filter } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
+import { useClientsContext } from "../../context/ClientsProvider";
 import { useJobContext } from "../../context/DataProvider";
+import { motion, AnimatePresence } from "framer-motion";
+import { formatDate } from "../../utils/dateUtils";
 
 export default function ManagerReports() {
   const { user } = useAuth();
-  const { users } = useUserContext();
+  const { users, fetchUsers } = useUserContext();
   const { candidates, fetchallCandidates } = useCandidateContext();
+  const { clients, fetchClients } = useClientsContext();
   const { jobs, fetchJobs } = useJobContext();
+  const navigate = useNavigate();
+  const [candidatePopupData, setCandidatePopupData] = useState<{ title: string, clientName: string, candidates: any[] } | null>(null);
 
-  const [metrics, setMetrics] = useState([
-    { name: "Total Applications", value: "0", change: "0%", period: "vs last month", icon: FileText, color: "blue" },
-    { name: "Candidates Hired", value: "0", change: "0%", period: "vs last month", icon: CheckCircle, color: "green" },
-    { name: "Active Positions", value: "0", change: "0%", period: "vs last month", icon: Users, color: "purple" },
-    { name: "Rejection Rate", value: "0%", change: "0%", period: "vs last month", icon: Calendar, color: "orange" },
-  ]);
+  // States for advanced filtering
+  const [openFilter, setOpenFilter] = useState<string | null>(null);
+  const [filterSearch, setFilterSearch] = useState("");
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
+    date: [],
+    client: [],
+    job: [],
+    recruiter: []
+  });
 
-  const [hiringFunnel, setHiringFunnel] = useState<any[]>([]);
-  const [topPositions, setTopPositions] = useState<any[]>([]);
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
+  // Default to current month
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
+
+  const [clientSearch, setClientSearch] = useState("");
+  const [recruiterSearch, setRecruiterSearch] = useState("");
+  const [jobSearch, setJobSearch] = useState("");
 
   useEffect(() => {
-    fetchJobs();
+    fetchUsers();
     fetchallCandidates();
+    fetchClients();
+    fetchJobs();
   }, []);
 
-  useEffect(() => {
-    if (!user || !jobs || !candidates || !users) return;
+  const isWithinDateRange = (dateString: string) => {
+    if (!startDate && !endDate) return true;
+    const date = new Date(dateString);
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
 
-    // --- 1. Filter Logic (Manager + Reportees) ---
-    let filteredJobs = [];
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+
+    if (start && end) return date >= start && date <= end;
+    if (start) return date >= start;
+    if (end) return date <= end;
+    return true;
+  };
+
+  const applyDateShortcut = (shortcut: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    let start = new Date(today);
+    let end = new Date(today);
+
+    if (shortcut === 'T') {
+      // Today
+    } else if (shortcut === 'Y') {
+      start.setDate(today.getDate() - 1);
+      end.setDate(today.getDate() - 1);
+    } else if (shortcut === 'W') {
+      const day = today.getDay();
+      const diff = today.getDate() - (day === 0 ? 6 : day - 1);
+      start = new Date(today.getFullYear(), today.getMonth(), diff);
+    } else if (shortcut === 'L') {
+      const day = today.getDay();
+      const diffToLastMon = today.getDate() - (day === 0 ? 6 : day - 1) - 7;
+      start = new Date(today.getFullYear(), today.getMonth(), diffToLastMon);
+      const diffToLastSun = diffToLastMon + 6;
+      end = new Date(today.getFullYear(), today.getMonth(), diffToLastSun);
+    }
+
+    const formatDateLocal = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    setStartDate(formatDateLocal(start));
+    setEndDate(formatDateLocal(end));
+  };
+
+  const toggleFilterValue = (column: string, value: string) => {
+    setSelectedFilters(prev => {
+      const current = prev[column] || [];
+      const updated = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value];
+      return { ...prev, [column]: updated };
+    });
+  };
+
+  const clearFilter = (column: string) => {
+    setSelectedFilters(prev => ({ ...prev, [column]: [] }));
+  };
+
+  // --- Manager Scoping Logic ---
+  const scopedData = useMemo(() => {
+    if (!user || !users || !jobs || !candidates) return { scopedJobs: [], scopedCandidates: [] };
+
     const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
     let allReporteeIds = directReportees.map((u: any) => u._id);
 
-    // Get indirect reportees
-    directReportees.forEach((mentor: any) => {
-      const mentorReportees = users.filter(
-        (u: any) => u?.reporter?._id === mentor._id
-      );
-      allReporteeIds = [
-        ...allReporteeIds,
-        ...mentorReportees.map((u: any) => u._id),
-      ];
-    });
+    if (user.designation === "Manager") {
+      directReportees.forEach((mentor: any) => {
+        const mentorReportees = users.filter((u: any) => u?.reporter?._id === mentor._id);
+        allReporteeIds = [...allReporteeIds, ...mentorReportees.map((u: any) => u._id)];
+      });
+    }
 
-    // Filter jobs
-    filteredJobs = jobs.filter((job: any) => {
+    const scopedJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 
-    // Filter candidates
-    const filteredCandidates = candidates.filter((c: any) => {
+    const scopedCandidates = candidates.filter((c: any) => {
       const creatorId = c.createdBy?._id || c.createdBy;
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 
-    // --- 2. Calculate Metrics ---
-    const totalApplications = filteredCandidates.length;
-    const hiredCount = filteredCandidates.filter((c: any) => ['Selected', 'Joined'].includes(c.status)).length;
-    const activePositions = filteredJobs.filter((j: any) => j.status === 'Open').length;
-    const rejectedCount = filteredCandidates.filter((c: any) => c.status === 'Rejected').length;
-    const rejectionRate = totalApplications > 0 ? Math.round((rejectedCount / totalApplications) * 100) : 0;
+    return { scopedJobs, scopedCandidates };
+  }, [user, users, jobs, candidates]);
 
-    setMetrics([
-      { name: "Total Applications", value: totalApplications.toString(), change: "+0%", period: "vs last month", icon: FileText, color: "blue" },
-      { name: "Candidates Hired", value: hiredCount.toString(), change: "+0%", period: "vs last month", icon: CheckCircle, color: "green" },
-      { name: "Active Positions", value: activePositions.toString(), change: "+0%", period: "vs last month", icon: Users, color: "purple" },
-      { name: "Rejection Rate", value: `${rejectionRate}%`, change: "+0%", period: "vs last month", icon: Calendar, color: "orange" },
-    ]);
+  const { scopedJobs, scopedCandidates } = scopedData;
 
-    // --- 3. Hiring Funnel ---
-    const funnelCounts = {
-      New: filteredCandidates.filter((c: any) => c.status === 'New').length,
-      Shortlisted: filteredCandidates.filter((c: any) => c.status === 'Shortlisted').length,
-      Interviewed: filteredCandidates.filter((c: any) => c.status === 'Interviewed').length,
-      Selected: filteredCandidates.filter((c: any) => c.status === 'Selected').length,
-      Joined: filteredCandidates.filter((c: any) => c.status === 'Joined').length,
-    };
+  // --- Report Data Memo ---
+  const clientJobReportData = useMemo(() => {
+    const reportRows: any[] = [];
 
-    setHiringFunnel([
-      { stage: "New", count: funnelCounts.New, percentage: totalApplications > 0 ? Math.round((funnelCounts.New / totalApplications) * 100) : 0 },
-      { stage: "Shortlisted", count: funnelCounts.Shortlisted, percentage: totalApplications > 0 ? Math.round((funnelCounts.Shortlisted / totalApplications) * 100) : 0 },
-      { stage: "Interviewed", count: funnelCounts.Interviewed, percentage: totalApplications > 0 ? Math.round((funnelCounts.Interviewed / totalApplications) * 100) : 0 },
-      { stage: "Selected", count: funnelCounts.Selected, percentage: totalApplications > 0 ? Math.round((funnelCounts.Selected / totalApplications) * 100) : 0 },
-      { stage: "Joined", count: funnelCounts.Joined, percentage: totalApplications > 0 ? Math.round((funnelCounts.Joined / totalApplications) * 100) : 0 },
-    ]);
+    scopedJobs.forEach(job => {
+      const jobCandidatesInRange = scopedCandidates.filter(c => {
+        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+        return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
+      });
 
-    // --- 4. Top Positions ---
-    const jobStats: Record<string, { title: string, applications: number, hired: number }> = {};
+      const joinedCandidatesInRangeCount = scopedCandidates.filter(c => {
+        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+        return (
+          cJobId === job._id &&
+          c.status === "Joined" &&
+          (c.joiningDate ? isWithinDateRange(c.joiningDate.toString()) : false)
+        );
+      }).length;
 
-    filteredCandidates.forEach((c: any) => {
-      const jobId = typeof c.jobId === 'object' ? c.jobId?._id : c.jobId;
-      const jobTitle = typeof c.jobId === 'object' ? c.jobId?.title : jobs.find((j: any) => j._id === jobId)?.title || 'Unknown Job';
+      const jClientId = typeof job.clientId === 'object' ? job.clientId?._id : job.clientId;
+      const client = clients.find(c => c._id === jClientId);
+      const clientName = client?.companyName || "Unknown";
+      const dateReceived = job.createdAt ? formatDate(job.createdAt) : "N/A";
 
-      if (!jobStats[jobId]) {
-        jobStats[jobId] = { title: jobTitle, applications: 0, hired: 0 };
-      }
-      jobStats[jobId].applications++;
-      if (['Selected', 'Joined'].includes(c.status)) {
-        jobStats[jobId].hired++;
+      const assignedRecruiterIds = Array.isArray(job.assignedRecruiters)
+        ? job.assignedRecruiters.map((r: any) => typeof r === 'object' ? r._id : r)
+        : [];
+      const recruitersInvolved = assignedRecruiterIds
+        .map(recruiterId => users.find(u => u._id === recruiterId)?.name)
+        .filter(Boolean) as string[];
+
+      // Column Filters
+      const matchesDateFilter = selectedFilters.date?.length > 0 ? selectedFilters.date.includes(dateReceived) : true;
+      const matchesClientFilter = selectedFilters.client?.length > 0 ? selectedFilters.client.includes(clientName) : true;
+      const matchesJobFilter = selectedFilters.job?.length > 0 ? selectedFilters.job.includes(job.title) : true;
+      const matchesRecruiterFilter = selectedFilters.recruiter?.length > 0 ? recruitersInvolved.some(r => selectedFilters.recruiter.includes(r)) : true;
+
+      // Search filters
+      const matchesClientSearch = clientSearch ? clientName.toLowerCase().includes(clientSearch.toLowerCase()) : true;
+      const matchesRecruiterSearch = recruiterSearch ? recruitersInvolved.some(r => r.toLowerCase().includes(recruiterSearch.toLowerCase())) : true;
+      const matchesJobSearch = jobSearch ? job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
+      const matchesGlobalDate = job.createdAt ? isWithinDateRange(job.createdAt) : true;
+
+      if (matchesDateFilter && matchesClientFilter && matchesJobFilter && matchesRecruiterFilter && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch && matchesGlobalDate) {
+        reportRows.push({
+          job,
+          clientName,
+          dateReceived,
+          recruitersInvolved,
+          jobCandidates: jobCandidatesInRange,
+          joinedCandidatesInRangeCount
+        });
       }
     });
 
-    const sortedPositions = Object.values(jobStats)
-      .sort((a, b) => b.applications - a.applications)
-      .slice(0, 5)
-      .map(p => ({ position: p.title, applications: p.applications, hired: p.hired }));
+    reportRows.sort((a, b) => new Date(b.job.createdAt || 0).getTime() - new Date(a.job.createdAt || 0).getTime());
 
-    setTopPositions(sortedPositions);
+    const totals = reportRows.reduce((acc, row) => {
+      acc.positions += (Number(row.job.noOfPositions) || 0);
+      acc.uploads += row.jobCandidates.length;
+      acc.Joined = (acc.Joined || 0) + (row.joinedCandidatesInRangeCount || 0);
 
-    // --- 5. Monthly Trends (Last 6 Months) ---
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const currentMonth = new Date().getMonth();
-    const trendData = [];
-
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date();
-      d.setMonth(currentMonth - i);
-      const monthIdx = d.getMonth();
-      const year = d.getFullYear();
-      const monthName = months[monthIdx];
-
-      const candidatesInMonth = filteredCandidates.filter((c: any) => {
-        const cDate = new Date(c.createdAt || c.updatedAt); // Fallback if createdAt missing
-        return cDate.getMonth() === monthIdx && cDate.getFullYear() === year;
+      ["New", "Shortlisted", "Interviewed", "Selected", "Hold"].forEach(status => {
+        const count = row.jobCandidates.filter((c: any) => c.status === status).length;
+        acc[status] = (acc[status] || 0) + count;
       });
 
-      const hiredInMonth = candidatesInMonth.filter((c: any) => ['Selected', 'Joined'].includes(c.status)).length;
+      acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
+      acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
+      acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
+      acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
 
-      trendData.push({
-        month: monthName,
-        applications: candidatesInMonth.length,
-        hired: hiredInMonth
-      });
+      return acc;
+    }, { positions: 0, uploads: 0, New: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
+
+    return { reportRows, totals };
+  }, [scopedJobs, scopedCandidates, clients, users, clientSearch, recruiterSearch, jobSearch, startDate, endDate, selectedFilters]);
+
+  const dashboardStats = useMemo(() => {
+    const { totals, reportRows } = clientJobReportData;
+    const activeJobs = reportRows.filter(row => row.job.status === "Open").length;
+
+    return {
+      totalCandidates: totals.uploads || 0,
+      activeJobs,
+      totalPositions: totals.positions || 0,
+      remainingPositions: (totals.positions || 0) - (totals.Joined || 0),
+      newCandidates: totals.New || 0,
+      shortlistedCandidates: totals.Shortlisted || 0,
+      interviewedCandidates: totals.Interviewed || 0,
+      selectedCandidates: totals.Selected || 0,
+      joinedCandidates: totals.Joined || 0,
+      holdCandidates: totals.Hold || 0,
+    };
+  }, [clientJobReportData]);
+
+  const openCandidatePopup = (jobTitle: string, clientName: string, status: string | "Total", jobCandidates: any[]) => {
+    setCandidatePopupData({
+      title: `${jobTitle} - ${status} Candidates`,
+      clientName: clientName,
+      candidates: jobCandidates
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "New": return "bg-blue-100 text-blue-700";
+      case "Shortlisted": return "bg-orange-100 text-orange-700";
+      case "Interviewed": return "bg-purple-100 text-purple-700";
+      case "Selected": return "bg-green-100 text-green-700";
+      case "Joined": return "bg-emerald-100 text-emerald-700 font-bold";
+      case "Hold": return "bg-amber-100 text-amber-700";
+      case "Rejected": return "bg-red-100 text-red-700";
+      case "Dropped": return "bg-gray-100 text-gray-700";
+      default: return "bg-slate-100 text-slate-700";
     }
-    setMonthlyData(trendData);
+  };
 
-  }, [user, jobs, candidates, users]);
+  const FilterDropdown = ({ column, options, align = 'left' }: { column: string, options: string[], align?: 'left' | 'right' }) => {
+    if (openFilter !== column) return null;
+
+    const filteredOptions = options.filter(opt =>
+      opt.toLowerCase().includes(filterSearch.toLowerCase())
+    );
+
+    return (
+      <div className={`absolute top-full mt-2 w-64 bg-white rounded-lg shadow-xl border border-slate-200 z-50 overflow-hidden font-normal text-slate-700 ${align === 'right' ? 'right-0' : 'left-0'}`}>
+        <div className="p-3 border-b border-slate-100 bg-slate-50">
+          <div className="relative">
+            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search..."
+              autoFocus
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+        </div>
+        <div className="max-h-60 overflow-y-auto p-2">
+          <button
+            onClick={() => {
+              if (selectedFilters[column]?.length === options.length) {
+                clearFilter(column);
+              } else {
+                setSelectedFilters(prev => ({ ...prev, [column]: options }));
+              }
+            }}
+            className="w-full text-left px-2 py-1.5 text-xs hover:bg-slate-50 rounded flex items-center justify-between group"
+          >
+            <span>Select All</span>
+            {selectedFilters[column]?.length === options.length && <Check size={12} className="text-indigo-600" />}
+          </button>
+          <div className="h-px bg-slate-100 my-1" />
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map(opt => (
+              <button
+                key={opt}
+                onClick={() => toggleFilterValue(column, opt)}
+                className="w-full text-left px-2 py-1.5 text-xs hover:bg-slate-50 rounded flex items-center justify-between group"
+              >
+                <span className="truncate pr-4">{opt}</span>
+                {selectedFilters[column]?.includes(opt) && <Check size={12} className="text-indigo-600 flex-shrink-0" />}
+              </button>
+            ))
+          ) : (
+            <div className="p-4 text-center text-slate-400 text-xs italic">No options found</div>
+          )}
+        </div>
+        <div className="p-2 bg-slate-50 border-t border-slate-100 flex justify-between">
+          <button onClick={() => clearFilter(column)} className="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-wider">Clear</button>
+          <button onClick={() => setOpenFilter(null)} className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wider">Apply</button>
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800">
+      {/* Header */}
+      <div className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
-          <p className="text-gray-600 mt-1">
-            Analyze hiring metrics and performance
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Reports</h1>
+          <p className="text-slate-500 mt-1">Detailed performance and requirement analysis</p>
         </div>
-        {/* <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          <Download className="w-4 h-4" />
-          Export Report
-        </button> */}
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex gap-2">
+            {['T', 'Y', 'W', 'L'].map(shortcut => (
+              <button
+                key={shortcut}
+                onClick={() => applyDateShortcut(shortcut)}
+                className="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-slate-50 transition-colors"
+              >
+                {shortcut}
+              </button>
+            ))}
+          </div>
+          <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
+          <div className="flex items-center gap-2">
+            <CalendarCheck size={18} className="text-indigo-500" />
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer"
+            />
+          </div>
+          <div className="text-xs font-bold text-slate-400 uppercase">To</div>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {metrics.map((metric) => (
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {[
+          { label: "Total Positions", value: dashboardStats.totalPositions, icon: Briefcase, color: "blue", path: "/Manager/jobs" },
+          { label: "Positions Left", value: dashboardStats.remainingPositions, icon: Briefcase, color: "emerald", path: "/Manager/jobs" },
+          { label: "Active Jobs", value: dashboardStats.activeJobs, icon: CalendarCheck, color: "amber", path: "/Manager/jobs" },
+          { label: "New", value: dashboardStats.newCandidates, icon: UserPlus, color: "blue", path: "/Manager/candidates" },
+          { label: "Screen", value: dashboardStats.shortlistedCandidates, icon: ClipboardCheck, color: "orange", path: "/Manager/candidates" },
+          { label: "Interviewed", value: dashboardStats.interviewedCandidates, icon: Clock, color: "purple", path: "/Manager/candidates" },
+          { label: "Selected", value: dashboardStats.selectedCandidates, icon: CheckCircle, color: "green", path: "/Manager/candidates" },
+          { label: "Joined", value: dashboardStats.joinedCandidates, icon: Users, color: "emerald", path: "/Manager/candidates" }
+        ].map((stat, i) => (
           <div
-            key={metric.name}
-            className="bg-white rounded-lg border border-gray-200 p-6"
+            key={i}
+            onClick={() => navigate(stat.path)}
+            className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-lg bg-${metric.color}-50`}>
-                <metric.icon className={`w-6 h-6 text-${metric.color}-600`} />
-              </div>
-              {/* <div className="flex items-center gap-1 text-sm font-medium text-green-600">
-                <TrendingUp className="w-4 h-4" />
-                {metric.change}
-              </div> */}
+            <div>
+              <p className={`text-slate-500 text-sm font-medium transition-colors`}>{stat.label}</p>
+              <h2 className="text-3xl font-bold mt-1 text-slate-800">{stat.value}</h2>
             </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              {metric.value}
+            <div className={`bg-${stat.color}-50 text-${stat.color}-600 p-3 rounded-xl group-hover:bg-${stat.color}-100 transition-colors`}>
+              <stat.icon size={24} />
             </div>
-            <div className="text-sm text-gray-600">{metric.name}</div>
-            {/* <div className="text-xs text-gray-500 mt-1">{metric.period}</div> */}
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Hiring Funnel
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Application to hire conversion rates
-            </p>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {hiringFunnel.map((stage) => (
-                <div key={stage.stage}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-900">
-                      {stage.stage}
-                    </span>
-                    <span className="text-sm text-gray-600">
-                      {stage.count} ({stage.percentage}%)
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${stage.percentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+      {/* Table Section */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div className="p-4 md:p-6 border-b border-slate-100">
+          <h2 className="text-lg font-bold text-slate-800 mb-4">Client Job Report</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="relative group">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search Client..."
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+            <div className="relative group">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search Job Title..."
+                value={jobSearch}
+                onChange={(e) => setJobSearch(e.target.value)}
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
+            </div>
+            <div className="relative group">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search Recruiter..."
+                value={recruiterSearch}
+                onChange={(e) => setRecruiterSearch(e.target.value)}
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+              />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Top Positions
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Most applied and hired positions
-            </p>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {topPositions.length > 0 ? (
-                topPositions.map((position) => (
-                  <div
-                    key={position.position}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {position.position}
-                      </div>
-                      <div className="text-sm text-gray-600 mt-1">
-                        {position.applications} applications
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-green-600">
-                        {position.hired}
-                      </div>
-                      <div className="text-xs text-gray-500">hired</div>
-                    </div>
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-[30]">
+              <tr>
+                <th className="py-3 px-6 min-w-[150px] relative">
+                  <div className="flex items-center justify-between">
+                    <span>Date Received</span>
+                    <button
+                      onClick={() => { setOpenFilter(openFilter === 'date' ? null : 'date'); setFilterSearch(""); }}
+                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.date?.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                    >
+                      <Filter size={14} fill={selectedFilters.date?.length > 0 ? "currentColor" : "none"} />
+                    </button>
                   </div>
-                ))
-              ) : (
-                <div className="text-center text-gray-500 py-4">No data available</div>
-              )}
-            </div>
-          </div>
+                  <FilterDropdown column="date" options={Array.from(new Set(scopedJobs.map(j => formatDate(j.createdAt)))).sort()} />
+                </th>
+                <th className="py-3 px-6 min-w-[200px] relative">
+                  <div className="flex items-center justify-between">
+                    <span>Client</span>
+                    <button
+                      onClick={() => { setOpenFilter(openFilter === 'client' ? null : 'client'); setFilterSearch(""); }}
+                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.client?.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                    >
+                      <Filter size={14} fill={selectedFilters.client?.length > 0 ? "currentColor" : "none"} />
+                    </button>
+                  </div>
+                  <FilterDropdown column="client" options={Array.from(new Set(scopedJobs.map(j => clients.find(c => (c._id === (typeof j.clientId === 'object' ? j.clientId?._id : j.clientId)))?.companyName || "Unknown"))).sort()} />
+                </th>
+                <th className="py-3 px-6 min-w-[200px] relative">
+                  <div className="flex items-center justify-between">
+                    <span>Job Title</span>
+                    <button
+                      onClick={() => { setOpenFilter(openFilter === 'job' ? null : 'job'); setFilterSearch(""); }}
+                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.job?.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                    >
+                      <Filter size={14} fill={selectedFilters.job?.length > 0 ? "currentColor" : "none"} />
+                    </button>
+                  </div>
+                  <FilterDropdown column="job" options={Array.from(new Set(scopedJobs.map(j => j.title))).sort()} />
+                </th>
+                <th className="py-3 px-6 min-w-[150px] relative">
+                  <div className="flex items-center justify-between">
+                    <span>Recruiter</span>
+                    <button
+                      onClick={() => { setOpenFilter(openFilter === 'recruiter' ? null : 'recruiter'); setFilterSearch(""); }}
+                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.recruiter?.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                    >
+                      <Filter size={14} fill={selectedFilters.recruiter?.length > 0 ? "currentColor" : "none"} />
+                    </button>
+                  </div>
+                  <FilterDropdown
+                    column="recruiter"
+                    options={Array.from(new Set(scopedJobs.flatMap(j => (j.assignedRecruiters || []).map((r: any) => users.find(u => u._id === (typeof r === 'object' ? r._id : r))?.name)).filter(Boolean) as string[])).sort()}
+                  />
+                </th>
+                <th className="py-3 px-4 text-center font-bold bg-slate-100/50">Total Positions</th>
+                <th className="py-3 px-4 text-center font-bold bg-amber-50/50">Positions Left</th>
+                <th className="py-3 px-4 text-center font-bold bg-blue-50/50 font-bold">Total Lineups</th>
+                <th className="py-3 px-4 text-center">New</th>
+                <th className="py-3 px-4 text-center">Screen</th>
+                <th className="py-3 px-4 text-center bg-red-50 text-red-700">Reject by Mentor</th>
+                <th className="py-3 px-4 text-center">Interviewed</th>
+                <th className="py-3 px-4 text-center">Selected</th>
+                <th className="py-3 px-4 text-center font-bold bg-indigo-50/50 text-indigo-700 font-bold">Joined</th>
+                <th className="py-3 px-4 text-center">Hold</th>
+                <th className="py-3 px-4 text-center bg-red-50 text-red-800">Reject by Client</th>
+                <th className="py-3 px-4 text-center bg-gray-100/50">Drop by Mentor</th>
+                <th className="py-3 px-4 text-center bg-slate-50">Drop by Client</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {clientJobReportData.reportRows.map((row, idx) => {
+                const positions = Number(row.job.noOfPositions) || 0;
+                const left = positions - (row.joinedCandidatesInRangeCount || 0);
+
+                return (
+                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    <td className="py-4 px-6 text-slate-500">{row.dateReceived}</td>
+                    <td className="py-4 px-6 font-medium text-slate-800">{row.clientName}</td>
+                    <td className="py-4 px-6 font-medium text-slate-800">{row.job.title}</td>
+                    <td className="py-4 px-6">
+                      <div className="flex flex-wrap gap-1">
+                        {row.recruitersInvolved.map((r: string, i: number) => (
+                          <span key={i} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] font-medium border border-slate-200">
+                            {r}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-center font-bold text-slate-700">{positions}</td>
+                    <td className="py-4 px-4 text-center font-bold text-amber-600">{left}</td>
+                    <td className="py-4 px-4 text-center">
+                      <button
+                        onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total", row.jobCandidates)}
+                        className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100 hover:scale-110 shadow-sm"
+                      >
+                        {row.jobCandidates.length}
+                      </button>
+                    </td>
+                    {["New", "Shortlisted"].map(status => {
+                      const list = row.jobCandidates.filter((c: any) => c.status === (status === "Shortlisted" ? "Shortlisted" : status));
+                      return (
+                        <td key={status} className="py-4 px-4 text-center text-slate-600 font-medium">
+                          <button onClick={() => openCandidatePopup(row.job.title, row.clientName, status === "Shortlisted" ? "Screen" : status, list)} className="hover:underline">
+                            {list.length}
+                          </button>
+                        </td>
+                      );
+                    })}
+                    <td className="py-4 px-4 text-center">
+                      {(() => {
+                        const mentorRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor");
+                        const count = mentorRejected.length;
+                        return (
+                          <button
+                            disabled={count === 0}
+                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Mentor", mentorRejected)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all shadow-sm ${count > 0 ? "bg-red-50 text-red-600 border border-red-100 hover:scale-110" : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                          >
+                            {count}
+                          </button>
+                        );
+                      })()}
+                    </td>
+                    {["Interviewed", "Selected"].map(status => {
+                      const list = row.jobCandidates.filter((c: any) => c.status === status);
+                      return (
+                        <td key={status} className="py-4 px-4 text-center text-slate-600 font-medium">
+                          <button onClick={() => openCandidatePopup(row.job.title, row.clientName, status, list)} className="hover:underline">
+                            {list.length}
+                          </button>
+                        </td>
+                      );
+                    })}
+                    <td className="py-4 px-4 text-center">
+                      <button
+                        disabled={row.joinedCandidatesInRangeCount === 0}
+                        onClick={() => openCandidatePopup(row.job.title, row.clientName, "Joined", row.jobCandidates.filter((c: any) => c.status === "Joined"))}
+                        className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all shadow-sm ${row.joinedCandidatesInRangeCount > 0 ? "bg-indigo-50 text-indigo-700 border border-indigo-100 hover:scale-110" : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                      >
+                        {row.joinedCandidatesInRangeCount}
+                      </button>
+                    </td>
+                    <td className="py-4 px-4 text-center text-slate-600 font-medium">{row.jobCandidates.filter((c: any) => c.status === "Hold").length}</td>
+                    <td className="py-4 px-4 text-center">
+                      {(() => {
+                        const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
+                        const count = clientRejected.length;
+                        return (
+                          <button
+                            disabled={count === 0}
+                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Client", clientRejected)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all shadow-sm ${count > 0 ? "bg-red-50 text-red-700 border border-red-100 hover:scale-110" : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                          >
+                            {count}
+                          </button>
+                        );
+                      })()}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      {(() => {
+                        const mentorDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor");
+                        const count = mentorDropped.length;
+                        return (
+                          <button
+                            disabled={count === 0}
+                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Mentor", mentorDropped)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all shadow-sm ${count > 0 ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110" : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                          >
+                            {count}
+                          </button>
+                        );
+                      })()}
+                    </td>
+                    <td className="py-4 px-4 text-center">
+                      {(() => {
+                        const clientDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client");
+                        const count = clientDropped.length;
+                        return (
+                          <button
+                            disabled={count === 0}
+                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Client", clientDropped)}
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all shadow-sm ${count > 0 ? "bg-slate-50 text-slate-600 border border-slate-200 hover:scale-110" : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                          >
+                            {count}
+                          </button>
+                        );
+                      })()}
+                    </td>
+                  </tr>
+                );
+              })}
+              {/* Total Row */}
+              <tr className="bg-slate-100 font-bold border-t-2 border-slate-200 sticky bottom-0 z-10 shadow-sm">
+                <td colSpan={4} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
+                <td className="py-4 px-6 text-center text-slate-800">{clientJobReportData.totals.positions}</td>
+                <td className="py-4 px-6 text-center text-slate-800">
+                  {(clientJobReportData.totals.positions || 0) - (clientJobReportData.totals.Joined || 0)}
+                </td>
+                <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.uploads}</td>
+                <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.New}</td>
+                <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.Shortlisted}</td>
+                <td className="py-4 px-4 text-center text-red-600 font-bold">{clientJobReportData.totals.rejectByMentor}</td>
+                <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.Interviewed}</td>
+                <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.Selected}</td>
+                <td className="py-4 px-4 text-center text-slate-800 font-bold">{clientJobReportData.totals.Joined}</td>
+                <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.Hold}</td>
+                <td className="py-4 px-4 text-center text-red-700 font-bold">{clientJobReportData.totals.rejectByClient}</td>
+                <td className="py-4 px-4 text-center text-gray-600 font-bold">{clientJobReportData.totals.dropByMentor || 0}</td>
+                <td className="py-4 px-4 text-center text-slate-500 font-bold">{clientJobReportData.totals.dropByClient || 0}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Monthly Trends
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Applications and hiring trends over time
-          </p>
-        </div>
-        <div className="p-6">
-          <div className="space-y-6">
-            {monthlyData.map((data) => (
-              <div key={data.month}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-900 w-12">
-                    {data.month}
-                  </span>
-                  <div className="flex-1 mx-4">
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-600">
-                            Applications
-                          </span>
-                          <span className="text-xs font-medium text-gray-900">
-                            {data.applications}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-500 h-2 rounded-full"
-                            style={{
-                              width: `${data.applications > 0 ? (data.applications / 50) * 100 : 0}%`, // Scaled for visibility
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-gray-600">Hired</span>
-                          <span className="text-xs font-medium text-gray-900">
-                            {data.hired}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-green-500 h-2 rounded-full"
-                            style={{ width: `${data.hired > 0 ? (data.hired / 10) * 100 : 0}%` }} // Scaled for visibility
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      {/* Candidate Details Popup */}
+      <AnimatePresence>
+        {candidatePopupData && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-none md:rounded-xl shadow-xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[80vh] flex flex-col"
+            >
+              <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-base md:text-xl font-bold text-slate-800 truncate">{candidatePopupData.title}</h2>
+                  <p className="text-xs md:text-sm font-semibold text-indigo-600 truncate">Client: {candidatePopupData.clientName}</p>
                 </div>
+                <button
+                  onClick={() => setCandidatePopupData(null)}
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0 ml-2"
+                >
+                  <X size={20} className="text-slate-500 md:w-6 md:h-6" />
+                </button>
               </div>
-            ))}
-          </div>
 
-          <div className="flex items-center gap-6 mt-6 pt-6 border-t border-gray-200">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-blue-500 rounded"></div>
-              <span className="text-sm text-gray-600">Applications</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span className="text-sm text-gray-600">Hired</span>
-            </div>
+              <div className="flex-1 overflow-auto p-4 md:p-6">
+                {(() => {
+                  const hasStatusDetails = candidatePopupData.candidates.some((c: any) =>
+                    (c.status === "Interviewed" && c.interviewStage) ||
+                    (c.status === "Selected" && (c.selectionDate || c.expectedJoiningDate || c.joiningDate)) ||
+                    (c.status === "Joined" && c.joiningDate) ||
+                    (c.status === "Dropped" && (c.droppedReason || c.droppedBy))
+                  );
+
+                  return (
+                    <table className="w-full text-sm text-left">
+                      <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
+                        <tr>
+                          <th className="py-3 px-4 text-center">Source Date</th>
+                          <th className="py-3 px-4">Name</th>
+                          <th className="py-3 px-4">Phone</th>
+                          <th className="py-3 px-4">Recruiter</th>
+                          <th className="py-3 px-4">Status</th>
+                          {hasStatusDetails && <th className="py-3 px-4">Status Details</th>}
+                          <th className="py-3 px-4">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {candidatePopupData.candidates.length > 0 ? (
+                          candidatePopupData.candidates.map((c: any, i: number) => {
+                            const dynamicKeys = Object.keys(c.dynamicFields || {});
+                            const nameKey = dynamicKeys.find(k => k.toLowerCase().includes("name")) || dynamicKeys[0];
+                            const phoneKey = dynamicKeys.find(k => k.toLowerCase().includes("phone")) || dynamicKeys[1];
+
+                            const creatorId = typeof c.createdBy === 'object' ? c.createdBy?._id : c.createdBy;
+                            const creatorName = users.find(u => u._id === creatorId)?.name || "Unknown";
+
+                            const droppedEntry = Array.isArray(c.statusHistory)
+                              ? c.statusHistory.find((h: any) => h.status === "Dropped")
+                              : null;
+                            const droppedComment = droppedEntry?.comment || "";
+
+                            const rejectedEntry = Array.isArray(c.statusHistory)
+                              ? c.statusHistory.find((h: any) => h.status === "Rejected")
+                              : null;
+                            const rejectedComment = rejectedEntry?.comment || "";
+                            const rejectionReason = rejectedEntry?.rejectionReason || c.rejectionReason;
+
+                            return (
+                              <tr key={i} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
+                                <td className="py-3 px-4 font-medium text-slate-800">{c.dynamicFields?.[nameKey] || "N/A"}</td>
+                                <td className="py-3 px-4 text-slate-600">{c.dynamicFields?.[phoneKey] || "N/A"}</td>
+                                <td className="py-3 px-4 text-slate-600 font-medium">
+                                  <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-medium border border-slate-200">
+                                    {creatorName}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(c.status)}`}>
+                                    {c.status === "Rejected" ? `Rejected (${c.rejectedBy || "Unknown"})` : c.status}
+                                  </span>
+                                </td>
+                                {hasStatusDetails && (
+                                  <td className="py-3 px-4 text-slate-600">
+                                    {c.status === "Interviewed" && c.interviewStage && (
+                                      <div className="text-xs font-semibold">Stage: {c.interviewStage}</div>
+                                    )}
+                                    {c.status === "Selected" && (
+                                      <div className="text-xs space-y-1">
+                                        {c.selectionDate && <div><span className="font-semibold">Selected:</span> {formatDate(c.selectionDate)}</div>}
+                                        {(c.expectedJoiningDate || c.joiningDate) && <div><span className="font-semibold">Joining:</span> {formatDate(c.expectedJoiningDate || c.joiningDate)}</div>}
+                                      </div>
+                                    )}
+                                    {c.status === "Joined" && c.joiningDate && (
+                                      <div className="text-xs font-semibold">Joined: {formatDate(c.joiningDate)}</div>
+                                    )}
+                                    {c.status === "Rejected" && (rejectionReason || c.rejectedBy) && (
+                                      <div className="text-xs space-y-1">
+                                        {rejectionReason && <div><span className="font-semibold text-red-600">Reas:</span> {rejectionReason}</div>}
+                                        {c.rejectedBy && <div><span className="font-semibold">By:</span> {c.rejectedBy}</div>}
+                                      </div>
+                                    )}
+                                    {c.status === "Dropped" && (droppedComment || c.droppedReason || c.droppedBy) && (
+                                      <div className="text-xs space-y-1">
+                                        {(droppedComment || c.droppedReason) && <div><span className="font-semibold text-red-600">Reas:</span> {droppedComment || c.droppedReason}</div>}
+                                        {c.droppedBy && <div><span className="font-semibold">By:</span> {c.droppedBy}</div>}
+                                      </div>
+                                    )}
+                                  </td>
+                                )}
+                                <td className="py-3 px-4 text-slate-600">
+                                  <div className="max-w-[200px] truncate" title={c.status === "Dropped" ? droppedComment || c.droppedReason || c.notes : c.status === "Rejected" ? rejectedComment || c.notes : c.notes}>
+                                    {c.status === "Dropped" ? (
+                                      <span>{droppedComment || c.droppedReason || c.notes || <span className="text-slate-400">-</span>}</span>
+                                    ) : c.status === "Rejected" ? (
+                                      <span>{rejectedComment || c.notes || <span className="text-slate-400">-</span>}</span>
+                                    ) : (
+                                      <span>{c.notes || <span className="text-slate-400">-</span>}</span>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td colSpan={hasStatusDetails ? 7 : 6} className="py-8 text-center text-slate-500 font-medium italic">No candidates found.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  );
+                })()}
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
+                <button
+                  onClick={() => setCandidatePopupData(null)}
+                  className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium transition-colors shadow-sm"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

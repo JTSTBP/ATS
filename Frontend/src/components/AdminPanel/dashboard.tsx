@@ -64,29 +64,20 @@ export default function AdminDashboard() {
     const shortlistedCandidates = candidates.filter((c) => c.status === "Shortlisted" && filterByMonth(c.createdAt)).length;
     const interviewedCandidates = candidates.filter((c) => c.status === "Interviewed" && filterByMonth(c.createdAt)).length;
     const selectedCandidates = candidates.filter((c) => c.status === "Selected" && filterByMonth(c.selectionDate)).length;
-    const joinedCandidates = candidates.filter((c) => c.status === "Joined" && filterByMonth(c.joiningDate)).length;
 
-    // Calculate Total Positions and Remaining
     const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
 
-    // Count joined per job to get remaining positions
-    const joinedPerJob = candidates.reduce((acc, c) => {
-      if (c.status === "Joined") {
-        // Handle both populated object and ID string
-        const jid = typeof c.jobId === 'object' && c.jobId !== null
-          ? String((c.jobId as any)._id)
-          : String(c.jobId);
-        acc[jid] = (acc[jid] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
+    // Calculate joined candidates for these specific jobs, but only those who joined in the selected month
+    const joinedCandidates = candidates.filter(c => {
+      const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+      return (
+        c.status === "Joined" &&
+        filterByMonth(c.joiningDate) &&
+        filteredJobs.some(j => String(j._id) === String(cJobId))
+      );
+    }).length;
 
-    const totalJoinedForFilteredJobs = filteredJobs.reduce((sum, j) => {
-      const jid = String(j._id);
-      return sum + (joinedPerJob[jid] || 0);
-    }, 0);
-
-    const remainingPositions = totalPositions - totalJoinedForFilteredJobs;
+    const remainingPositions = totalPositions - joinedCandidates;
 
     return {
       totalCandidates,

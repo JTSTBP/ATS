@@ -34,7 +34,7 @@ export const ApplicationCard = ({
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string, rejectionReason?: string) => {
     if (!pendingStatusChange) return;
     setLoading(true);
     const success = await updateStatus(
@@ -45,7 +45,14 @@ export const ApplicationCard = ({
       undefined,
       undefined,
       comment,
-      joiningDate
+      joiningDate,
+      offerLetter,
+      selectionDate,
+      expectedJoiningDate,
+      rejectedBy,
+      offeredCTC,
+      undefined,
+      rejectionReason
     );
     setLoading(false);
     fetchallCandidates();

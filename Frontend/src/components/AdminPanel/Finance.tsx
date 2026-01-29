@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, X, Trash2, Mail, RotateCcw, RefreshCw } from "lucide-react";
+import { Plus, X, Trash2, Mail, RotateCcw, RefreshCw, Download, DownloadCloud } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../utils/dateUtils";
@@ -643,6 +643,66 @@ const Finance = () => {
         }
     };
 
+    const handleDownloadInvoice = async (id: string, invoiceNumber: string) => {
+        try {
+            const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/download/${id}`, {
+                responseType: 'blob'
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Invoice_${invoiceNumber || id}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Error downloading invoice:", error);
+            toast.error("Failed to download invoice");
+        }
+    };
+
+    const handleDownloadPreview = async () => {
+        try {
+            const selectedClient = clients.find(c => c._id === invoiceFormData.client);
+
+            // Prepare data for PDF generation
+            const previewData = {
+                ...invoiceFormData,
+                client: {
+                    ...selectedClient,
+                    companyName: selectedClient?.companyName || "[Client Name]"
+                },
+                candidates: invoiceFormData.candidates.map(c => {
+                    const cand = candidates.find(cand => cand._id === c.candidateId);
+                    return {
+                        ...c,
+                        candidateId: {
+                            ...cand,
+                            dynamicFields: cand?.dynamicFields || {}
+                        },
+                        amount: parseFloat(c.amount) || 0
+                    };
+                }),
+                invoiceDate: invoiceFormData.invoiceDate || new Date().toISOString()
+            };
+
+            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/preview-download`, previewData, {
+                responseType: 'blob'
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Invoice_Preview.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Error downloading preview:", error);
+            toast.error("Failed to download preview");
+        }
+    };
+
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-6">
@@ -862,6 +922,13 @@ const Finance = () => {
                                                     <RotateCcw size={18} />
                                                 </button>
                                             )}
+                                            <button
+                                                onClick={() => handleDownloadInvoice(invoice._id, invoice.invoiceNumber || "")}
+                                                className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
+                                                title="Download PDF"
+                                            >
+                                                <Download size={18} />
+                                            </button>
                                             <button
                                                 onClick={() => handleSendEmail(invoice._id)}
                                                 className="text-gray-600 hover:text-blue-600 text-sm font-medium"
@@ -1466,8 +1533,16 @@ const Finance = () => {
                             {/* Right Side: Preview */}
                             <div className="w-full md:w-1/2 sticky top-6">
                                 <div className="bg-white shadow-xl rounded-xl border border-slate-200 overflow-hidden min-h-[800px] flex flex-col">
-                                    <div className="bg-slate-800 p-3 text-white text-center text-xs font-bold uppercase tracking-widest">
-                                        Live Invoice Preview
+                                    <div className="bg-slate-800 p-3 text-white flex justify-between items-center text-xs font-bold uppercase tracking-widest">
+                                        <span>Live Invoice Preview</span>
+                                        <button
+                                            onClick={handleDownloadPreview}
+                                            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition-colors"
+                                            title="Download Preview PDF"
+                                        >
+                                            <DownloadCloud size={14} />
+                                            Download
+                                        </button>
                                     </div>
                                     <div className="p-12 flex-1 flex flex-col text-[12px] leading-relaxed text-slate-800 font-serif">
                                         {/* Header */}

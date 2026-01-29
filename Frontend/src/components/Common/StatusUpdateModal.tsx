@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 interface StatusUpdateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, ctc?: string) => void;
+    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, ctc?: string, rejectionReason?: string) => void;
     newStatus: string;
     candidateName?: string;
     isCommentOnly?: boolean;
@@ -37,6 +37,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     const [selectionDate, setSelectionDate] = useState("");
     const [expectedJoiningDate, setExpectedJoiningDate] = useState("");
     const [rejectedBy, setRejectedBy] = useState("");
+    const [rejectionReason, setRejectionReason] = useState("");
     const [ctc, setCtc] = useState("");
 
     useEffect(() => {
@@ -47,6 +48,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
             setSelectionDate(currentSelectionDate ? new Date(currentSelectionDate).toISOString().split('T')[0] : "");
             setExpectedJoiningDate(currentExpectedJoiningDate ? new Date(currentExpectedJoiningDate).toISOString().split('T')[0] : "");
             setRejectedBy(currentRejectedBy || "");
+            setRejectionReason("");
             setCtc(currentCTC || "");
         }
     }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate, currentRejectedBy, currentCTC]);
@@ -192,6 +194,27 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             </div>
                         )}
 
+                        {newStatus === "Rejected" && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Rejection Reason <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                    value={rejectionReason}
+                                    onChange={(e) => setRejectionReason(e.target.value)}
+                                >
+                                    <option value="">Select a reason</option>
+                                    <option value="communication skills">Communication Skills</option>
+                                    <option value="experience not matched">Experience Not Matched</option>
+                                    <option value="salary not matched">Salary Not Matched</option>
+                                    <option value="stability issue">Stability Issue</option>
+                                    <option value="skills not matched">Skills Not Matched</option>
+                                </select>
+                            </div>
+                        )}
+
                         {isDropped && droppedBy && (
                             <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
                                 <p className="text-sm text-red-700 font-medium">
@@ -240,7 +263,11 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                         alert("Please provide a reason for dropping the candidate");
                                         return;
                                     }
-                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, isDropped ? droppedBy : rejectedBy, ctc);
+                                    if (newStatus === "Rejected" && !rejectionReason) {
+                                        alert("Please select a rejection reason");
+                                        return;
+                                    }
+                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, isDropped ? droppedBy : rejectedBy, ctc, rejectionReason);
                                 }}
                                 className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
                             >

@@ -289,7 +289,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         setStatusModalOpen(true);
     };
 
-    const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string) => {
+    const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string, rejectionReason?: string) => {
         if (!pendingStatusChange) return;
 
         // Determine if this is a drop or reject
@@ -311,7 +311,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             expectedJoiningDate,
             rejectedByValue,
             offeredCTC,
-            droppedByValue
+            droppedByValue,
+            rejectionReason
         );
 
         // Optimistic update or refetch
@@ -583,6 +584,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                     </>
                                 )}
                                 <th className="px-6 py-3 text-left text-sm font-semibold">
+                                    Remarks
+                                </th>
+                                <th className="px-6 py-3 text-left text-sm font-semibold">
                                     Actions
                                 </th>
                             </tr>
@@ -762,6 +766,16 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 </td>
                                             </>
                                         )}
+
+                                        {/* REMARKS */}
+                                        <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px] truncate" title={candidate.notes}>
+                                            {candidate.status === "Rejected" && candidate.rejectionReason && (
+                                                <div className="text-xs text-red-600 font-semibold mb-1">
+                                                    Reason: {candidate.rejectionReason}
+                                                </div>
+                                            )}
+                                            {candidate.notes || "-"}
+                                        </td>
 
                                         {/* ACTIONS */}
                                         <td className="px-6 py-4 flex space-x-2">

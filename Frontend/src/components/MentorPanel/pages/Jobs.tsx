@@ -57,30 +57,63 @@ export const JobsManager = ({
     fetchPaginatedJobs,
     loading,
     deleteJob,
-    updateJobStatus
+    updateJobStatus,
+    jobs
   } = useJobContext();
 
-  const { jobs } = useJobContext(); // Get all jobs for stats
-  const { clients } = useClientsContext(); // Get all clients
+  const { users, fetchUsers } = useUserContext(); // Added to get reportees for scoping
+  const { clients } = useClientsContext(); // Restored
   const { candidates, fetchallCandidates } = useCandidateContext(); // Get all candidates
 
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Fetch candidates for stats calculation
+  // Fetch candidates and users for stats calculation
   useEffect(() => {
     fetchallCandidates();
+    fetchUsers();
   }, []);
+
+  // Scoping logic for Stats
+  const scopedData = useMemo(() => {
+    if (!user || !jobs || !candidates || !users) return { scopedJobs: jobs, scopedCandidates: candidates };
+
+    // Admin sees all
+    if (user.designation === "Admin") return { scopedJobs: jobs, scopedCandidates: candidates };
+
+    // Get reportees
+    const directReportees = users.filter((u: any) => u?.reporter?._id === user._id || u?.reporter === user._id);
+    let allReporteeIds = directReportees.map((u: any) => u._id);
+
+    if (user.designation === "Manager") {
+      directReportees.forEach((mentor: any) => {
+        const mentorReportees = users.filter((u: any) => u?.reporter?._id === mentor._id || u?.reporter === mentor._id);
+        allReporteeIds = [...allReporteeIds, ...mentorReportees.map((u: any) => u._id)];
+      });
+    }
+
+    const scopedJobs = jobs.filter((job: any) => {
+      const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
+      return creatorId === user._id || allReporteeIds.includes(creatorId);
+    });
+
+    const scopedCandidates = candidates.filter((c: any) => {
+      const creatorId = c.createdBy?._id || c.createdBy;
+      return creatorId === user._id || allReporteeIds.includes(creatorId);
+    });
+
+    return { scopedJobs, scopedCandidates };
+  }, [user, jobs, candidates, users]);
+
+  const { scopedJobs, scopedCandidates } = scopedData;
 
   // Calculate Stats
   const stats = useMemo(() => {
     // 1. Active Jobs
-    const activeJobsList = jobs.filter(j => j.status === 'Open');
+    const activeJobsList = scopedJobs.filter(j => j.status === 'Open');
     const activeJobsCount = activeJobsList.length;
 
     // 2. Active Clients (Clients with at least one Open job)
-    // We need to check the clientId of the active jobs. 
-    // Assuming job.clientId is populated or contains the ID.
     const activeClientIds = new Set();
     activeJobsList.forEach(job => {
       if (job.clientId) {
@@ -95,9 +128,8 @@ export const JobsManager = ({
     const totalPositions = activeJobsList.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
 
     // Count Joined candidates for these Active Jobs
-    // We need to count candidates where status === 'Joined' AND candidate.jobId matches an active job
     const activeJobIds = new Set(activeJobsList.map(j => j._id));
-    const joinedCandidatesCount = candidates.filter(c => {
+    const joinedCandidatesCount = scopedCandidates.filter(c => {
       if (c.status !== 'Joined') return false;
       const jId = typeof c.jobId === 'object' ? (c.jobId as any)._id : c.jobId;
       return activeJobIds.has(jId);
@@ -110,7 +142,7 @@ export const JobsManager = ({
       activeClients: activeClientsCount,
       positionsLeft: positionsLeftCount
     };
-  }, [jobs, candidates]); // Recalculate when jobs or candidates change
+  }, [scopedJobs, scopedCandidates]); // Recalculate when scoped data changes
 
 
 

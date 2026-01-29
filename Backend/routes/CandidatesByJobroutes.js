@@ -1348,7 +1348,7 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
 // 🔁 Update candidate status only
 router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
   try {
-    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate, rejectedBy, droppedBy } = req.body;
+    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate, rejectedBy, droppedBy, rejectionReason, comment } = req.body;
 
     // Get existing candidate to detect changes
     const existingCandidate = await Candidate.findById(req.params.id).populate('jobId', 'title');
@@ -1369,6 +1369,8 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
       stageNotes,
       rejectedBy,
       droppedBy,
+      rejectionReason,
+      comment,
       willAddToHistory: status === "Interviewed" && interviewStage && stageStatus
     });
 
@@ -1388,6 +1390,14 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
         field: 'Rejected By',
         oldValue: existingCandidate.rejectedBy || 'Not set',
         newValue: rejectedBy
+      });
+    }
+
+    if (status === "Rejected" && rejectionReason) {
+      changes.push({
+        field: 'Rejection Reason',
+        oldValue: existingCandidate.rejectionReason || 'Not set',
+        newValue: rejectionReason
       });
     }
 
@@ -1423,11 +1433,26 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
       });
     }
 
+    if (comment) {
+      changes.push({
+        field: 'Remarks',
+        oldValue: existingCandidate.notes || 'None',
+        newValue: comment
+      });
+    }
+
     const updateData = { status, UpdatedStatusBy: role };
+
+    if (comment) {
+      updateData.notes = comment;
+    }
 
     // Handle RejectedBy
     if (status === "Rejected" && rejectedBy) {
       updateData.rejectedBy = rejectedBy;
+      if (rejectionReason) {
+        updateData.rejectionReason = rejectionReason;
+      }
     }
 
     // Handle DroppedBy
@@ -1525,6 +1550,7 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
       comment: req.body.comment || "",
       joiningDate: status === "Joined" ? joiningDate : undefined,
       rejectedBy: status === "Rejected" ? rejectedBy : undefined,
+      rejectionReason: status === "Rejected" ? rejectionReason : undefined,
       droppedBy: status === "Dropped" ? droppedBy : undefined,
       updatedBy: role,
       timestamp: new Date(),

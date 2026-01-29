@@ -137,7 +137,7 @@ export default function Candidates() {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string) => {
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string, rejectionReason?: string) => {
     if (!pendingStatusChange) return;
 
     await updateStatus(
@@ -152,7 +152,10 @@ export default function Candidates() {
       offerLetter,
       selectionDate,
       expectedJoiningDate,
-      rejectedBy
+      rejectedBy,
+      offeredCTC,
+      undefined,
+      rejectionReason
     );
 
     // Refetch current page after update
@@ -538,6 +541,18 @@ export default function Candidates() {
                                   Exp. Join: {formatDate(candidate.expectedJoiningDate)}
                                 </p>
                               )}
+                            </div>
+                          )}
+
+                          {/* Rejection Reason & Notes */}
+                          {candidate.status === "Rejected" && candidate.rejectionReason && (
+                            <div className="mt-1 text-[10px] font-bold text-red-600 text-center leading-tight">
+                              Reason: {candidate.rejectionReason}
+                            </div>
+                          )}
+                          {candidate.notes && (
+                            <div className="mt-1 text-[10px] text-slate-500 text-center italic truncate max-w-full" title={candidate.notes}>
+                              "{candidate.notes}"
                             </div>
                           )}
                         </div>

@@ -197,8 +197,8 @@ const CandidatesList = () => {
 
     let filtered;
 
-    // Admin sees all candidates for the job
-    if (user.designation === "Admin") {
+    // Admin and Manager see all candidates for the job
+    if (user.designation === "Admin" || user.designation === "Manager") {
       filtered = candidates.filter((c) => (c.jobId as any)?._id === id);
     } else {
       // Other roles see candidates created by them or their reporting users
@@ -374,7 +374,7 @@ const CandidatesList = () => {
     setStatusModalOpen(true);
   };
 
-  const confirmStatusAction = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string) => {
+  const confirmStatusAction = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string, rejectionReason?: string) => {
     if (!pendingAction) return;
 
     if (pendingAction.type === 'reject' || pendingAction.type === 'statusChange') {
@@ -397,7 +397,8 @@ const CandidatesList = () => {
         expectedJoiningDate, // Add expectedJoiningDate
         rejectedByValue,
         offeredCTC,
-        droppedByValue
+        droppedByValue,
+        rejectionReason
       );
 
       if (success) {
@@ -1528,6 +1529,23 @@ const CandidatesList = () => {
                           </div>
                         )}
                     </div>
+
+                    {/* Remarks Section */}
+                    {(candidate.notes || (candidate.status === "Rejected" && candidate.rejectionReason)) && (
+                      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        {candidate.status === "Rejected" && candidate.rejectionReason && (
+                          <div className="text-xs font-bold text-red-600 mb-1 flex items-center gap-1">
+                            <X className="w-3 h-3 text-red-600" /> Rejection Reason: {candidate.rejectionReason}
+                          </div>
+                        )}
+                        {candidate.notes && (
+                          <div className="text-xs text-gray-600 flex items-start gap-1">
+                            <MessageSquare className="w-3 h-3 mt-0.5 shrink-0 text-gray-400" />
+                            <span>{candidate.notes}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* BOTTOM BAR */}
                     <div className="flex items-center justify-between pt-4 border-t border-gray-100">

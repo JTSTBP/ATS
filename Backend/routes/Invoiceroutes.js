@@ -308,6 +308,73 @@ router.post('/send-email', async (req, res) => {
 });
 
 // Reset invoice status
+// Download Invoice PDF
+router.get('/download/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const invoice = await Invoice.findById(id)
+            .populate('client')
+            .populate({
+                path: 'candidates.candidateId',
+                populate: { path: 'jobId', select: 'title' }
+            });
+
+        if (!invoice) {
+            return res.status(404).json({ message: "Invoice not found" });
+        }
+
+        const pdfPath = path.join(__dirname, `../temp/invoice_${invoice._id}.pdf`);
+
+        if (!fs.existsSync(path.join(__dirname, '../temp'))) {
+            fs.mkdirSync(path.join(__dirname, '../temp'));
+        }
+
+        await generateInvoicePDF(invoice, null, pdfPath);
+
+        res.download(pdfPath, `Invoice_${invoice.invoiceNumber || id}.pdf`, (err) => {
+            if (err) {
+                console.error("Error sending file:", err);
+            }
+            // Clean up temp file
+            if (fs.existsSync(pdfPath)) {
+                fs.unlinkSync(pdfPath);
+            }
+        });
+    } catch (error) {
+        console.error("Error generating download:", error);
+        res.status(500).json({ message: "Error generating download", error: error.message });
+    }
+});
+
+// Download Preview PDF
+router.post('/preview-download', async (req, res) => {
+    try {
+        const previewData = req.body;
+        const tempId = Date.now();
+        const pdfPath = path.join(__dirname, `../temp/preview_${tempId}.pdf`);
+
+        if (!fs.existsSync(path.join(__dirname, '../temp'))) {
+            fs.mkdirSync(path.join(__dirname, '../temp'));
+        }
+
+        // The preview data needs to be structured like the Invoice model for generateInvoicePDF
+        // Frontend should send something like { clientObject, candidatesWithDetails, ... }
+        await generateInvoicePDF(previewData, null, pdfPath);
+
+        res.download(pdfPath, `Invoice_Preview.pdf`, (err) => {
+            if (err) {
+                console.error("Error sending file:", err);
+            }
+            if (fs.existsSync(pdfPath)) {
+                fs.unlinkSync(pdfPath);
+            }
+        });
+    } catch (error) {
+        console.error("Error generating preview download:", error);
+        res.status(500).json({ message: "Error generating preview download", error: error.message });
+    }
+});
+
 router.post('/reset-status', async (req, res) => {
     try {
         const { invoiceId } = req.body;

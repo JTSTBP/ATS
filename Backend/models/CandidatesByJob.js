@@ -42,6 +42,10 @@ const candidateSchema = new mongoose.Schema(
       enum: ["Client", "Mentor"],
       default: null,
     },
+    rejectionReason: {
+      type: String,
+      default: null,
+    },
     droppedBy: {
       type: String,
       enum: ["Client", "Mentor"],
@@ -102,6 +106,9 @@ const candidateSchema = new mongoose.Schema(
         },
         joiningDate: {
           type: Date,
+        },
+        rejectionReason: {
+          type: String,
         },
         updatedBy: {
           type: mongoose.Schema.Types.ObjectId,

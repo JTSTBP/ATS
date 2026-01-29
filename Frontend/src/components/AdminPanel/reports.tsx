@@ -26,6 +26,18 @@ export default function ReportsTab() {
     return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
   });
 
+  const joinedPerJob = useMemo(() => {
+    return candidates.reduce((acc, c) => {
+      if (c.status === "Joined") {
+        const jid = typeof c.jobId === 'object' && c.jobId !== null
+          ? String((c.jobId as any)._id)
+          : String(c.jobId);
+        acc[jid] = (acc[jid] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+  }, [candidates]);
+
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
     date: [],
@@ -67,74 +79,26 @@ export default function ReportsTab() {
     return true;
   };
 
-  // Calculate statistics (Dashboard Style)
-  const dashboardStats = useMemo(() => {
-    // Filter functions
-    const filterByDate = (dateString: string | undefined) => {
-      if (!startDate && !endDate) return true;
-      return dateString ? isWithinDateRange(dateString) : false;
-    };
-
-    // Filter data based on selected date range
-    const filteredJobs = jobs.filter((j) => filterByDate(j.createdAt));
-    const filteredCandidates = candidates.filter((c) => filterByDate(c.createdAt));
-
-    const totalCandidates = filteredCandidates.length;
-    const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
-
-    // Status-specific counts
-    const newCandidates = filteredCandidates.filter((c) => c.status === "New").length;
-    const shortlistedCandidates = filteredCandidates.filter((c) => c.status === "Shortlisted").length;
-    const interviewedCandidates = filteredCandidates.filter((c) => c.status === "Interviewed").length;
-    const selectedCandidates = filteredCandidates.filter((c) => c.status === "Selected").length;
-    const joinedCandidates = filteredCandidates.filter((c) => c.status === "Joined").length;
-    const holdCandidates = filteredCandidates.filter((c) => c.status === "Hold").length;
-
-    // Calculate Total Positions and Remaining
-    const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
-
-    // Count joined per job to get remaining positions
-    const joinedPerJob = candidates.reduce((acc, c) => {
-      if (c.status === "Joined") {
-        // Handle both populated object and ID string
-        const jid = typeof c.jobId === 'object' && c.jobId !== null
-          ? String((c.jobId as any)._id)
-          : String(c.jobId);
-        acc[jid] = (acc[jid] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    const totalJoinedForFilteredJobs = filteredJobs.reduce((sum, j) => {
-      const jid = String(j._id);
-      return sum + (joinedPerJob[jid] || 0);
-    }, 0);
-
-    const remainingPositions = totalPositions - totalJoinedForFilteredJobs;
-
-    return {
-      totalCandidates,
-      activeJobs,
-      totalPositions,
-      remainingPositions,
-      newCandidates,
-      shortlistedCandidates,
-      interviewedCandidates,
-      selectedCandidates,
-      joinedCandidates,
-      holdCandidates,
-    };
-  }, [jobs, candidates, startDate, endDate]);
-
   // Memoize Client Job Report data to prevent expensive recalculations
   const clientJobReportData = useMemo(() => {
     const reportRows: any[] = [];
 
     jobs.forEach(job => {
+      // Candidates created in range for this job (for status counts like New, Shortlisted)
       const jobCandidates = candidates.filter(c => {
         const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
         return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
       });
+
+      // Candidates who joined this job in range
+      const joinedCandidatesInRangeCount = candidates.filter(c => {
+        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+        return (
+          cJobId === job._id &&
+          c.status === "Joined" &&
+          (c.joiningDate ? isWithinDateRange(c.joiningDate.toString()) : false)
+        );
+      }).length;
 
       const jClientId = typeof job.clientId === 'object' ? job.clientId?._id : job.clientId;
       const client = clients.find(c => c._id === jClientId);
@@ -167,7 +131,8 @@ export default function ReportsTab() {
           clientName,
           dateReceived,
           recruitersInvolved,
-          jobCandidates
+          jobCandidates,
+          joinedCandidatesInRangeCount // Add this specifically
         });
       }
     });
@@ -178,7 +143,11 @@ export default function ReportsTab() {
     const totals = reportRows.reduce((acc, row) => {
       acc.positions += (Number(row.job.noOfPositions) || 0);
       acc.uploads += row.jobCandidates.length;
-      ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Hold"].forEach(status => {
+
+      // Use the count based on joiningDate for this range
+      acc.Joined = (acc.Joined || 0) + (row.joinedCandidatesInRangeCount || 0);
+
+      ["New", "Shortlisted", "Interviewed", "Selected", "Hold"].forEach(status => {
         const count = row.jobCandidates.filter((c: any) => c.status === status).length;
         acc[status] = (acc[status] || 0) + count;
       });
@@ -189,10 +158,31 @@ export default function ReportsTab() {
       acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
       acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
       return acc;
-    }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
+    }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0, New: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0 } as Record<string, number>);
 
     return { reportRows, totals };
-  }, [jobs, candidates, clients, users, selectedFilters, clientSearch, recruiterSearch, jobSearch, startDate, endDate]);
+  }, [jobs, candidates, clients, users, selectedFilters, clientSearch, recruiterSearch, jobSearch, startDate, endDate, joinedPerJob]);
+
+  // Calculate statistics (Dashboard Style) derived from table data
+  const dashboardStats = useMemo(() => {
+    const { totals, reportRows } = clientJobReportData;
+
+    // We also need activeJobs specifically for the filtered set
+    const activeJobs = reportRows.filter(row => row.job.status === "Open").length;
+
+    return {
+      totalCandidates: totals.uploads || 0,
+      activeJobs,
+      totalPositions: totals.positions || 0,
+      remainingPositions: (totals.positions || 0) - (totals.Joined || 0),
+      newCandidates: totals.New || 0,
+      shortlistedCandidates: totals.Shortlisted || 0,
+      interviewedCandidates: totals.Interviewed || 0,
+      selectedCandidates: totals.Selected || 0,
+      joinedCandidates: totals.Joined || 0,
+      holdCandidates: totals.Hold || 0,
+    };
+  }, [clientJobReportData]);
 
 
   const getStatusColor = (status: string) => {
@@ -1354,6 +1344,12 @@ export default function ReportsTab() {
                                 : null;
                               const droppedComment = droppedEntry?.comment || "";
 
+                              const rejectedEntry = Array.isArray(c.statusHistory)
+                                ? c.statusHistory.find((h: any) => h.status === "Rejected")
+                                : null;
+                              const rejectedComment = rejectedEntry?.comment || "";
+                              const rejectionReason = rejectedEntry?.rejectionReason || c.rejectionReason;
+
                               return (
                                 <tr key={i} className="hover:bg-slate-50">
                                   <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
@@ -1366,7 +1362,7 @@ export default function ReportsTab() {
                                   </td>
                                   <td className="py-3 px-4">
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(c.status)}`}>
-                                      {c.status === "Rejected" ? `Rejected (${c.rejectedBy || "Unknown"})` : c.status}
+                                      {c.status === "Shortlisted" ? "Screen" : c.status}
                                     </span>
                                   </td>
                                   {hasStatusDetails && (
@@ -1395,6 +1391,20 @@ export default function ReportsTab() {
                                           <span className="font-semibold">Joined:</span> {formatDate(c.joiningDate)}
                                         </div>
                                       )}
+                                      {c.status === "Rejected" && (rejectionReason || c.rejectedBy) && (
+                                        <div className="text-xs space-y-1">
+                                          {rejectionReason && (
+                                            <div>
+                                              <span className="font-semibold text-red-600">Reason:</span> {rejectionReason}
+                                            </div>
+                                          )}
+                                          {c.rejectedBy && (
+                                            <div>
+                                              <span className="font-semibold">By:</span> {c.rejectedBy}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                       {c.status === "Dropped" && (droppedComment || c.droppedReason || c.droppedBy) && (
                                         <div className="text-xs space-y-1">
                                           {(droppedComment || c.droppedReason) && (
@@ -1409,15 +1419,17 @@ export default function ReportsTab() {
                                           )}
                                         </div>
                                       )}
-                                      {!((c.status === "Interviewed" && c.interviewStage) || c.status === "Selected" || (c.status === "Joined" && c.joiningDate) || (c.status === "Dropped" && (droppedComment || c.droppedReason || c.droppedBy))) && (
+                                      {!((c.status === "Interviewed" && c.interviewStage) || c.status === "Selected" || (c.status === "Joined" && c.joiningDate) || (c.status === "Dropped" && (droppedComment || c.droppedReason || c.droppedBy)) || (c.status === "Rejected" && (rejectionReason || c.rejectedBy))) && (
                                         <span className="text-slate-400">-</span>
                                       )}
                                     </td>
                                   )}
                                   <td className="py-3 px-4 text-slate-600">
-                                    <div className="max-w-[200px] truncate" title={c.status === "Dropped" ? droppedComment || c.droppedReason || c.notes : c.notes}>
+                                    <div className="max-w-[200px] truncate" title={c.status === "Dropped" ? droppedComment || c.droppedReason || c.notes : c.status === "Rejected" ? rejectedComment || c.notes : c.notes}>
                                       {c.status === "Dropped" ? (
                                         <span>{droppedComment || c.droppedReason || c.notes || <span className="text-slate-400">-</span>}</span>
+                                      ) : c.status === "Rejected" ? (
+                                        <span>{rejectedComment || c.notes || <span className="text-slate-400">-</span>}</span>
                                       ) : (
                                         <span>{c.notes || <span className="text-slate-400">-</span>}</span>
                                       )}
