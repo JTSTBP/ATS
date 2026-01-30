@@ -35,6 +35,10 @@ const clientSchema = new mongoose.Schema(
         billingDetails: [billingDetailSchema],
         pocs: [pocSchema],
         jobCount: { type: Number, default: 0 },
+        bdExecutive: { type: String },
+        noOfRequirements: { type: Number },
+        bdExecutiveEmail: { type: String },
+        bdExecutivePhone: { type: String },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',

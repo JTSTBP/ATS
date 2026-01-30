@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../../../context/AuthProvider';
@@ -33,6 +33,10 @@ interface ClientFormData {
         gstNumber: string;
     }[];
     pocs: POC[];
+    bdExecutive?: string;
+    bdExecutiveEmail?: string;
+    bdExecutivePhone?: string;
+    noOfRequirements?: number | string;
 }
 
 interface ClientFormProps {
@@ -43,7 +47,7 @@ interface ClientFormProps {
 
 export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, initialData }) => {
     const { user } = useAuth();
-    const { createClient, updateClient } = useClientsContext();
+    const { createClient, updateClient, bdExecutives, fetchBDExecutives } = useClientsContext();
     const [formData, setFormData] = useState<ClientFormData>(initialData || {
         companyName: '',
         websiteUrl: '',
@@ -56,12 +60,22 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
         payoutOption: 'Agreement Percentage',
         flatPayAmount: '',
         gstNumber: '',
+        bdExecutive: '',
+        bdExecutiveEmail: '',
+        bdExecutivePhone: '',
+        noOfRequirements: '',
         billingDetails: [{ address: '', state: '', gstNumber: '' }],
         pocs: [{ name: '', email: '', phone: '', altPhone: '', linkedinUrl: '' }]
     });
     const [loading, setLoading] = useState(false);
+    const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logo ? `${API_BASE_URL}/${initialData.logo}` : null);
     const [logoFile, setLogoFile] = useState<File | null>(null);
-    const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logo || null);
+
+    useEffect(() => {
+        if (bdExecutives.length === 0) {
+            fetchBDExecutives();
+        }
+    }, [bdExecutives.length, fetchBDExecutives]);
 
     const handlePOCChange = (index: number, field: keyof POC, value: string) => {
         const newPOCs = [...(formData.pocs || [])];
@@ -298,6 +312,45 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                                     className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                                 />
                             </div>
+
+                            {(user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Manager' || user?.designation === 'Mentor') && (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">BD Executive</label>
+                                        <select
+                                            value={formData.bdExecutive}
+                                            onChange={(e) => {
+                                                const selectedName = e.target.value;
+                                                const selectedBD = bdExecutives.find(bd => bd.name === selectedName);
+                                                setFormData({
+                                                    ...formData,
+                                                    bdExecutive: selectedName,
+                                                    bdExecutiveEmail: selectedBD?.email || '',
+                                                    bdExecutivePhone: selectedBD?.phone || ''
+                                                });
+                                            }}
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                        >
+                                            <option value="">Select BD Executive</option>
+                                            {bdExecutives.map((bd) => (
+                                                <option key={bd._id} value={bd.name}>
+                                                    {bd.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">No of Requirements</label>
+                                        <input
+                                            type="number"
+                                            value={formData.noOfRequirements}
+                                            onChange={(e) => setFormData({ ...formData, noOfRequirements: e.target.value })}
+                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="e.g. 5"
+                                        />
+                                    </div>
+                                </>
+                            )}
 
                             <div className="md:col-span-2 border-t pt-4">
                                 <label className="block text-sm font-semibold text-gray-700 mb-2">Payout Options</label>

@@ -19,6 +19,13 @@ export interface POC {
     linkedinUrl: string;
 }
 
+export interface BDExecutive {
+    _id: string;
+    name: string;
+    email: string;
+    phone: string;
+}
+
 export interface Client {
     _id?: string;
     companyName: string;
@@ -35,6 +42,10 @@ export interface Client {
     gstNumber?: string;
     billingDetails: BillingDetail[];
     pocs: POC[];
+    bdExecutive?: string;
+    bdExecutiveEmail?: string;
+    bdExecutivePhone?: string;
+    noOfRequirements?: number | string;
     createdBy?: string | {
         _id: string;
         name: string;
@@ -59,6 +70,8 @@ interface ClientsContextType {
     createClient: (data: Client, logoFile?: File) => Promise<Client | null>;
     updateClient: (id: string, data: Client, logoFile?: File) => Promise<Client | null>;
     deleteClient: (id: string) => Promise<boolean>;
+    bdExecutives: BDExecutive[];
+    fetchBDExecutives: () => Promise<void>;
 }
 
 const ClientsContext = createContext<ClientsContextType | undefined>(undefined);
@@ -73,6 +86,7 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [bdExecutives, setBdExecutives] = useState<BDExecutive[]>([]);
 
     // Fetch all clients (Backward compatibility)
     const fetchClients = async () => {
@@ -92,6 +106,16 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
             console.error('Error fetching clients:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchBDExecutives = async () => {
+        try {
+            const response = await fetch('https://jtcrm.in/api/api/users/role/bd-executives');
+            const data = await response.json();
+            setBdExecutives(data);
+        } catch (err: any) {
+            console.error('Error fetching BD executives:', err);
         }
     };
 
@@ -162,6 +186,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 if (clientData.gstNumber) formData.append('gstNumber', clientData.gstNumber);
                 formData.append('pocs', JSON.stringify(clientData.pocs));
                 formData.append('billingDetails', JSON.stringify(clientData.billingDetails || []));
+                if (clientData.bdExecutive) formData.append('bdExecutive', clientData.bdExecutive);
+                if (clientData.bdExecutiveEmail) formData.append('bdExecutiveEmail', clientData.bdExecutiveEmail);
+                if (clientData.bdExecutivePhone) formData.append('bdExecutivePhone', clientData.bdExecutivePhone);
+                if (clientData.noOfRequirements) formData.append('noOfRequirements', String(clientData.noOfRequirements));
                 formData.append('logo', logoFile);
 
                 if (clientData.createdBy) {
@@ -223,6 +251,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 if (clientData.gstNumber) formData.append('gstNumber', clientData.gstNumber);
                 formData.append('pocs', JSON.stringify(clientData.pocs));
                 formData.append('billingDetails', JSON.stringify(clientData.billingDetails || []));
+                if (clientData.bdExecutive) formData.append('bdExecutive', clientData.bdExecutive);
+                if (clientData.bdExecutiveEmail) formData.append('bdExecutiveEmail', clientData.bdExecutiveEmail);
+                if (clientData.bdExecutivePhone) formData.append('bdExecutivePhone', clientData.bdExecutivePhone);
+                if (clientData.noOfRequirements) formData.append('noOfRequirements', String(clientData.noOfRequirements));
                 formData.append('logo', logoFile);
 
                 response = await fetch(`${API_URL}/${id}`, {
@@ -301,6 +333,8 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 createClient,
                 updateClient,
                 deleteClient,
+                bdExecutives,
+                fetchBDExecutives
             }}
         >
             {children}
