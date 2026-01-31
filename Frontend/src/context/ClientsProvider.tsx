@@ -65,7 +65,7 @@ interface ClientsContextType {
     loading: boolean;
     error: string | null;
     fetchClients: () => Promise<void>;
-    fetchPaginatedClients: (page: number, limit: number, search?: string) => Promise<void>; // New
+    fetchPaginatedClients: (page: number, limit: number, search?: string, date?: string) => Promise<void>; // New
     fetchClientById: (id: string) => Promise<Client | null>;
     createClient: (data: Client, logoFile?: File) => Promise<Client | null>;
     updateClient: (id: string, data: Client, logoFile?: File) => Promise<Client | null>;
@@ -120,14 +120,15 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     // New: Fetch Paginated Clients
-    const fetchPaginatedClients = async (page: number, limit: number, search: string = '') => {
+    const fetchPaginatedClients = async (page: number, limit: number, search: string = '', date: string = '') => {
         setLoading(true);
         setError(null);
         try {
             const queryParams = new URLSearchParams({
                 page: page.toString(),
                 limit: limit.toString(),
-                search
+                search,
+                date
             }).toString();
 
             const response = await fetch(`${API_URL}?${queryParams}`);

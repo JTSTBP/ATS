@@ -128,6 +128,18 @@ router.get('/', async (req, res) => {
             ];
         }
 
+        // Date Filter
+        if (req.query.date) {
+            const searchDate = new Date(req.query.date);
+            const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
+            const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
+
+            query.createdAt = {
+                $gte: startOfDay,
+                $lte: endOfDay
+            };
+        }
+
         // Fetch paginated clients
         const clients = await Client.find(query)
             .populate('createdBy', 'name email designation')

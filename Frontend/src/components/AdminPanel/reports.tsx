@@ -1023,14 +1023,14 @@ export default function ReportsTab() {
                 </th>
                 <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
                 <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Screen</th>
+                <th className="py-3 px-4 text-center text-gray-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-red-600 min-w-[100px]">Reject by Mentor</th>
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
+                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
                 <th className="py-3 px-4 text-center text-amber-600 min-w-[80px]">Hold</th>
                 <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
-                <th className="py-3 px-4 text-center text-gray-600 min-w-[100px]">Drop by Mentor</th>
-                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Drop by Client</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1150,6 +1150,24 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
+                        {/* Drop by Mentor Column */}
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const mentorDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor");
+                            const count = mentorDropped.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Mentor", mentorDropped)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
                         {/* Reject by Mentor Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
@@ -1168,7 +1186,42 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
-                        {["Interviewed", "Selected", "Joined", "Hold"].map(status => {
+                        {["Interviewed"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
+                        {/* Drop by Client Column */}
+                        <td className="py-4 px-4 text-center">
+                          {(() => {
+                            const clientDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client");
+                            const count = clientDropped.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Client", clientDropped)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-slate-50 text-slate-600 border border-slate-200 hover:scale-110"
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
+                        </td>
+                        {["Selected", "Joined", "Hold"].map(status => {
                           const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
                           const count = statusCandidates.length;
                           return (
@@ -1202,40 +1255,6 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
-                        <td className="py-4 px-4 text-center">
-                          {(() => {
-                            const mentorDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor");
-                            const count = mentorDropped.length;
-                            return (
-                              <button
-                                disabled={count === 0}
-                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Mentor", mentorDropped)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110"
-                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
-                              >
-                                {count}
-                              </button>
-                            );
-                          })()}
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          {(() => {
-                            const clientDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client");
-                            const count = clientDropped.length;
-                            return (
-                              <button
-                                disabled={count === 0}
-                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Client", clientDropped)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-slate-50 text-slate-600 border border-slate-200 hover:scale-110"
-                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
-                              >
-                                {count}
-                              </button>
-                            );
-                          })()}
-                        </td>
                       </tr>
                     ))}
                     {/* Total Row */}
@@ -1248,15 +1267,16 @@ export default function ReportsTab() {
                           {totals[status] || 0}
                         </td>
                       ))}
+                      <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.dropByMentor || 0}</td>
                       <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
-                      {["Interviewed", "Selected", "Joined", "Hold"].map(status => (
+                      <td className="py-4 px-4 text-center text-slate-800">{totals.Interviewed || 0}</td>
+                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
+                      {["Selected", "Joined", "Hold"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800">
                           {totals[status] || 0}
                         </td>
                       ))}
                       <td className="py-4 px-4 text-center text-red-700 font-bold">{totals.rejectByClient}</td>
-                      <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.dropByMentor || 0}</td>
-                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
                     </tr>
                   </>
                 );

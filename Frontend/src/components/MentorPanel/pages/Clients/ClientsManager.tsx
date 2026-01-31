@@ -207,6 +207,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
 
     const [showForm, setShowForm] = useState(initialFormOpen);
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedDate, setSelectedDate] = useState('');
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [selectedClientForDetails, setSelectedClientForDetails] = useState<Client | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -215,15 +216,15 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
     // Fetch paginated clients on change
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchPaginatedClients(currentPage, limit, searchTerm);
+            fetchPaginatedClients(currentPage, limit, searchTerm, selectedDate);
         }, 300);
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm]);
+    }, [currentPage, searchTerm, selectedDate]);
 
-    // Reset to page 1 on search
+    // Reset to page 1 on search or date change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, selectedDate]);
 
     // Initial load
     useEffect(() => {
@@ -276,14 +277,22 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
 
             {/* Search and Filters */}
             <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full md:max-w-md">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <div className="relative w-full md:max-w-md flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Quick search..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
+                        />
+                    </div>
                     <input
-                        type="text"
-                        placeholder="Quick search by name, industry, or domain..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
+                        type="date"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        className="px-3 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-gray-600"
                     />
                 </div>
                 <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -434,7 +443,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                 <ClientForm
                     onClose={() => setShowForm(false)}
                     onSuccess={() => {
-                        fetchPaginatedClients(currentPage, limit, searchTerm);
+                        fetchPaginatedClients(currentPage, limit, searchTerm, selectedDate);
                         setShowForm(false);
                     }}
                     initialData={selectedClient}

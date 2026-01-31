@@ -33,7 +33,7 @@ const LocationInput = ({ value = [], onChange, label = "Location", placeholder =
           {option.name}
         </Typography>
         <Typography variant="caption" color="text.secondary">
-          {option.state} • Tier {option.tier}
+          {option.state ? `${option.state} • ` : ""}Tier {option.tier}
         </Typography>
       </Box>
     </Box>
@@ -44,7 +44,7 @@ const LocationInput = ({ value = [], onChange, label = "Location", placeholder =
       <Chip
         {...getTagProps({ index })}
         key={option.name}
-        label={`${option.name}, ${option.state}`}
+        label={option.state ? `${option.name}, ${option.state}` : option.name}
         size="small"
         color="primary"
         variant="outlined"
@@ -61,7 +61,7 @@ const LocationInput = ({ value = [], onChange, label = "Location", placeholder =
         setInputValue(newInputValue);
       }}
       options={options}
-      getOptionLabel={(option) => `${option.name}, ${option.state}`}
+      getOptionLabel={(option) => option.state ? `${option.name}, ${option.state}` : option.name}
       isOptionEqualToValue={(option, value) => option.name === value.name && option.state === value.state}
       renderOption={renderOption}
       renderTags={renderTags}

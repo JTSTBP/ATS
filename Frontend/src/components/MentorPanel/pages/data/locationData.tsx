@@ -5,6 +5,7 @@ export const indianCities = {
   tier1: [
     "Mumbai",
     "Delhi",
+    "Gurugram",
     "Bangalore",
     "Hyderabad",
     "Chennai",
