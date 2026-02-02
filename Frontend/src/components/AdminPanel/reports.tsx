@@ -79,12 +79,12 @@ export default function ReportsTab() {
     return true;
   };
 
-  // Memoize Client Job Report data to prevent expensive recalculations
-  const clientJobReportData = useMemo(() => {
-    const reportRows: any[] = [];
+  // 1. Base Client Job Report Data (Global Date Range Applied, No Column Filters)
+  const baseClientJobRows = useMemo(() => {
+    const rows: any[] = [];
 
     jobs.forEach(job => {
-      // Candidates created in range for this job (for status counts like New, Shortlisted)
+      // Candidates created in range for this job
       const jobCandidates = candidates.filter(c => {
         const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
         return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
@@ -105,7 +105,6 @@ export default function ReportsTab() {
       const clientName = client?.companyName || "Unknown";
       const dateReceived = job.createdAt ? formatDate(job.createdAt) : "N/A";
 
-      // Get assigned recruiters from the job itself
       const assignedRecruiterIds = Array.isArray(job.assignedRecruiters)
         ? job.assignedRecruiters.map((r: any) => typeof r === 'object' ? r._id : r)
         : [];
@@ -114,54 +113,208 @@ export default function ReportsTab() {
         .map(recruiterId => users.find(u => u._id === recruiterId)?.name)
         .filter(Boolean) as string[];
 
-      const matchesDate = selectedFilters.date.length > 0 ? selectedFilters.date.includes(dateReceived) : true;
-      const matchesClient = selectedFilters.client.length > 0 ? selectedFilters.client.includes(clientName) : true;
-      const matchesJob = selectedFilters.job.length > 0 ? selectedFilters.job.includes(job.title) : true;
-      const matchesRecruiter = selectedFilters.recruiter.length > 0 ? recruitersInvolved.some(r => selectedFilters.recruiter.includes(r)) : true;
-      const matchesTotal = selectedFilters.total.length > 0 ? selectedFilters.total.includes(jobCandidates.length.toString()) : true;
-
-      const matchesClientSearch = clientSearch ? clientName.toLowerCase().includes(clientSearch.toLowerCase()) : true;
-      const matchesRecruiterSearch = recruiterSearch ? recruitersInvolved.some(r => r.toLowerCase().includes(recruiterSearch.toLowerCase())) : true;
-      const matchesJobSearch = jobSearch ? job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
       const matchesGlobalDate = job.createdAt ? isWithinDateRange(job.createdAt) : true;
 
-      if (matchesDate && matchesClient && matchesJob && matchesRecruiter && matchesTotal && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch && matchesGlobalDate) {
-        reportRows.push({
+      if (matchesGlobalDate) {
+        rows.push({
           job,
           clientName,
           dateReceived,
           recruitersInvolved,
           jobCandidates,
-          joinedCandidatesInRangeCount // Add this specifically
+          joinedCandidatesInRangeCount
         });
       }
     });
 
     // Sort by date (newest first)
-    reportRows.sort((a, b) => new Date(b.job.createdAt || 0).getTime() - new Date(a.job.createdAt || 0).getTime());
+    rows.sort((a, b) => new Date(b.job.createdAt || 0).getTime() - new Date(a.job.createdAt || 0).getTime());
+
+    return rows;
+  }, [jobs, candidates, clients, users, startDate, endDate]);
+
+  const clientJobReportData = useMemo(() => {
+    const reportRows = baseClientJobRows.filter(row => {
+      const matchesDate = selectedFilters.date.length > 0 ? selectedFilters.date.includes(row.dateReceived) : true;
+      const matchesClient = selectedFilters.client.length > 0 ? selectedFilters.client.includes(row.clientName) : true;
+      const matchesJob = selectedFilters.job.length > 0 ? selectedFilters.job.includes(row.job.title) : true;
+      const matchesRecruiter = selectedFilters.recruiter.length > 0 ? row.recruitersInvolved.some((r: string) => selectedFilters.recruiter.includes(r)) : true;
+      const matchesTotal = selectedFilters.total.length > 0 ? selectedFilters.total.includes(row.jobCandidates.length.toString()) : true;
+
+      const matchesClientSearch = clientSearch ? row.clientName.toLowerCase().includes(clientSearch.toLowerCase()) : true;
+      const matchesRecruiterSearch = recruiterSearch ? row.recruitersInvolved.some((r: string) => r.toLowerCase().includes(recruiterSearch.toLowerCase())) : true;
+      const matchesJobSearch = jobSearch ? row.job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
+
+      return matchesDate && matchesClient && matchesJob && matchesRecruiter && matchesTotal && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch;
+    });
 
     const totals = reportRows.reduce((acc, row) => {
       acc.positions += (Number(row.job.noOfPositions) || 0);
       acc.uploads += row.jobCandidates.length;
-
-      // Use the count based on joiningDate for this range
       acc.Joined = (acc.Joined || 0) + (row.joinedCandidatesInRangeCount || 0);
 
       ["New", "Shortlisted", "Interviewed", "Selected", "Hold"].forEach(status => {
         const count = row.jobCandidates.filter((c: any) => c.status === status).length;
         acc[status] = (acc[status] || 0) + count;
       });
-      // Split rejection totals
       acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
       acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
-      // Split drop totals
       acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
       acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
       return acc;
     }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0, New: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0 } as Record<string, number>);
 
     return { reportRows, totals };
-  }, [jobs, candidates, clients, users, selectedFilters, clientSearch, recruiterSearch, jobSearch, startDate, endDate, joinedPerJob]);
+  }, [baseClientJobRows, selectedFilters, clientSearch, recruiterSearch, jobSearch]);
+
+  const getClientJobOptions = (column: string) => {
+    const relevantRows = baseClientJobRows.filter(row => {
+      if (column !== 'date' && selectedFilters.date.length > 0 && !selectedFilters.date.includes(row.dateReceived)) return false;
+      if (column !== 'client' && selectedFilters.client.length > 0 && !selectedFilters.client.includes(row.clientName)) return false;
+      if (column !== 'job' && selectedFilters.job.length > 0 && !selectedFilters.job.includes(row.job.title)) return false;
+      if (column !== 'recruiter' && selectedFilters.recruiter.length > 0 && !row.recruitersInvolved.some((r: string) => selectedFilters.recruiter.includes(r))) return false;
+      if (column !== 'total' && selectedFilters.total.length > 0 && !selectedFilters.total.includes(row.jobCandidates.length.toString())) return false;
+
+      if (clientSearch && !row.clientName.toLowerCase().includes(clientSearch.toLowerCase())) return false;
+      if (recruiterSearch && !row.recruitersInvolved.some((r: string) => r.toLowerCase().includes(recruiterSearch.toLowerCase()))) return false;
+      if (jobSearch && !row.job.title.toLowerCase().includes(jobSearch.toLowerCase())) return false;
+
+      return true;
+    });
+
+    let options: string[] = [];
+    switch (column) {
+      case 'date':
+        options = Array.from(new Set(relevantRows.map(r => r.dateReceived))).sort();
+        break;
+      case 'client':
+        options = Array.from(new Set(relevantRows.map(r => r.clientName))).sort();
+        break;
+      case 'job':
+        options = Array.from(new Set(relevantRows.map(r => r.job.title))).sort();
+        break;
+      case 'recruiter':
+        const allRecruiters = relevantRows.flatMap(r => r.recruitersInvolved);
+        options = Array.from(new Set(allRecruiters)).sort();
+        break;
+      case 'total':
+        options = Array.from(new Set(relevantRows.map(r => r.jobCandidates.length.toString()))).sort((a, b) => parseInt(a) - parseInt(b));
+        break;
+    }
+    return options;
+  };
+
+  // 1. Base Daily Lineup Data (Global Date Range Applied)
+  const baseDailyLineupRows = useMemo(() => {
+    const rows: any[] = [];
+    const recruiters = users.filter(u => u.designation?.toLowerCase().includes("recruiter") || u.isAdmin);
+
+    recruiters.forEach(recruiter => {
+      const recruiterCandidates = candidates.filter(c => {
+        const cCreatorId = typeof c.createdBy === 'object' ? (c.createdBy as any)?._id : c.createdBy;
+        return cCreatorId === recruiter._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
+      });
+
+      const lineupKeys = Array.from(new Set(recruiterCandidates.map(c => {
+        const date = c.createdAt ? formatDate(c.createdAt) : "N/A";
+        const jobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+        return `${jobId}|${date}`;
+      })));
+
+      lineupKeys.forEach(key => {
+        const [jobId, sourceDate] = key.split('|');
+        if (!jobId || jobId === 'undefined') return;
+
+        const job = jobs.find(j => j._id === jobId);
+        if (!job) return;
+
+        const jClientId = typeof job.clientId === 'object' ? (job.clientId as any)?._id : job.clientId;
+        const client = clients.find(c => jClientId === c._id);
+        const clientName = client?.companyName || "Unknown";
+        const jobCandidates = recruiterCandidates.filter(c => {
+          const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+          const cDate = c.createdAt ? formatDate(c.createdAt) : "N/A";
+          return cJobId === jobId && cDate === sourceDate;
+        });
+        const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
+
+        // Push regardless of column filters (only verify it exists)
+        if (jobCandidates.length > 0) {
+          rows.push({
+            recruiter,
+            job,
+            clientName,
+            jobDate,
+            sourceDate,
+            jobCandidates
+          });
+        }
+      });
+    });
+
+    return rows;
+  }, [users, candidates, jobs, clients, startDate, endDate]);
+
+  // Daily Lineup Filtered Data
+  const dailyLineupReportData = useMemo(() => {
+    const reportRows = baseDailyLineupRows.filter(row => {
+      const matchesReq = selectedFilters.daily_req.length > 0 ? selectedFilters.daily_req.includes(row.jobDate) : true;
+      const matchesSource = selectedFilters.daily_source.length > 0 ? selectedFilters.daily_source.includes(row.sourceDate) : true;
+      const matchesRecruiter = selectedFilters.daily_recruiter.length > 0 ? selectedFilters.daily_recruiter.includes(row.recruiter.name) : true;
+      const matchesClient = selectedFilters.daily_client.length > 0 ? selectedFilters.daily_client.includes(row.clientName) : true;
+      const matchesJob = selectedFilters.daily_job.length > 0 ? selectedFilters.daily_job.includes(row.job.title) : true;
+      const matchesTotal = selectedFilters.daily_total.length > 0 ? selectedFilters.daily_total.includes(row.jobCandidates.length.toString()) : true;
+
+      return matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal && matchesSource;
+    });
+
+    const totals = reportRows.reduce((acc, row) => {
+      acc.positions += (Number(row.job.noOfPositions) || 0);
+      acc.uploads += row.jobCandidates.length;
+      ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Hold"].forEach(status => {
+        const count = row.jobCandidates.filter((c: any) => c.status === status).length;
+        acc[status] = (acc[status] || 0) + count;
+      });
+      acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
+      acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
+      acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
+      acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
+      return acc;
+    }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
+
+    return { reportRows, totals };
+  }, [baseDailyLineupRows, selectedFilters]);
+
+  const getDailyLineupOptions = (column: string) => {
+    const relevantRows = baseDailyLineupRows.filter(row => {
+      if (column !== 'daily_req' && selectedFilters.daily_req.length > 0 && !selectedFilters.daily_req.includes(row.jobDate)) return false;
+      if (column !== 'daily_recruiter' && selectedFilters.daily_recruiter.length > 0 && !selectedFilters.daily_recruiter.includes(row.recruiter.name)) return false;
+      if (column !== 'daily_client' && selectedFilters.daily_client.length > 0 && !selectedFilters.daily_client.includes(row.clientName)) return false;
+      if (column !== 'daily_job' && selectedFilters.daily_job.length > 0 && !selectedFilters.daily_job.includes(row.job.title)) return false;
+      if (column !== 'daily_total' && selectedFilters.daily_total.length > 0 && !selectedFilters.daily_total.includes(row.jobCandidates.length.toString())) return false;
+      return true;
+    });
+
+    let options: string[] = [];
+    switch (column) {
+      case 'daily_req':
+        options = Array.from(new Set(relevantRows.map(r => r.jobDate))).sort();
+        break;
+      case 'daily_recruiter':
+        options = Array.from(new Set(relevantRows.map(r => r.recruiter.name))).sort();
+        break;
+      case 'daily_client':
+        options = Array.from(new Set(relevantRows.map(r => r.clientName))).sort();
+        break;
+      case 'daily_job':
+        options = Array.from(new Set(relevantRows.map(r => r.job.title))).sort();
+        break;
+      case 'daily_total':
+        options = Array.from(new Set(relevantRows.map(r => r.jobCandidates.length.toString()))).sort((a, b) => parseInt(a) - parseInt(b));
+        break;
+    }
+    return options;
+  };
 
   // Calculate statistics (Dashboard Style) derived from table data
   const dashboardStats = useMemo(() => {
@@ -256,6 +409,8 @@ export default function ReportsTab() {
   const clearFilter = (column: string) => {
     setSelectedFilters(prev => ({ ...prev, [column]: [] }));
   };
+
+
 
   const FilterDropdown = ({ column, options, align = 'left' }: { column: string, options: string[], align?: 'left' | 'right' }) => {
     if (openFilter !== column) return null;
@@ -593,7 +748,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="date"
-                    options={Array.from(new Set(jobs.map(j => formatDate(j.createdAt)))).sort()}
+                    options={getClientJobOptions('date')}
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[200px] relative">
@@ -608,7 +763,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="client"
-                    options={Array.from(new Set(clients.map(c => c.companyName))).sort()}
+                    options={getClientJobOptions('client')}
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[200px] relative">
@@ -623,7 +778,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="job"
-                    options={Array.from(new Set(jobs.map(j => j.title))).sort()}
+                    options={getClientJobOptions('job')}
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[100px]">
@@ -642,7 +797,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="recruiter"
-                    options={Array.from(new Set(users.filter(u => (u.designation?.toLowerCase().includes("recruiter") || u.isAdmin) && !u.isDisabled).map(u => u.name))).sort()}
+                    options={getClientJobOptions('recruiter')}
                     align="right"
                   />
                 </th>
@@ -658,13 +813,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="total"
-                    options={Array.from(new Set(jobs.map(j => {
-                      const jobCandidates = candidates.filter(can => {
-                        const canJobId = typeof can.jobId === 'object' ? (can.jobId as any)?._id : can.jobId;
-                        return canJobId === j._id;
-                      });
-                      return jobCandidates.length.toString();
-                    }))).sort((a, b) => parseInt(a) - parseInt(b))}
+                    options={getClientJobOptions('total')}
                     align="right"
                   />
                 </th>
@@ -673,10 +822,10 @@ export default function ReportsTab() {
                 <th className="py-3 px-4 text-center text-gray-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-red-600 min-w-[100px]">Reject by Mentor</th>
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
-                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
                 <th className="py-3 px-4 text-center text-amber-600 min-w-[80px]">Hold</th>
+                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
 
 
@@ -793,6 +942,23 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
+                        {["Selected", "Joined", "Hold"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
                         {/* Dropped by Client Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
@@ -811,23 +977,6 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
-                        {["Selected", "Joined", "Hold"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
-                          const count = statusCandidates.length;
-                          return (
-                            <td key={status} className="py-4 px-4 text-center">
-                              <button
-                                disabled={count === 0}
-                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
-                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
-                              >
-                                {count}
-                              </button>
-                            </td>
-                          );
-                        })}
                         <td className="py-4 px-4 text-center text-red-700 font-bold">
                           {(() => {
                             const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
@@ -861,12 +1010,12 @@ export default function ReportsTab() {
                       <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.dropByMentor || 0}</td>
                       <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
                       <td className="py-4 px-4 text-center text-slate-800">{totals.Interviewed || 0}</td>
-                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
                       {["Selected", "Joined", "Hold"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800">
                           {totals[status] || 0}
                         </td>
                       ))}
+                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
                       <td className="py-4 px-4 text-center text-red-700 font-bold">{totals.rejectByClient}</td>
                     </tr>
                   </>
@@ -944,7 +1093,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="daily_req"
-                    options={Array.from(new Set(jobs.map(j => formatDate(j.createdAt)))).sort()}
+                    options={getDailyLineupOptions('daily_req')}
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[150px]">
@@ -962,7 +1111,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="daily_recruiter"
-                    options={Array.from(new Set(users.filter(u => u.designation?.toLowerCase().includes("recruiter") || u.isAdmin).map(u => u.name))).sort()}
+                    options={getDailyLineupOptions('daily_recruiter')}
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[200px] relative">
@@ -977,7 +1126,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="daily_client"
-                    options={Array.from(new Set(clients.map(c => c.companyName))).sort()}
+                    options={getDailyLineupOptions('daily_client')}
                   />
                 </th>
                 <th className="py-3 px-6 min-w-[200px] relative">
@@ -992,7 +1141,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="daily_job"
-                    options={Array.from(new Set(jobs.map(j => j.title))).sort()}
+                    options={getDailyLineupOptions('daily_job')}
                     align="right"
                   />
                 </th>
@@ -1011,13 +1160,7 @@ export default function ReportsTab() {
                   </div>
                   <FilterDropdown
                     column="daily_total"
-                    options={Array.from(new Set(candidates.map(c => {
-                      const creatorId = typeof c.createdBy === 'object' ? (c.createdBy as any)?._id : c.createdBy;
-                      return candidates.filter(can => {
-                        const canCreatorId = typeof can.createdBy === 'object' ? (can.createdBy as any)?._id : can.createdBy;
-                        return canCreatorId === creatorId;
-                      }).length.toString();
-                    }))).sort((a, b) => parseInt(a) - parseInt(b))}
+                    options={getDailyLineupOptions('daily_total')}
                     align="right"
                   />
                 </th>
@@ -1026,67 +1169,16 @@ export default function ReportsTab() {
                 <th className="py-3 px-4 text-center text-gray-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-red-600 min-w-[100px]">Reject by Mentor</th>
                 <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
-                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
                 <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
                 <th className="py-3 px-4 text-center text-amber-600 min-w-[80px]">Hold</th>
+                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Dropped</th>
                 <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {(() => {
-                const recruiters = users.filter(u => u.designation?.toLowerCase().includes("recruiter") || u.isAdmin);
-
-                const reportRows: any[] = [];
-
-                recruiters.forEach(recruiter => {
-                  const recruiterCandidates = candidates.filter(c => {
-                    const cCreatorId = typeof c.createdBy === 'object' ? (c.createdBy as any)?._id : c.createdBy;
-                    return cCreatorId === recruiter._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
-                  });
-
-                  const lineupKeys = Array.from(new Set(recruiterCandidates.map(c => {
-                    const date = c.createdAt ? formatDate(c.createdAt) : "N/A";
-                    const jobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-                    return `${jobId}|${date}`;
-                  })));
-
-                  lineupKeys.forEach(key => {
-                    const [jobId, sourceDate] = key.split('|');
-                    if (!jobId || jobId === 'undefined') return;
-
-                    const job = jobs.find(j => j._id === jobId);
-                    if (!job) return;
-
-                    const jClientId = typeof job.clientId === 'object' ? (job.clientId as any)?._id : job.clientId;
-                    const client = clients.find(c => jClientId === c._id);
-                    const clientName = client?.companyName || "Unknown";
-                    const jobCandidates = recruiterCandidates.filter(c => {
-                      const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-                      const cDate = c.createdAt ? formatDate(c.createdAt) : "N/A";
-                      return cJobId === jobId && cDate === sourceDate;
-                    });
-                    const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
-
-                    const matchesReq = selectedFilters.daily_req.length > 0 ? selectedFilters.daily_req.includes(jobDate) : true;
-                    const matchesSource = selectedFilters.daily_source.length > 0 ? selectedFilters.daily_source.includes(sourceDate) : true;
-                    const matchesRecruiter = selectedFilters.daily_recruiter.length > 0 ? selectedFilters.daily_recruiter.includes(recruiter.name) : true;
-                    const matchesClient = selectedFilters.daily_client.length > 0 ? selectedFilters.daily_client.includes(clientName) : true;
-                    const matchesJob = selectedFilters.daily_job.length > 0 ? selectedFilters.daily_job.includes(job.title) : true;
-                    const matchesTotal = selectedFilters.daily_total.length > 0 ? selectedFilters.daily_total.includes(jobCandidates.length.toString()) : true;
-
-                    if (matchesReq && matchesSource && matchesRecruiter && matchesClient && matchesJob && matchesTotal) {
-                      reportRows.push({
-                        recruiter,
-                        job,
-                        clientName,
-                        jobDate,
-                        sourceDate,
-                        jobCandidates
-                      });
-                    }
-                  });
-                });
+                const { reportRows, totals } = dailyLineupReportData;
 
                 if (reportRows.length === 0) {
                   return (
@@ -1098,23 +1190,12 @@ export default function ReportsTab() {
                   );
                 }
 
-                const totals = reportRows.reduce((acc, row) => {
-                  acc.positions += (Number(row.job.noOfPositions) || 0);
-                  acc.uploads += row.jobCandidates.length;
-                  ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Hold"].forEach(status => {
-                    const count = row.jobCandidates.filter((c: any) => c.status === status).length;
-                    acc[status] = (acc[status] || 0) + count;
-                  });
-                  acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
-                  acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
-                  acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
-                  acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
-                  return acc;
-                }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
+                // Note: The original logic for `totals` calculated inside the render here has been moved to useMemo.
+                // We reuse `totals` from `dailyLineupReportData`.
 
                 return (
                   <>
-                    {reportRows.map((row, i) => (
+                    {reportRows.map((row: any, i: number) => (
                       <tr key={`${row.job._id}-${row.recruiter._id}-${row.sourceDate}-${i}`} className="hover:bg-slate-50 transition-colors">
                         <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
                         <td className="py-4 px-6 text-slate-600">{formatDate(row.recruiter.dateOfJoining || row.recruiter.joinDate)}</td>
@@ -1203,6 +1284,23 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
+                        {["Selected", "Joined", "Hold"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
                         {/* Drop by Client Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
@@ -1221,23 +1319,6 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
-                        {["Selected", "Joined", "Hold"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
-                          const count = statusCandidates.length;
-                          return (
-                            <td key={status} className="py-4 px-4 text-center">
-                              <button
-                                disabled={count === 0}
-                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
-                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
-                              >
-                                {count}
-                              </button>
-                            </td>
-                          );
-                        })}
                         <td className="py-4 px-4 text-center">
                           {(() => {
                             const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
@@ -1270,12 +1351,12 @@ export default function ReportsTab() {
                       <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.dropByMentor || 0}</td>
                       <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
                       <td className="py-4 px-4 text-center text-slate-800">{totals.Interviewed || 0}</td>
-                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
                       {["Selected", "Joined", "Hold"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800">
                           {totals[status] || 0}
                         </td>
                       ))}
+                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
                       <td className="py-4 px-4 text-center text-red-700 font-bold">{totals.rejectByClient}</td>
                     </tr>
                   </>

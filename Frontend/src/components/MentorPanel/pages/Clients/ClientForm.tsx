@@ -37,6 +37,7 @@ interface ClientFormData {
     bdExecutiveEmail?: string;
     bdExecutivePhone?: string;
     noOfRequirements?: number | string;
+    createdAt?: string;
 }
 
 interface ClientFormProps {
@@ -64,6 +65,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
         bdExecutiveEmail: '',
         bdExecutivePhone: '',
         noOfRequirements: '',
+        createdAt: '',
         billingDetails: [{ address: '', state: '', gstNumber: '' }],
         pocs: [{ name: '', email: '', phone: '', altPhone: '', linkedinUrl: '' }]
     });
@@ -349,6 +351,18 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                                             placeholder="e.g. 5"
                                         />
                                     </div>
+                                    {/* Created At Edit for Admin */}
+                                    {(user?.isAdmin || user?.designation === 'Admin') && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
+                                            <input
+                                                type="datetime-local"
+                                                value={formData.createdAt ? new Date(formData.createdAt).toISOString().slice(0, 16) : ''}
+                                                onChange={(e) => setFormData({ ...formData, createdAt: e.target.value })}
+                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            />
+                                        </div>
+                                    )}
                                 </>
                             )}
 

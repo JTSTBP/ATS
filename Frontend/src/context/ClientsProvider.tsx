@@ -46,12 +46,14 @@ export interface Client {
     bdExecutiveEmail?: string;
     bdExecutivePhone?: string;
     noOfRequirements?: number | string;
+    createdAt?: string; // Added field
     createdBy?: string | {
         _id: string;
         name: string;
         email: string;
         designation: string;
     };
+    active?: boolean;
 }
 
 interface ClientsContextType {
@@ -65,7 +67,7 @@ interface ClientsContextType {
     loading: boolean;
     error: string | null;
     fetchClients: () => Promise<void>;
-    fetchPaginatedClients: (page: number, limit: number, search?: string, date?: string) => Promise<void>; // New
+    fetchPaginatedClients: (page: number, limit: number, search?: string, startDate?: string, endDate?: string, bdExecutive?: string) => Promise<void>; // New
     fetchClientById: (id: string) => Promise<Client | null>;
     createClient: (data: Client, logoFile?: File) => Promise<Client | null>;
     updateClient: (id: string, data: Client, logoFile?: File) => Promise<Client | null>;
@@ -120,7 +122,7 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     // New: Fetch Paginated Clients
-    const fetchPaginatedClients = async (page: number, limit: number, search: string = '', date: string = '') => {
+    const fetchPaginatedClients = async (page: number, limit: number, search: string = '', startDate: string = '', endDate: string = '', bdExecutive: string = '') => {
         setLoading(true);
         setError(null);
         try {
@@ -128,7 +130,9 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 page: page.toString(),
                 limit: limit.toString(),
                 search,
-                date
+                startDate,
+                endDate,
+                bdExecutive
             }).toString();
 
             const response = await fetch(`${API_URL}?${queryParams}`);
@@ -256,6 +260,8 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 if (clientData.bdExecutiveEmail) formData.append('bdExecutiveEmail', clientData.bdExecutiveEmail);
                 if (clientData.bdExecutivePhone) formData.append('bdExecutivePhone', clientData.bdExecutivePhone);
                 if (clientData.noOfRequirements) formData.append('noOfRequirements', String(clientData.noOfRequirements));
+                if (clientData.active !== undefined) formData.append('active', String(clientData.active)); // Append active
+                if (clientData.createdAt) formData.append('createdAt', clientData.createdAt); // Append createdAt
                 formData.append('logo', logoFile);
 
                 response = await fetch(`${API_URL}/${id}`, {

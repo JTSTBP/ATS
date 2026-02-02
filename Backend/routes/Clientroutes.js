@@ -128,16 +128,22 @@ router.get('/', async (req, res) => {
             ];
         }
 
-        // Date Filter
-        if (req.query.date) {
-            const searchDate = new Date(req.query.date);
-            const startOfDay = new Date(searchDate.setHours(0, 0, 0, 0));
-            const endOfDay = new Date(searchDate.setHours(23, 59, 59, 999));
+        // Date Range Filter
+        if (req.query.startDate && req.query.endDate) {
+            const start = new Date(req.query.startDate);
+            const end = new Date(req.query.endDate);
+            start.setHours(0, 0, 0, 0);
+            end.setHours(23, 59, 59, 999);
 
             query.createdAt = {
-                $gte: startOfDay,
-                $lte: endOfDay
+                $gte: start,
+                $lte: end
             };
+        }
+
+        // BD Executive Filter
+        if (req.query.bdExecutive) {
+            query.bdExecutive = req.query.bdExecutive;
         }
 
         // Fetch paginated clients
