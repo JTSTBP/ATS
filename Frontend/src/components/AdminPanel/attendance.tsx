@@ -10,7 +10,7 @@ import {
     Filter,
     Search,
 } from "lucide-react";
-import { formatDate } from "../../utils/dateUtils";
+import { formatDate, formatTime } from "../../utils/dateUtils";
 
 interface Session {
     sessionId: string;
@@ -151,8 +151,8 @@ export default function Attendance() {
             record.user.name,
             record.user.email,
             formatDate(record.date),
-            record.firstLogin || "-",
-            record.lastLogout || "-",
+            formatTime(record.firstLogin),
+            formatTime(record.lastLogout),
             record.totalWorkingHours,
             record.sessions.length,
             record.status,
@@ -418,10 +418,10 @@ export default function Attendance() {
                                                 {formatDate(record.date)}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {record.firstLogin || "-"}
+                                                {formatTime(record.firstLogin)}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {record.lastLogout || (
+                                                {record.lastLogout ? formatTime(record.lastLogout) : (
                                                     <span className="text-green-600 font-medium">Active</span>
                                                 )}
                                             </td>
@@ -498,10 +498,10 @@ export default function Attendance() {
                                                                                 Session {index + 1}
                                                                             </td>
                                                                             <td className="px-4 py-2 text-sm text-gray-900">
-                                                                                {session.loginTime}
+                                                                                {formatTime(session.loginTime)}
                                                                             </td>
                                                                             <td className="px-4 py-2 text-sm text-gray-900">
-                                                                                {session.logoutTime || (
+                                                                                {session.logoutTime ? formatTime(session.logoutTime) : (
                                                                                     <span className="text-green-600 font-medium">
                                                                                         Active
                                                                                     </span>

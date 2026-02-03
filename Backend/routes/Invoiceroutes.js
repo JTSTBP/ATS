@@ -24,16 +24,18 @@ router.get('/summary', async (req, res) => {
         }
 
         // Calculate Total Income (from Payments)
-        const payments = await Payment.find({
-            receivedDate: { $gte: startDate }
-        });
+        console.log(`Summary Filter: ${filter}, StartDate: ${startDate}`);
+
+        const payments = await Payment.find({}); // DEBUG: Removed date filter
+        console.log(`Payments Found: ${payments.length}`);
         const totalIncome = payments.reduce((sum, payment) => sum + payment.amountReceived, 0);
+        console.log(`Total Income: ${totalIncome}`);
 
         // Calculate Total Expenses
-        const expenses = await Expense.find({
-            date: { $gte: startDate }
-        });
+        const expenses = await Expense.find({}); // DEBUG: Removed date filter
+        console.log(`Expenses Found: ${expenses.length}`);
         const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+        console.log(`Total Expenses: ${totalExpenses}`);
 
         // Calculate Net Profit and Margin
         const netProfit = totalIncome - totalExpenses;
@@ -158,7 +160,7 @@ router.post('/mark-paid', async (req, res) => {
         const newPayment = new Payment({
             invoiceId,
             clientId: invoice.client,
-            candidateId: invoice.candidate,
+            candidateId: invoice.candidates[0]?.candidateId, // Use the first candidate
             amountReceived,
             receivedDate,
             recordedBy
@@ -202,6 +204,32 @@ router.get('/payments', async (req, res) => {
     } catch (error) {
         console.error("Error fetching payments:", error);
         res.status(500).json({ message: "Error fetching payments", error: error.message });
+    }
+});
+
+// Delete payment
+router.delete('/payments/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const payment = await Payment.findByIdAndDelete(id);
+
+        if (!payment) {
+            return res.status(404).json({ message: "Payment not found" });
+        }
+
+        // If payment was associated with an invoice, reset invoice status to Pending
+        if (payment.invoiceId) {
+            const invoice = await Invoice.findById(payment.invoiceId);
+            if (invoice) {
+                invoice.status = 'Pending';
+                await invoice.save();
+            }
+        }
+
+        res.status(200).json({ message: "Payment deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting payment:", error);
+        res.status(500).json({ message: "Error deleting payment", error: error.message });
     }
 });
 

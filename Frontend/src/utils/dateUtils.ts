@@ -15,3 +15,25 @@ export const formatDate = (date: string | number | Date | undefined | null): str
     // Replace spaces with hyphens to get "12-Dec-2025"
     return formatted.replace(/ /g, '-');
 };
+
+export const formatTime = (time: string | number | Date | undefined | null): string => {
+    if (!time) return '-';
+
+    // If it's a 24-hour time string "HH:MM:SS" or "HH:MM"
+    if (typeof time === 'string' && /^\d{1,2}:\d{1,2}(:\d{1,2})?$/.test(time)) {
+        const [hours, minutes] = time.split(':').map(Number);
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        return `${displayHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+    }
+
+    const d = new Date(time);
+    if (isNaN(d.getTime())) return '-';
+
+    return d.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+    });
+};
+

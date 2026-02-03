@@ -618,6 +618,19 @@ const Finance = () => {
         }
     };
 
+    const handleDeletePayment = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this payment? It will reset the invoice status to Pending.")) return;
+        try {
+            await axios.delete(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/payments/${id}`);
+            toast.success("Payment deleted successfully");
+            fetchPayments();
+            fetchInvoices();
+        } catch (error) {
+            console.error("Error deleting payment:", error);
+            toast.error("Failed to delete payment");
+        }
+    };
+
     const openPaymentModal = (invoice: Invoice) => {
         setSelectedInvoice(invoice);
         const totalAmount = invoice.candidates?.reduce((sum, c) => sum + (c.amount || 0), 0) || 0;
@@ -1015,6 +1028,7 @@ const Finance = () => {
                                     <th className="p-4 font-semibold text-gray-600">Amount Received</th>
                                     <th className="p-4 font-semibold text-gray-600">Received Date</th>
                                     <th className="p-4 font-semibold text-gray-600">Recorded By</th>
+                                    <th className="p-4 font-semibold text-gray-600">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -1032,6 +1046,15 @@ const Finance = () => {
                                         </td>
                                         <td className="p-4 text-gray-500">
                                             {payment.recordedBy?.name || "Unknown"}
+                                        </td>
+                                        <td className="p-4">
+                                            <button
+                                                onClick={() => handleDeletePayment(payment._id)}
+                                                className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                                title="Delete Payment & Reset to Pending"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
