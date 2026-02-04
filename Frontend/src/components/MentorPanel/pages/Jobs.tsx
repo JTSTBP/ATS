@@ -8,7 +8,6 @@ import {
 } from "lucide-react";
 import { JobForm } from "./JobForm";
 import { useJobContext } from "../../../context/DataProvider";
-import { useClientsContext } from "../../../context/ClientsProvider"; // Added
 import { useCandidateContext } from "../../../context/CandidatesProvider"; // Added
 import { JobDetailsModal } from "./JobDetailedView";
 import { useAuth } from "../../../context/AuthProvider";
@@ -62,7 +61,7 @@ export const JobsManager = ({
   } = useJobContext();
 
   const { users, fetchUsers } = useUserContext(); // Added to get reportees for scoping
-  const { clients } = useClientsContext(); // Restored
+  // const { clients } = useClientsContext(); // Unused
   const { candidates, fetchallCandidates } = useCandidateContext(); // Get all candidates
 
   const { user } = useAuth();
@@ -294,15 +293,15 @@ export const JobsManager = ({
 
       {/* Search + Filter */}
       <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search jobs by title, department, location..."
+              placeholder="Search by title, dept, loc..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
             />
           </div>
 
@@ -313,13 +312,13 @@ export const JobsManager = ({
               placeholder="Search by client name..."
               value={clientSearchTerm}
               onChange={(e) => setClientSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none bg-white cursor-pointer font-medium text-gray-700"
           >
             <option value="all">All Statuses</option>
             <option value="Open">Open</option>
@@ -388,25 +387,31 @@ export const JobsManager = ({
       </div>
 
       {/* Pagination Controls */}
-      <div className="p-4 flex items-center justify-between bg-white rounded-xl shadow-md border border-gray-200">
-        <div className="text-sm text-slate-500">
-          Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, pagination?.totalJobs || 0)} of {pagination?.totalJobs || 0} jobs
+      <div className="p-4 flex flex-col sm:flex-row items-center justify-between bg-white rounded-xl shadow-md border border-gray-200 gap-4">
+        <div className="text-sm text-slate-500 font-medium">
+          Showing <span className="text-slate-900 font-bold">{((currentPage - 1) * limit) + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * limit, pagination?.totalJobs || 0)}</span> of <span className="text-slate-900 font-bold">{pagination?.totalJobs || 0}</span> jobs
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1 border rounded hover:bg-slate-50 disabled:opacity-50"
+            className="px-4 py-1.5 text-sm font-semibold border rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Previous
+            Prev
           </button>
-          <span className="px-3 py-1 bg-slate-100 rounded">
-            Page {currentPage} of {pagination?.totalPages || 1}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-sm font-bold border border-orange-100">
+              {currentPage}
+            </span>
+            <span className="text-slate-400 text-xs px-1">of</span>
+            <span className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-sm font-bold border border-slate-100">
+              {pagination?.totalPages || 1}
+            </span>
+          </div>
           <button
             onClick={() => setCurrentPage(p => Math.min(pagination?.totalPages || 1, p + 1))}
             disabled={currentPage === (pagination?.totalPages || 1)}
-            className="px-3 py-1 border rounded hover:bg-slate-50 disabled:opacity-50"
+            className="px-4 py-1.5 text-sm font-semibold border rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Next
           </button>

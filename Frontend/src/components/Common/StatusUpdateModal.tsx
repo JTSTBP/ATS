@@ -211,6 +211,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                     <option value="salary not matched">Salary Not Matched</option>
                                     <option value="stability issue">Stability Issue</option>
                                     <option value="skills not matched">Skills Not Matched</option>
+                                    <option value="already interviewed/duplicate">Already Interviewed / Duplicate Candidate</option>
                                 </select>
                             </div>
                         )}

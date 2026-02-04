@@ -479,7 +479,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   onAddClient={() => setShowClientForm(true)}
                   placeholder="Select Client (Optional)"
                 />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <IndustryInput
                     value={formData.department} // string now
                     onChange={(newIndustry: any) =>
@@ -526,7 +526,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               <h4 className="text-lg font-semibold text-gray-800 mb-3">
                 Salary & Experience
               </h4>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Min Salary <span className="text-red-500">*</span>
@@ -585,7 +585,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <input
                   type="number"
                   placeholder="Min Experience"

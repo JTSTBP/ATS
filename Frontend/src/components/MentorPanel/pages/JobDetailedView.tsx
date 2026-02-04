@@ -1,7 +1,6 @@
 
 
-import { Typography } from "@mui/material";
-import { X, MapPin, Briefcase, Layers, Calendar, User, Building } from "lucide-react";
+import { X, Briefcase, Layers, Calendar, User, Building } from "lucide-react";
 import { useState } from "react";
 
 export const JobDetailsModal = ({
@@ -27,7 +26,7 @@ export const JobDetailsModal = ({
 
         {/* Header */}
         <div className="mb-5 border-b pb-3">
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
+          <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-indigo-600 to-blue-500 bg-clip-text text-transparent">
             {job.title}
           </h2>
           <div className="flex flex-wrap gap-2 mt-3 text-sm">
@@ -36,7 +35,7 @@ export const JobDetailsModal = ({
               <div>
                 {Array.isArray(job.location)
                   ? job.location
-                    .map((loc) => `${loc.name}, ${loc.state}`)
+                    .map((loc: any) => `${loc.name}, ${loc.state}`)
                     .join(", ")
                   : typeof job.location === "object"
                     ? `${job.location.name}, ${job.location.state}`

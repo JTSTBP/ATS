@@ -23,7 +23,6 @@ interface JobCardProps {
     onEdit?: (id?: string | number) => void;
     onDelete?: (id?: string | number) => void;
     onRefresh?: (id?: string | number) => void;
-    onNavigateToCandidates?: (jobTitle: string) => void;
     onStatusChange?: (id: string, status: string) => void;
     positions?: number;
     status?: string;
@@ -45,7 +44,6 @@ const JobCard: React.FC<JobCardProps> = ({
     onEdit,
     onDelete,
     onRefresh,
-    onNavigateToCandidates,
     onStatusChange,
     positions,
     status,
@@ -65,10 +63,10 @@ const JobCard: React.FC<JobCardProps> = ({
         }
     };
     return (
-        <div className="grid grid-cols-12 gap-4 items-center border rounded-xl p-4 shadow-sm bg-white mb-4">
-            {/* LEFT SECTION - col-span-5 */}
-            <div className="col-span-5 flex items-start gap-3">
-                <input type="checkbox" className="mt-2" />
+        <div className="flex flex-col md:grid md:grid-cols-12 gap-4 items-start md:items-center border rounded-xl p-4 shadow-sm bg-white mb-4 transition-all hover:shadow-md">
+            {/* LEFT SECTION - Job Title & Client info */}
+            <div className="w-full md:col-span-5 flex items-start gap-3">
+                <input type="checkbox" className="mt-2.5 flex-shrink-0" />
 
                 {/* Client Logo */}
                 <div className="flex-shrink-0 mt-1">
@@ -76,36 +74,39 @@ const JobCard: React.FC<JobCardProps> = ({
                         <img
                             src={`${import.meta.env.VITE_BACKEND_URL}/${client.logo}`}
                             alt={client.companyName || 'Client'}
-                            className="w-12 h-12 object-cover rounded-lg border-2 border-gray-200"
+                            className="w-10 h-10 md:w-12 md:h-12 object-cover rounded-lg border-2 border-gray-100"
                         />
                     ) : (
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
-                            <Building2 className="w-6 h-6 text-blue-600" />
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg flex items-center justify-center border border-blue-50">
+                            <Building2 className="w-5 h-5 md:w-6 md:h-6 text-blue-500" />
                         </div>
                     )}
                 </div>
 
-                <div>
+                <div className="min-w-0 flex-1">
                     {/* Title */}
                     <h2
-                        className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-blue-600 transition"
+                        className="text-base md:text-lg font-bold text-gray-900 cursor-pointer hover:text-blue-600 transition truncate"
                         onClick={() => handleTitleClick()}
+                        title={title}
                     >
                         {title}
                     </h2>
 
-                    {/* Location */}
-                    <p className="text-sm text-gray-500 mt-1">{location}</p>
-                    {client?.companyName && (
-                        <p className="text-sm text-gray-500 mt-1">{client.companyName}</p>
-                    )}
+                    {/* Location & Company */}
+                    <div className="flex flex-col mt-0.5">
+                        {client?.companyName && (
+                            <p className="text-sm font-medium text-gray-700">{client.companyName}</p>
+                        )}
+                        <p className="text-xs text-gray-500">{location}</p>
+                    </div>
 
                     {/* Tags */}
-                    <div className="flex gap-2 mt-2 flex-wrap">
+                    <div className="flex gap-1.5 mt-2 flex-wrap">
                         {tags.map((tag, i) => (
                             <span
                                 key={i}
-                                className="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-600"
+                                className="px-2 py-0.5 text-[10px] md:text-xs rounded-full bg-purple-50 text-purple-600 border border-purple-100"
                             >
                                 {tag}
                             </span>
@@ -114,107 +115,112 @@ const JobCard: React.FC<JobCardProps> = ({
                 </div>
             </div>
 
-            {/* MIDDLE SECTION — Responses - col-span-4 (Centered) */}
-            <div className="col-span-4 flex justify-center gap-8 items-center">
+            {/* MIDDLE SECTION — Stats - Stacks on mobile, centered grid on desktop */}
+            <div className="w-full md:col-span-4 flex flex-wrap justify-between md:justify-center gap-4 md:gap-8 items-center py-4 md:py-0 border-y md:border-none border-gray-50">
                 <div
-                    className="text-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
+                    className="flex flex-col items-center cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition"
                     onClick={() => handleTitleClick("all")}
                 >
-                    <p className="text-lg font-semibold text-gray-800">
+                    <p className="text-base md:text-lg font-bold text-gray-900">
                         {totalResponses}
                     </p>
-                    <p className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full inline-block">
-                        {newResponses} New
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">Total Responses</p>
+                    <div className="flex flex-col items-center">
+                        <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">
+                            {newResponses} New
+                        </span>
+                        <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Total</p>
+                    </div>
                 </div>
 
                 <div
-                    className="text-center cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition"
+                    className="flex flex-col items-center cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition"
                     onClick={() => handleTitleClick("Shortlisted")}
                 >
-                    <p className="text-lg font-semibold text-gray-800">{shortlisted}</p>
-                    <p className="text-xs text-gray-500 mt-1">Shortlisted</p>
+                    <p className="text-base md:text-lg font-bold text-gray-900">{shortlisted}</p>
+                    <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Shortlisted</p>
                 </div>
 
 
                 {positions !== undefined && positions > 0 && (
-                    <div className="text-center">
-                        <p className="text-lg font-semibold text-gray-800">{positions}</p>
-                        <p className="text-xs text-gray-500 mt-1">Positions</p>
+                    <div className="flex flex-col items-center">
+                        <p className="text-base md:text-lg font-bold text-gray-900">{positions}</p>
+                        <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Positions</p>
                     </div>
                 )}
 
                 {/* Status Dropdown */}
-                <div className="text-center min-w-[100px]">
+                <div className="flex flex-col items-center">
                     <select
                         value={status}
                         onChange={(e) => onStatusChange?.(id as string, e.target.value)}
-                        className={`text-xs font-semibold px-2 py-1 rounded-full border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all cursor-pointer ${status === "Open"
-                            ? "bg-green-100 text-green-700 border-green-200 focus:ring-green-500"
+                        className={`text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all cursor-pointer ${status === "Open"
+                            ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-500"
                             : status === "Closed"
-                                ? "bg-red-100 text-red-700 border-red-200 focus:ring-red-500"
-                                : "bg-yellow-100 text-yellow-700 border-yellow-200 focus:ring-yellow-500"
+                                ? "bg-red-50 text-red-700 border-red-200 focus:ring-red-500"
+                                : "bg-yellow-50 text-yellow-700 border-yellow-200 focus:ring-yellow-500"
                             }`}
                     >
                         <option value="Open">Open</option>
                         <option value="Closed">Closed</option>
                         <option value="On Hold">On Hold</option>
                     </select>
-                    <p className="text-xs text-gray-500 mt-1">Status</p>
+                    <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Status</p>
                 </div>
             </div>
 
 
-            {/* RIGHT SECTION — actions + posted info aligned top/bottom - col-span-3 (Right aligned) */}
-            <div className="col-span-3 flex flex-col justify-between items-end h-full">
-                {/* Top row: action icons (clickable) */}
-                <div className="flex gap-3 text-gray-600">
+            {/* RIGHT SECTION — Actions & Meta - Space between on mobile, vertical stack on desktop */}
+            <div className="w-full md:col-span-3 flex flex-row md:flex-col justify-between items-center md:items-end gap-3">
+                {/* Top row: action icons */}
+                <div className="flex gap-2 text-gray-500 bg-gray-50 md:bg-transparent p-1 md:p-0 rounded-lg">
                     <button
                         aria-label="Refresh"
                         onClick={() => onRefresh?.(id)}
-                        className="p-1 rounded hover:bg-gray-100"
+                        className="p-1.5 rounded-lg hover:bg-white md:hover:bg-gray-100 hover:text-blue-600 transition-colors"
                         title="Refresh"
                     >
-                        <RefreshCcw className="w-5 h-5 cursor-pointer" />
+                        <RefreshCcw className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
 
                     <button
                         aria-label="View"
                         onClick={() => onView?.(id)}
-                        className="p-1 rounded hover:bg-gray-100"
+                        className="p-1.5 rounded-lg hover:bg-white md:hover:bg-gray-100 hover:text-blue-600 transition-colors"
                         title="View"
                     >
-                        <Eye className="w-5 h-5 cursor-pointer" />
+                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
 
                     <button
                         aria-label="Edit"
                         onClick={() => onEdit?.(id)}
-                        className="p-1 rounded hover:bg-gray-100 text-blue-600"
+                        className="p-1.5 rounded-lg hover:bg-white md:hover:bg-gray-100 text-blue-500 transition-colors"
                         title="Edit"
                     >
-                        <Edit className="w-5 h-5 cursor-pointer" />
+                        <Edit className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
 
                     <button
                         aria-label="Delete"
                         onClick={() => onDelete?.(id)}
-                        className="p-1 rounded hover:bg-red-50 text-red-600"
+                        className="p-1.5 rounded-lg hover:bg-white md:hover:bg-red-50 text-red-500 transition-colors"
                         title="Delete"
                     >
-                        <Trash2 className="w-5 h-5 cursor-pointer" />
+                        <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                     </button>
-
-
                 </div>
 
-                {/* Bottom Section */}
-                <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
-                    <span>posted by {postedBy}</span> | <span>{postedDate}</span>
+                {/* Posted date info */}
+                <div className="flex flex-col items-end">
+                    <p className="text-[10px] text-gray-400 font-medium">
+                        Posted {postedDate}
+                    </p>
+                    <p className="text-[10px] text-gray-500 font-semibold">
+                        by {postedBy === "You" ? "me" : postedBy}
+                    </p>
                 </div>
             </div>
-        </div >
+        </div>
     );
 };
 
