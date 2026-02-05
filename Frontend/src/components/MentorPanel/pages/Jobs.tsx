@@ -92,7 +92,7 @@ export const JobsManager = ({
     }
 
     const scopedJobs = jobs.filter((job: any) => {
-      const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
+      const creatorId = job.CreatedBy?._id || job.CreatedBy;
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 
@@ -116,7 +116,7 @@ export const JobsManager = ({
     const activeClientIds = new Set();
     activeJobsList.forEach(job => {
       if (job.clientId) {
-        const cId = typeof job.clientId === 'object' ? (job.clientId as any)._id : job.clientId;
+        const cId = job.clientId?._id || job.clientId;
         if (cId) activeClientIds.add(cId);
       }
     });
@@ -130,7 +130,7 @@ export const JobsManager = ({
     const activeJobIds = new Set(activeJobsList.map(j => j._id));
     const joinedCandidatesCount = scopedCandidates.filter(c => {
       if (c.status !== 'Joined') return false;
-      const jId = typeof c.jobId === 'object' ? (c.jobId as any)._id : c.jobId;
+      const jId = c.jobId?._id || c.jobId;
       return activeJobIds.has(jId);
     }).length;
 
