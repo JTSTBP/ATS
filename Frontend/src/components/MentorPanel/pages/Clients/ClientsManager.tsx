@@ -5,6 +5,7 @@ import { Plus, Search, Building2, Globe, Linkedin, Phone, Mail, Pencil, Trash2, 
 import { useAuth } from '../../../../context/AuthProvider';
 import { useClientsContext, Client } from '../../../../context/ClientsProvider';
 import { ClientForm } from './ClientForm';
+import { getImageUrl } from '../../../../utils/imageUtils';
 
 const ClientDetailsModal = ({ client, onClose, user, onUpdate }: { client: Client, onClose: () => void, user: any, onUpdate: (updatedClient: Client) => Promise<void> }) => {
 
@@ -30,7 +31,7 @@ const ClientDetailsModal = ({ client, onClose, user, onUpdate }: { client: Clien
                     <div className="flex items-center gap-4">
                         {client.logo ? (
                             <img
-                                src={`${import.meta.env.VITE_BACKEND_URL}/${client.logo}`}
+                                src={getImageUrl(client.logo)}
                                 alt={client.companyName}
                                 className="w-12 h-12 object-cover rounded-xl border-2 border-white shadow-sm"
                             />
@@ -451,7 +452,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                                                     <div className="flex-shrink-0">
                                                         {client.logo ? (
                                                             <img
-                                                                src={`${import.meta.env.VITE_BACKEND_URL}/${client.logo}`}
+                                                                src={getImageUrl(client.logo)}
                                                                 alt=""
                                                                 className="w-10 h-10 object-cover rounded-lg border border-gray-100 shadow-sm"
                                                             />

@@ -3,7 +3,7 @@ import { X, Plus, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../../../context/AuthProvider';
 import { useClientsContext } from '../../../../context/ClientsProvider';
-import { API_BASE_URL } from '../../../../config/config';
+import { getImageUrl } from '../../../../utils/imageUtils';
 
 interface POC {
     name: string;
@@ -70,7 +70,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
         pocs: [{ name: '', email: '', phone: '', altPhone: '', linkedinUrl: '' }]
     });
     const [loading, setLoading] = useState(false);
-    const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logo ? `${API_BASE_URL}/${initialData.logo}` : null);
+    const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logo ? getImageUrl(initialData.logo) : null);
     const [logoFile, setLogoFile] = useState<File | null>(null);
 
     useEffect(() => {
@@ -231,7 +231,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                             {logoPreview ? (
                                 <div className="relative">
                                     <img
-                                        src={logoPreview.startsWith('uploads') ? `${API_BASE_URL}/${logoPreview}` : logoPreview}
+                                        src={logoPreview.startsWith('http') || logoPreview.startsWith('data:') ? logoPreview : getImageUrl(logoPreview)}
                                         alt="Company Logo"
                                         className="w-24 h-24 object-cover rounded-lg border-2 border-gray-300"
                                     />

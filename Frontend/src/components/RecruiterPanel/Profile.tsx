@@ -3,6 +3,7 @@ import { User, Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Save, X, Camera,
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthProvider';
 import { formatDate } from '../../utils/dateUtils';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -44,7 +45,7 @@ export default function Profile() {
     // Initialize profile photo from user data
     useEffect(() => {
         if (user?.profilePhoto) {
-            setProfilePhoto(`${API_BASE_URL}/${user.profilePhoto}`);
+            setProfilePhoto(getImageUrl(user.profilePhoto));
         }
     }, [user?.profilePhoto]);
 
@@ -118,7 +119,7 @@ export default function Profile() {
         setSelectedFile(null);
         // Restore original photo
         if (user?.profilePhoto) {
-            setProfilePhoto(`${API_BASE_URL}/${user.profilePhoto}`);
+            setProfilePhoto(getImageUrl(user.profilePhoto));
         } else {
             setProfilePhoto(null);
         }

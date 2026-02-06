@@ -75,6 +75,20 @@ export default function UploadCandidatePage() {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
 
+            // Validate file type - only allow PDF
+            const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
+            if (fileExtension === 'docx' || fileExtension === 'doc') {
+                alert('DOCX files are not supported. Please upload a PDF file only.');
+                e.target.value = ''; // Clear the input
+                return;
+            }
+
+            if (fileExtension !== 'pdf') {
+                alert('Only PDF files are allowed for resume uploads.');
+                e.target.value = ''; // Clear the input
+                return;
+            }
+
             // Validate file size (5MB)
             if (selectedFile.size > 5 * 1024 * 1024) {
                 alert("File size exceeds 5MB. Please upload a smaller file.");
@@ -102,6 +116,18 @@ export default function UploadCandidatePage() {
         setIsDragging(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             const selectedFile = e.dataTransfer.files[0];
+
+            // Validate file type - only allow PDF
+            const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
+            if (fileExtension === 'docx' || fileExtension === 'doc') {
+                alert('DOCX files are not supported. Please upload a PDF file only.');
+                return;
+            }
+
+            if (fileExtension !== 'pdf') {
+                alert('Only PDF files are allowed for resume uploads.');
+                return;
+            }
 
             // Validate file size (5MB)
             if (selectedFile.size > 5 * 1024 * 1024) {
@@ -253,7 +279,7 @@ export default function UploadCandidatePage() {
                                 <input
                                     type="file"
                                     id="cv-upload"
-                                    accept=".pdf,.doc,.docx"
+                                    accept=".pdf,application/pdf"
                                     onChange={handleFileChange}
                                     className="hidden"
                                 />
@@ -287,7 +313,7 @@ export default function UploadCandidatePage() {
                                             Click to Upload CV or Drag and Drop
                                         </p>
                                         <p className="text-xs text-slate-500">
-                                            PDF, DOC, DOCX (Max 5MB)
+                                            PDF Only (Max 5MB)
                                         </p>
                                     </label>
                                 )}

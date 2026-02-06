@@ -13,6 +13,7 @@ import {
   X,
   Clock,
 } from "lucide-react";
+import { getImageUrl } from "../../utils/imageUtils";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useJobContext } from "../../context/DataProvider";
@@ -111,7 +112,6 @@ const SearchableSelect = ({
 export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOpen = false }: { initialJobTitleFilter?: string, initialFormOpen?: boolean }) => {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
   const {
     updateStatus,
@@ -597,7 +597,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                       <td className="px-6 py-4">
                         {candidate.resumeUrl ? (
                           <a
-                            href={`${API_BASE_URL}${candidate.resumeUrl}`}
+                            href={getImageUrl(candidate.resumeUrl)}
                             target="_blank"
                             className="p-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center w-fit"
                             title="View Resume"
@@ -637,7 +637,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                           <td className="px-6 py-4">
                             {candidate.offerLetter ? (
                               <a
-                                href={`${API_BASE_URL}${candidate.offerLetter}`}
+                                href={getImageUrl(candidate.offerLetter)}
                                 target="_blank"
                                 className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center w-fit"
                                 title="View Offer Letter"

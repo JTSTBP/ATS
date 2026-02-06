@@ -307,25 +307,36 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const { data } = await axios.post(API_URL, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        // headers: { "Content-Type": "multipart/form-data" }, // Let axios set boundary automatically
       });
 
       if (data.success) {
         toast.success("Candidate created successfully!");
-        return data.candidate;
+
+        // ✅ Update state arrays to reflect the new candidate immediately
+        const newCandidate = data.candidate;
+        setCandidates((prev) => [newCandidate, ...prev]); // Add to beginning for newest first
+        setPaginatedCandidates((prev) => [newCandidate, ...prev]);
+
+        return newCandidate;
       }
 
       return null;
     } catch (err: any) {
+      console.error("Error creating candidate full response:", err.response?.data);
       console.error("Error creating candidate:", err);
 
       // Extract error message from backend response
-      const errorMessage = err.response?.data?.message || "Failed to create candidate";
+      const serverData = err.response?.data;
+      const errorMessage = typeof serverData?.message === 'string'
+        ? serverData.message
+        : (typeof serverData?.message === 'object' ? JSON.stringify(serverData.message) : "Failed to create candidate");
+
       toast.error(errorMessage);
 
       // If there's duplicate candidate info, show additional details
-      if (err.response?.data?.duplicateCandidate) {
-        const duplicate = err.response.data.duplicateCandidate;
+      if (serverData?.duplicateCandidate) {
+        const duplicate = serverData.duplicateCandidate;
         toast.info(`Existing candidate: ${duplicate.name || 'Unknown'}`);
       }
 
@@ -352,7 +363,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const { data } = await axios.put(`${API_URL}/${id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        // headers: { "Content-Type": "multipart/form-data" },
       });
 
       if (data.success) {
@@ -365,15 +376,20 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return null;
     } catch (err: any) {
+      console.error("Error updating candidate full response:", err.response?.data);
       console.error("Error updating candidate:", err);
 
       // Extract error message from backend response
-      const errorMessage = err.response?.data?.message || "Failed to update candidate";
+      const serverData = err.response?.data;
+      const errorMessage = typeof serverData?.message === 'string'
+        ? serverData.message
+        : (typeof serverData?.message === 'object' ? JSON.stringify(serverData.message) : "Failed to update candidate");
+
       toast.error(errorMessage);
 
       // If there's duplicate candidate info, show additional details
-      if (err.response?.data?.duplicateCandidate) {
-        const duplicate = err.response.data.duplicateCandidate;
+      if (serverData?.duplicateCandidate) {
+        const duplicate = serverData.duplicateCandidate;
         toast.info(`Existing candidate: ${duplicate.name || 'Unknown'}`);
       }
 
@@ -387,7 +403,9 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log(role, "ooo");
       const { data } = await axios.delete(`${API_URL}/${id}/${role}`);
       if (data.success) {
+        // ✅ Update both state arrays to reflect deletion immediately
         setCandidates((prev) => prev.filter((c) => c._id !== id));
+        setPaginatedCandidates((prev) => prev.filter((c) => c._id !== id));
         return true;
       }
       throw new Error("Failed to delete");
@@ -435,7 +453,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       if (rejectionReason) formData.append("rejectionReason", rejectionReason);
 
       const { data } = await axios.patch(`${API_URL}/${id}/status`, formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        // headers: { "Content-Type": "multipart/form-data" }
       });
 
       if (data.success) {

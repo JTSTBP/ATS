@@ -18,14 +18,15 @@ import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../../utils/dateUtils";
+import { getImageUrl } from "../../../utils/imageUtils";
+
 
 import { useSearchParams } from "react-router-dom";
 
 export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOpen = false }: { initialJobTitleFilter?: string, initialFormOpen?: boolean }) => {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const API_BASE_URL =
-    import.meta.env.VITE_BACKEND_URL;
+
 
   const {
     updateStatus,
@@ -576,7 +577,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {candidate.offerLetter ? (
                             <a
-                              href={`${API_BASE_URL}${candidate.offerLetter}`}
+                              href={getImageUrl(candidate.offerLetter)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:underline flex items-center"
@@ -621,7 +622,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                     <td className="px-6 py-4">
                       {candidate.resumeUrl ? (
                         <a
-                          href={`${API_BASE_URL}${candidate.resumeUrl}`}
+                          href={getImageUrl(candidate.resumeUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center text-blue-600"

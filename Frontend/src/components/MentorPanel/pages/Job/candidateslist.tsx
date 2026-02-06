@@ -17,6 +17,8 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
+import { getImageUrl } from "../../../../utils/imageUtils";
+import { API_BASE_URL } from "../../../../config/config";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthProvider";
@@ -1266,7 +1268,7 @@ const CandidatesList = () => {
                 }
                 candidatesWithResume.forEach((c: any) => {
                   const link = document.createElement("a");
-                  link.href = `${API_BASE_URL}${c.resumeUrl}`;
+                  link.href = getImageUrl(c.resumeUrl);
                   link.download = `${c.dynamicFields?.candidateName || "candidate"
                     }_resume.pdf`;
                   link.click();
@@ -1454,7 +1456,7 @@ const CandidatesList = () => {
                           {/* Offer Letter Link */}
                           {candidate.status === "Joined" && candidate.offerLetter && (
                             <a
-                              href={`${API_BASE_URL}${candidate.offerLetter}`}
+                              href={getImageUrl(candidate.offerLetter)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
@@ -1812,7 +1814,7 @@ const CandidatesList = () => {
                     <button
                       onClick={() =>
                         setPreviewResumeUrl(
-                          `${API_BASE_URL}${selectedCandidate.resumeUrl}`
+                          getImageUrl(selectedCandidate.resumeUrl)
                         )
                       }
                       className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition text-blue-600 font-medium"

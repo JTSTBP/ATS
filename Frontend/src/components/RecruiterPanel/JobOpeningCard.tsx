@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Briefcase, MapPin, Users, Upload, Target } from "lucide-react";
 import { JobOpening } from "./UploadCV";
+import { getImageUrl } from "../../utils/imageUtils";
 
 interface JobOpeningCardProps {
   job: JobOpening;
@@ -45,16 +46,16 @@ export default function JobOpeningCard({
 
       <div className="flex justify-between items-start mb-4">
         <div className="w-12 h-12 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center bg-white">
-          {job.companyLogo ? (
+          {job.clientId?.logo ? (
             <img
-              src={job.companyLogo}
-              alt={job.companyName || job.client || "Company"}
+              src={getImageUrl(job.clientId.logo)}
+              alt={job.clientId?.companyName || "Company"}
               className="w-full h-full object-contain"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
               <span className="text-white font-bold text-lg">
-                {(job.companyName || job.client || job.department || "C").charAt(0).toUpperCase()}
+                {(job.clientId?.companyName || job.department || "C").charAt(0).toUpperCase()}
               </span>
             </div>
           )}
@@ -78,10 +79,8 @@ export default function JobOpeningCard({
           <MapPin size={16} />
           <span>
             {Array.isArray(job.location)
-              ? job.location.map((loc: any) => loc.name).join(", ")
-              : typeof job.location === "object" && job.location !== null
-                ? job.location.name || "Unknown"
-                : job.location}
+              ? job.location.map((loc: any) => loc.name || loc).join(", ")
+              : "Remote"}
           </span>
         </div>
 
@@ -89,12 +88,12 @@ export default function JobOpeningCard({
           <Users size={16} />
           <span>{job.employmentType}</span>
         </div>
-        {(job.noOfPositions || job.openPositions) > 0 && (
+        {(job.noOfPositions || 0) > 0 && (
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <Target size={16} />
             <span>
-              {job.noOfPositions || job.openPositions}{" "}
-              {(job.noOfPositions || job.openPositions) === 1 ? "position" : "positions"}
+              {job.noOfPositions}{" "}
+              {job.noOfPositions === 1 ? "position" : "positions"}
             </span>
           </div>
         )}

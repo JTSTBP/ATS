@@ -11,6 +11,7 @@ import {
     Search,
 } from "lucide-react";
 import { formatDate, formatTime } from "../../utils/dateUtils";
+import { getImageUrl } from "../../utils/imageUtils";
 
 interface Session {
     sessionId: string;
@@ -395,7 +396,7 @@ export default function Attendance() {
                                                         {record.user.profilePhoto ? (
                                                             <img
                                                                 className="h-10 w-10 rounded-full object-cover"
-                                                                src={`${API_URL}/${record.user.profilePhoto}`}
+                                                                src={getImageUrl(record.user.profilePhoto)}
                                                                 alt={record.user.name}
                                                             />
                                                         ) : (

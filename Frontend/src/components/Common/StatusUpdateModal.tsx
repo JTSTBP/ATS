@@ -139,8 +139,27 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                 </label>
                                 <input
                                     type="file"
-                                    accept=".pdf,.doc,.docx"
-                                    onChange={(e) => setOfferLetter(e.target.files?.[0])}
+                                    accept=".pdf,application/pdf"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+
+                                        // Validate file type - only allow PDF
+                                        const fileExtension = file.name.split('.').pop()?.toLowerCase();
+                                        if (fileExtension === 'docx' || fileExtension === 'doc') {
+                                            alert('DOCX files are not supported. Please upload a PDF file only.');
+                                            e.target.value = ''; // Clear the input
+                                            return;
+                                        }
+
+                                        if (fileExtension !== 'pdf') {
+                                            alert('Only PDF files are allowed for offer letter uploads.');
+                                            e.target.value = ''; // Clear the input
+                                            return;
+                                        }
+
+                                        setOfferLetter(file);
+                                    }}
                                     className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
                                 />
                             </div>

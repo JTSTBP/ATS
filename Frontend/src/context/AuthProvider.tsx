@@ -127,10 +127,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const config = {
         headers: {
-          "Content-Type":
-            userData instanceof FormData
-              ? "multipart/form-data"
-              : "application/json",
+          /* "Content-Type":
+               userData instanceof FormData
+                 ? "multipart/form-data"
+                 : "application/json", */
         },
       };
 

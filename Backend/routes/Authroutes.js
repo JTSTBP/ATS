@@ -6,6 +6,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { protect } = require("../middleware/authMiddleware");
 const profileUpload = require("../middleware/profileUpload");
+const { s3 } = require("../config/s3Config");
 
 const router = express.Router();
 
@@ -217,22 +218,55 @@ router.put(
 
         // 🗑️ REMOVE PHOTO
         if (req.body.removePhoto === "true") {
-          if (user.profilePhoto) {
-            const fs = require("fs");
-            try {
-              fs.unlinkSync(user.profilePhoto);
-              console.log("🗑️ Old profile photo deleted");
-            } catch (error) {
-              console.log("⚠️ Failed to delete photo:", error.message);
-            }
-          }
           user.profilePhoto = null;
         }
 
         // 📤 NEW UPLOADED PHOTO
         if (req.file) {
-          console.log("✅ New file uploaded:", req.file.path);
-          user.profilePhoto = req.file.path;
+          console.log("✅ New file uploaded:", req.file.location || req.file.path);
+
+          // DELETE OLD PHOTO if exists
+          const oldPhoto = user.profilePhoto;
+          if (oldPhoto) {
+            if (oldPhoto.includes('amazonaws.com') && s3) {
+              try {
+                const urlObj = new URL(oldPhoto);
+                // decodeURIComponent is crucial for filenames with spaces/special chars
+                let key = decodeURIComponent(urlObj.pathname.substring(1));
+
+                // Handle Path-Style URLs (e.g. https://s3.region.amazonaws.com/bucket/key)
+                // If hostname starts with s3. (and not bucket-name), usually path style
+                if (urlObj.hostname.startsWith('s3.') && !urlObj.hostname.startsWith(process.env.AWS_S3_BUCKET_NAME)) {
+                  const bucketName = process.env.AWS_S3_BUCKET_NAME;
+                  if (key.startsWith(bucketName + '/')) {
+                    key = key.substring(bucketName.length + 1);
+                  }
+                }
+
+                console.log("Extracted S3 Key for deletion:", key);
+
+                if (key) {
+                  await s3.deleteObject({
+                    Bucket: process.env.AWS_S3_BUCKET_NAME,
+                    Key: key
+                  }).promise();
+                  console.log(`✅ Deleted old S3 photo: ${key}`);
+                }
+              } catch (err) {
+                console.error("Error deleting old S3 photo:", err);
+              }
+            } else if (!oldPhoto.startsWith('http')) {
+              // Local file delete
+              const fs = require('fs');
+              const path = require('path');
+              const localPath = path.resolve(oldPhoto);
+              fs.unlink(localPath, (err) => {
+                if (err && err.code !== 'ENOENT') console.error("Error deleting local file:", err);
+              });
+            }
+          }
+
+          user.profilePhoto = req.file.location || req.file.path;
         }
 
         const updatedUser = await user.save();

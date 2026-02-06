@@ -4,11 +4,53 @@ const Candidate = require("../models/CandidatesByJob");
 const Job = require("../models/Jobs");
 const User = require("../models/Users");
 const upload = require("../middleware/upload");
+const offerLetterUpload = require("../middleware/offerLetterUpload");
 const router = express.Router();
 const logActivity = require("./logactivity");
 const nodemailer = require("nodemailer");
 const fs = require('fs');
 const path = require('path');
+const { s3, getSignedUrl } = require('../config/s3Config');
+
+// Helper function to delete a file (local or S3)
+async function deleteFile(filePath) {
+  if (!filePath) return;
+
+  // If it's an S3 URL (contains amazonaws.com)
+  if (filePath.includes('amazonaws.com')) {
+    try {
+      // Extract S3 key from URL
+      // Remove query parameters (signed URLs have ?X-Amz-Signature=... etc)
+      const urlWithoutQuery = filePath.split('?')[0];
+      const key = urlWithoutQuery.split('.com/')[1]; // Extract S3 key from URL
+
+      if (!key) {
+        console.error('❌ Could not extract S3 key from URL:', filePath);
+        return;
+      }
+
+      await s3.deleteObject({
+        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Key: key
+      }).promise();
+      console.log('🗑️ Deleted S3 file:', key);
+    } catch (err) {
+      console.error('❌ Error deleting S3 file:', err);
+    }
+  }
+  // If it's a local file (backward compatibility)
+  else if (!filePath.startsWith('http')) {
+    const localPath = path.join(__dirname, '..', filePath);
+    if (fs.existsSync(localPath)) {
+      try {
+        fs.unlinkSync(localPath);
+        console.log('🗑️ Deleted local file:', localPath);
+      } catch (err) {
+        console.error('❌ Error deleting local file:', err);
+      }
+    }
+  }
+}
 
 // Helper function to send email notification to mentor when a candidate is created
 async function sendCreateNotificationToMentor(recruiterId, candidateName, jobTitle) {
@@ -405,7 +447,11 @@ router.get("/", async (req, res) => {
         }
       ]);
 
-      const candidates = result[0].candidates;
+      const candidates = result[0].candidates.map(candidate => ({
+        ...candidate,
+        resumeUrl: getSignedUrl(candidate.resumeUrl),
+        offerLetter: getSignedUrl(candidate.offerLetter)
+      }));
       const totalCandidates = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
 
       return res.json({
@@ -450,7 +496,16 @@ router.get("/", async (req, res) => {
       })
       .sort({ createdAt: -1 });
 
-    res.json({ success: true, candidates });
+    const candidatesWithSignedUrls = candidates.map(candidate => {
+      const candidateObj = candidate.toObject();
+      return {
+        ...candidateObj,
+        resumeUrl: getSignedUrl(candidateObj.resumeUrl),
+        offerLetter: getSignedUrl(candidateObj.offerLetter)
+      };
+    });
+
+    res.json({ success: true, candidates: candidatesWithSignedUrls });
 
   } catch (error) {
     console.error("Error fetching candidates:", error);
@@ -528,10 +583,6 @@ router.post("/", upload.single("resume"), async (req, res) => {
     }
 
     // 3️⃣ Create the candidate if no duplicates found
-    const resumePath = req.file
-      ? `/uploads/resumes/${req.file.filename}`
-      : null;
-
     const candidate = new Candidate({
       jobId: req.body.jobId,
       createdBy: req.body.createdBy,
@@ -539,7 +590,7 @@ router.post("/", upload.single("resume"), async (req, res) => {
       portfolioUrl: req.body.portfolioUrl,
       notes: req.body.notes,
       dynamicFields: parsedFields,
-      resumeUrl: resumePath,
+      resumeUrl: req.file ? (req.file.location || req.file.path) : null, // S3 URL or local path
     });
 
     await candidate.save();
@@ -567,7 +618,14 @@ router.post("/", upload.single("resume"), async (req, res) => {
     // We don't await this to avoid blocking the response
     sendCreateNotificationToMentor(req.body.createdBy, candidateName, jobTitle);
 
-    res.json({ success: true, candidate });
+    const candidateObj = candidate.toObject();
+    const candidateWithSignedUrl = {
+      ...candidateObj,
+      resumeUrl: getSignedUrl(candidateObj.resumeUrl),
+      offerLetter: getSignedUrl(candidateObj.offerLetter)
+    };
+
+    res.json({ success: true, candidate: candidateWithSignedUrl });
 
   } catch (error) {
     console.error("Error creating candidate:", error);
@@ -907,9 +965,19 @@ router.get("/role-based-candidates", async (req, res) => {
 
     // ... (Refined Pipeline Logic below if filters exist) ...
 
+    const candidatesWithSignedUrls = candidates.map(candidate => {
+      // If using aggregate, it's already a plain object. If find, use .toObject() or .lean()
+      // Since pipeline returns plain objects, we can map directly
+      return {
+        ...candidate,
+        resumeUrl: getSignedUrl(candidate.resumeUrl),
+        offerLetter: getSignedUrl(candidate.offerLetter)
+      };
+    });
+
     return res.json({
       success: true,
-      candidates,
+      candidates: candidatesWithSignedUrls,
       totalCandidates,
       totalPages: Math.ceil(totalCandidates / limitNum),
       currentPage: pageNum
@@ -1290,13 +1358,12 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
         oldValue: existingCandidate.resumeUrl ? 'Previous resume' : 'No resume',
         newValue: 'New resume uploaded'
       });
+
+      // Delete old resume file (S3 or local)
+      await deleteFile(existingCandidate.resumeUrl);
     }
 
     // 4️⃣ Update the candidate if no duplicates found
-    const resumePath = req.file
-      ? `/uploads/resumes/${req.file.filename}`
-      : existingCandidate.resumeUrl; // Keep existing resume if no new file
-
     const updateData = {
       jobId: req.body.jobId,
       createdBy: req.body.createdBy,
@@ -1304,7 +1371,7 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
       portfolioUrl: req.body.portfolioUrl,
       notes: req.body.notes,
       dynamicFields: parsedFields,
-      resumeUrl: resumePath,
+      resumeUrl: req.file ? (req.file.location || req.file.path) : existingCandidate.resumeUrl,
     };
 
     const updatedCandidate = await Candidate.findByIdAndUpdate(
@@ -1346,7 +1413,7 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
 // ... existing update route ...
 
 // 🔁 Update candidate status only
-router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
+router.patch("/:id/status", offerLetterUpload.single("offerLetter"), async (req, res) => {
   try {
     const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate, rejectedBy, droppedBy, rejectionReason, comment } = req.body;
 
@@ -1483,8 +1550,13 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
           path: req.file.path,
           size: req.file.size
         });
-        updateData.offerLetter = `/uploads/resumes/${req.file.filename}`;
-        console.log('✅ Offer Letter Path Saved:', updateData.offerLetter);
+
+        // Delete old offer letter file (S3 or local)
+        await deleteFile(existingCandidate.offerLetter);
+
+
+        updateData.offerLetter = req.file.location || req.file.path; // S3 URL or local path
+        console.log('✅ Offer Letter URL Saved:', updateData.offerLetter);
         changes.push({
           field: 'Offer Letter',
           oldValue: existingCandidate.offerLetter ? 'Previous Offer Letter' : 'None',
@@ -1592,7 +1664,14 @@ router.patch("/:id/status", upload.single("offerLetter"), async (req, res) => {
         .catch(err => console.error('Email notification failed:', err));
     }
 
-    res.json({ success: true, candidate: updatedCandidate });
+    const candidatePosObj = updatedCandidate.toObject();
+    const candidateWithSignedUrl = {
+      ...candidatePosObj,
+      resumeUrl: getSignedUrl(candidatePosObj.resumeUrl),
+      offerLetter: getSignedUrl(candidatePosObj.offerLetter)
+    };
+
+    res.json({ success: true, candidate: candidateWithSignedUrl });
   } catch (error) {
     console.error("Error updating candidate status:", error);
     res
@@ -1650,32 +1729,10 @@ router.delete("/:id/:role", async (req, res) => {
 
     const jobId = candidate.jobId; // store jobId before deletion
 
-    // Delete the resume file if it exists
-    if (candidate.resumeUrl) {
-      // resumeUrl is usually stored as /uploads/resumes/filename
-      const resumePath = path.join(__dirname, '..', candidate.resumeUrl);
-      if (fs.existsSync(resumePath)) {
-        try {
-          fs.unlinkSync(resumePath);
-          console.log(`Deleted resume file: ${resumePath}`);
-        } catch (err) {
-          console.error(`Error deleting resume file: ${err.message}`);
-        }
-      }
-    }
 
-    // Delete the Offer Letter file if it exists
-    if (candidate.offerLetter) {
-      const offerLetterPath = path.join(__dirname, '..', candidate.offerLetter);
-      if (fs.existsSync(offerLetterPath)) {
-        try {
-          fs.unlinkSync(offerLetterPath);
-          console.log(`Deleted offer letter file: ${offerLetterPath}`);
-        } catch (err) {
-          console.error(`Error deleting offer letter file: ${err.message}`);
-        }
-      }
-    }
+    // Delete associated files (resume and offer letter) - S3 or local
+    await deleteFile(candidate.resumeUrl);
+    await deleteFile(candidate.offerLetter);
 
     // 2. Delete the candidate
     await Candidate.findByIdAndDelete(req.params.id);

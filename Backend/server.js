@@ -2,6 +2,10 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
+
+// Load environment variables immediately
+dotenv.config();
+
 const path = require("path");
 const userRoutes = require("./routes/Userroutes");
 const authRoutes = require("./routes/Authroutes");
@@ -14,10 +18,6 @@ const activityRoutes = require("./routes/Activityroutes");
 const invoiceRoutes = require("./routes/Invoiceroutes");
 const expenseRoutes = require("./routes/Expenseroutes");
 const attendanceRoutes = require("./routes/Attendanceroutes");
-
-
-// Load environment variables
-dotenv.config();
 
 // Initialize Express app
 const app = express();

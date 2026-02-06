@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Client = require('../models/Client');
 const clientUpload = require('../middleware/clientUpload');
+const { s3 } = require('../config/s3Config');
 const fs = require('fs');
 const path = require('path');
 
@@ -57,7 +58,7 @@ router.post('/', clientUpload.single('logo'), async (req, res) => {
         // Prepare client data with logo path if file was uploaded
         const clientData = {
             ...req.body,
-            logo: req.file ? `uploads/clients/${req.file.filename}` : undefined
+            logo: req.file ? (req.file.location || req.file.path) : undefined
         };
 
         // Parse POCs if it's a JSON string (from FormData)
@@ -214,7 +215,46 @@ router.put('/:id', clientUpload.single('logo'), async (req, res) => {
         };
 
         if (req.file) {
-            updateData.logo = `uploads/clients/${req.file.filename}`;
+            // Find old logo from the client we fetched earlier (needs refetch or use findById)
+            const clientToUpdate = await Client.findById(req.params.id);
+            if (clientToUpdate && clientToUpdate.logo) {
+                const oldLogo = clientToUpdate.logo;
+                if (oldLogo.includes('amazonaws.com') && s3) {
+                    try {
+                        const urlObj = new URL(oldLogo);
+                        let key = decodeURIComponent(urlObj.pathname.substring(1));
+
+                        if (urlObj.hostname.startsWith('s3.') && !urlObj.hostname.startsWith(process.env.AWS_S3_BUCKET_NAME)) {
+                            const bucketName = process.env.AWS_S3_BUCKET_NAME;
+                            if (key.startsWith(bucketName + '/')) {
+                                key = key.substring(bucketName.length + 1);
+                            }
+                        }
+
+                        console.log("Extracted S3 Key for deletion (Client Update):", key);
+
+                        if (key) {
+                            await s3.deleteObject({
+                                Bucket: process.env.AWS_S3_BUCKET_NAME,
+                                Key: key
+                            }).promise();
+                            console.log(`✅ Deleted old S3 logo: ${key}`);
+                        }
+                    } catch (e) {
+                        console.error("❌ Error deleting old S3 logo", e);
+                    }
+                } else if (!oldLogo.startsWith('http')) {
+                    // Local file delete
+                    const fs = require('fs');
+                    const path = require('path');
+                    const localPath = path.resolve(oldLogo);
+                    fs.unlink(localPath, (err) => {
+                        if (err && err.code !== 'ENOENT') console.error("Error deleting local file:", err);
+                    });
+                }
+            }
+
+            updateData.logo = req.file.location || req.file.path;
         }
 
         // Parse POCs if it's a JSON string (from FormData)
@@ -247,6 +287,7 @@ router.put('/:id', clientUpload.single('logo'), async (req, res) => {
 });
 
 // Delete a client
+// Delete a client
 router.delete('/:id', async (req, res) => {
     try {
         const client = await Client.findById(req.params.id);
@@ -254,13 +295,39 @@ router.delete('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Client not found' });
         }
 
-        // Delete the profile logo file if it exists
-        if (client.logo) {
-            const imagePath = path.join(__dirname, '..', client.logo);
-            // Check if file exists before trying to delete
-            if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
+        // Delete logo from S3 if it exists and is an S3 URL
+        if (client.logo && client.logo.includes('amazonaws.com') && s3) {
+            try {
+                let key;
+                const bucketDomain = `${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com`;
+
+                if (client.logo.includes(bucketDomain)) {
+                    key = client.logo.split(bucketDomain + '/')[1];
+                } else {
+                    const urlParts = client.logo.split('.com/');
+                    if (urlParts.length > 1) {
+                        key = urlParts[1];
+                    }
+                }
+
+                if (key) {
+                    await s3.deleteObject({
+                        Bucket: process.env.AWS_S3_BUCKET_NAME,
+                        Key: key
+                    }).promise();
+                    console.log(`Deleted S3 object: ${key}`);
+                }
+            } catch (s3Err) {
+                console.error("Error deleting file from S3:", s3Err);
+                // Continue with client deletion even if S3 delete fails, 
+                // but ideally log this for cleanup later.
             }
+        } else if (client.logo && !client.logo.startsWith('http')) {
+            // Attempt to delete local file if it's a local path
+            const localPath = path.resolve(client.logo);
+            fs.unlink(localPath, (err) => {
+                if (err) console.error("Error deleting local file:", err);
+            });
         }
 
         await Client.findByIdAndDelete(req.params.id);

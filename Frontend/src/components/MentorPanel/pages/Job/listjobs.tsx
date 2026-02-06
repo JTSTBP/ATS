@@ -3,6 +3,7 @@ import React from "react";
 import { RefreshCcw, Edit, Eye, Trash2, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../context/AuthProvider";
+import { getImageUrl } from "../../../../utils/imageUtils";
 
 interface JobCardProps {
     id?: string | number;
@@ -72,7 +73,7 @@ const JobCard: React.FC<JobCardProps> = ({
                 <div className="flex-shrink-0 mt-1">
                     {client?.logo ? (
                         <img
-                            src={`${import.meta.env.VITE_BACKEND_URL}/${client.logo}`}
+                            src={getImageUrl(client.logo)}
                             alt={client.companyName || 'Client'}
                             className="w-10 h-10 md:w-12 md:h-12 object-cover rounded-lg border-2 border-gray-100"
                         />
