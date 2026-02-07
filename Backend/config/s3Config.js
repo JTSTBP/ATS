@@ -140,20 +140,18 @@ const getSignedUrl = (fileUrl) => {
     // Check if it's an S3 URL
     if (fileUrl.includes('amazonaws.com')) {
         try {
-            // Extract Key from URL
-            // Format: https://bucket-name.s3.region.amazonaws.com/key
-            // OR: https://s3.region.amazonaws.com/bucket-name/key
-            let key;
-            const bucketDomain = `${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com`;
+            // Use URL API for robust parsing
+            const urlObj = new URL(fileUrl);
 
-            if (fileUrl.includes(bucketDomain)) {
-                key = fileUrl.split(bucketDomain + '/')[1];
-            } else {
-                // Fallback key extraction logic if generic s3 domain
-                const urlParts = fileUrl.split('.com/');
-                if (urlParts.length > 1) {
-                    key = urlParts[1];
-                    // If the key starts with the bucket name in path style, remove it (simplified assumption, usually virtual hosted style is used)
+            // Extract Key from pathname (comes with leading /)
+            // decodeURIComponent is CRITICAL for keys with spaces/special chars
+            let key = decodeURIComponent(urlObj.pathname.substring(1));
+
+            // Handle Path-Style URLs (e.g. s3.region.amazonaws.com/bucket-name/key)
+            if (urlObj.hostname.startsWith('s3.') && !urlObj.hostname.startsWith(process.env.AWS_S3_BUCKET_NAME)) {
+                const bucketName = process.env.AWS_S3_BUCKET_NAME;
+                if (key.startsWith(bucketName + '/')) {
+                    key = key.substring(bucketName.length + 1);
                 }
             }
 

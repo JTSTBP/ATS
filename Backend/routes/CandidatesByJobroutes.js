@@ -19,10 +19,20 @@ async function deleteFile(filePath) {
   // If it's an S3 URL (contains amazonaws.com)
   if (filePath.includes('amazonaws.com')) {
     try {
-      // Extract S3 key from URL
-      // Remove query parameters (signed URLs have ?X-Amz-Signature=... etc)
-      const urlWithoutQuery = filePath.split('?')[0];
-      const key = urlWithoutQuery.split('.com/')[1]; // Extract S3 key from URL
+      // Use URL API for robust parsing
+      const urlObj = new URL(filePath);
+
+      // Extract Key from pathname (comes with leading /)
+      // decodeURIComponent is CRITICAL for keys with spaces/special chars
+      let key = decodeURIComponent(urlObj.pathname.substring(1));
+
+      // Handle Path-Style URLs (e.g. s3.region.amazonaws.com/bucket-name/key)
+      if (urlObj.hostname.startsWith('s3.') && !urlObj.hostname.startsWith(process.env.AWS_S3_BUCKET_NAME)) {
+        const bucketName = process.env.AWS_S3_BUCKET_NAME;
+        if (key.startsWith(bucketName + '/')) {
+          key = key.substring(bucketName.length + 1);
+        }
+      }
 
       if (!key) {
         console.error('❌ Could not extract S3 key from URL:', filePath);
