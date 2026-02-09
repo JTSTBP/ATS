@@ -1,9 +1,97 @@
 import { useState, useEffect } from "react";
-import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff, Banknote } from "lucide-react";
+import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff, Banknote, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserContext } from "../../context/UserProvider";
 import { useSearchParams } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
+
+// 🔹 Searchable Select Component
+const SearchableSelect = ({
+  options,
+  value,
+  onChange,
+  placeholder,
+  className = "",
+  disabled = false
+}: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className?: string;
+  disabled?: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const myRef = useState(() => ({ current: null as HTMLDivElement | null }))[0];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (myRef.current && !myRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [myRef]);
+
+  const filteredOptions = options.filter(opt =>
+    opt.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedOption = options.find(opt => opt.value === value);
+
+  return (
+    <div className={`relative ${className}`} ref={myRef}>
+      <div
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full p-2.5 bg-white border border-slate-200 rounded-xl text-sm flex justify-between items-center focus:ring-2 focus:ring-blue-500/20 transition-all ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+          }`}
+      >
+        <span className={`text-sm ${selectedOption && selectedOption.value !== '' ? "text-slate-800 font-medium" : "text-slate-500"}`}>
+          {selectedOption && selectedOption.value !== '' ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </div>
+      {isOpen && (
+        <div className="absolute z-[100] mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-xl max-h-64 overflow-hidden flex flex-col animate-in fade-in animate-slide-in-from-top-2 duration-200">
+          <div className="p-2 border-b border-slate-100 bg-slate-50/50">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-slate-400 w-3.5 h-3.5" />
+              <input
+                autoFocus
+                type="text"
+                placeholder="Search..."
+                className="w-full pl-8 pr-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="overflow-y-auto">
+            {filteredOptions.length > 0 ? (
+              filteredOptions.map(opt => (
+                <div
+                  key={opt.value}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                    setSearchTerm("");
+                  }}
+                  className={`px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm transition-colors ${value === opt.value ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-slate-700'}`}
+                >
+                  {opt.label}
+                </div>
+              ))
+            ) : (
+              <div className="p-4 text-center text-slate-400 text-xs italic">No matching results</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export default function UserManagement() {
   const { users, addUser, updateUser, deleteUser, paginatedUsers, pagination, fetchPaginatedUsers, toggleUserStatus } = useUserContext();
@@ -17,6 +105,7 @@ export default function UserManagement() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [showAppPassword, setShowAppPassword] = useState(false);
+  const [reporterFilter, setReporterFilter] = useState("");
 
   const roleFilter = searchParams.get("role");
   const adminFilter = searchParams.get("isAdmin");
@@ -48,16 +137,17 @@ export default function UserManagement() {
         limit,
         searchTerm,
         roleFilter || "",
-        adminFilter || ""
+        adminFilter || "",
+        reporterFilter
       );
     }, 300);
     return () => clearTimeout(timer);
-  }, [currentPage, searchTerm, roleFilter, adminFilter]);
+  }, [currentPage, searchTerm, roleFilter, adminFilter, reporterFilter]);
 
   // Reset to page 1 when filters change (but not when page changes)
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, roleFilter, adminFilter]);
+  }, [searchTerm, roleFilter, adminFilter, reporterFilter]);
 
   const resetForm = () => {
     setFormData({
@@ -107,14 +197,14 @@ export default function UserManagement() {
           setShowModal(false);
           setEditUserId(null);
           resetForm();
-          fetchPaginatedUsers(currentPage, limit, searchTerm, roleFilter || "", adminFilter || "");
+          fetchPaginatedUsers(currentPage, limit, searchTerm, roleFilter || "", adminFilter || "", reporterFilter);
         }
       } else {
         const success = await addUser(formData);
         if (success) {
           setShowModal(false);
           resetForm();
-          fetchPaginatedUsers(currentPage, limit, searchTerm, roleFilter || "", adminFilter || "");
+          fetchPaginatedUsers(currentPage, limit, searchTerm, roleFilter || "", adminFilter || "", reporterFilter);
         }
       }
     } catch (err) {
@@ -152,6 +242,7 @@ export default function UserManagement() {
   const clearFilters = () => {
     setSearchParams({});
     setSearchTerm("");
+    setReporterFilter("");
   };
 
   // Helper to determine permissions based on role (Visual only)
@@ -204,9 +295,31 @@ export default function UserManagement() {
             <input
               type="text"
               placeholder="Search users..."
-              className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-64 transition-all shadow-sm"
+              className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-48 transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="w-48">
+            <SearchableSelect
+              options={[
+                { value: "", label: "All Reporters" },
+                ...Array.from(
+                  new Map(
+                    users
+                      .map((u: any) => u.reporter)
+                      .filter(Boolean)
+                      .map((r: any) => [r._id, r])
+                  ).values()
+                ).map((r: any) => ({
+                  value: r._id,
+                  label: r.name
+                }))
+              ]}
+              value={reporterFilter}
+              onChange={(val) => setReporterFilter(val)}
+              placeholder="Filter by Reporter"
             />
           </div>
 
@@ -216,7 +329,7 @@ export default function UserManagement() {
               resetForm();
               setShowModal(true);
             }}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm font-semibold"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm font-semibold whitespace-nowrap"
           >
             <Plus size={18} />
             <span>Add Member</span>

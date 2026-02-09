@@ -486,27 +486,44 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
+  const contextValue = React.useMemo(() => ({
+    candidates,
+    loading,
+    error,
+    fetchallCandidates,
+    fetchCandidatesByJob,
+    fetchCandidatesByUser,
+    createCandidate,
+    updateCandidate,
+    deleteCandidate,
+    updateStatus,
+    addComment,
+    paginatedCandidates,
+    pagination,
+    fetchPaginatedCandidates,
+    fetchPaginatedCandidatesByUser,
+    fetchRoleBasedCandidates,
+  }), [
+    candidates,
+    loading,
+    error,
+    fetchallCandidates,
+    fetchCandidatesByJob,
+    fetchCandidatesByUser,
+    createCandidate,
+    updateCandidate,
+    deleteCandidate,
+    updateStatus,
+    addComment,
+    paginatedCandidates,
+    pagination,
+    fetchPaginatedCandidates,
+    fetchPaginatedCandidatesByUser,
+    fetchRoleBasedCandidates,
+  ]);
+
   return (
-    <CandidateContext.Provider
-      value={{
-        candidates,
-        loading,
-        error,
-        fetchallCandidates,
-        fetchCandidatesByJob,
-        fetchCandidatesByUser,
-        createCandidate,
-        updateCandidate,
-        deleteCandidate,
-        updateStatus,
-        addComment,
-        paginatedCandidates,
-        pagination,
-        fetchPaginatedCandidates,
-        fetchPaginatedCandidatesByUser,
-        fetchRoleBasedCandidates,
-      }}
-    >
+    <CandidateContext.Provider value={contextValue}>
       {children}
     </CandidateContext.Provider>
   );

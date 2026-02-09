@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { API_BASE_URL } from '../config/config';
 
@@ -91,7 +91,7 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const [bdExecutives, setBdExecutives] = useState<BDExecutive[]>([]);
 
     // Fetch all clients (Backward compatibility)
-    const fetchClients = async () => {
+    const fetchClients = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -109,9 +109,9 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchBDExecutives = async () => {
+    const fetchBDExecutives = useCallback(async () => {
         try {
             const response = await fetch('https://jtcrm.in/api/api/users/role/bd-executives');
             const data = await response.json();
@@ -119,10 +119,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } catch (err: any) {
             console.error('Error fetching BD executives:', err);
         }
-    };
+    }, []);
 
     // New: Fetch Paginated Clients
-    const fetchPaginatedClients = async (page: number, limit: number, search: string = '', startDate: string = '', endDate: string = '', bdExecutive: string = '') => {
+    const fetchPaginatedClients = useCallback(async (page: number, limit: number, search: string = '', startDate: string = '', endDate: string = '', bdExecutive: string = '') => {
         setLoading(true);
         setError(null);
         try {
@@ -154,10 +154,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Fetch single client by ID
-    const fetchClientById = async (id: string): Promise<Client | null> => {
+    const fetchClientById = useCallback(async (id: string): Promise<Client | null> => {
         try {
             const response = await fetch(`${API_URL}/${id}`);
             const data = await response.json();
@@ -170,10 +170,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
             console.error('Error fetching client:', err);
             return null;
         }
-    };
+    }, []);
 
     // Create new client
-    const createClient = async (clientData: Client, logoFile?: File): Promise<Client | null> => {
+    const createClient = useCallback(async (clientData: Client, logoFile?: File): Promise<Client | null> => {
         try {
             setLoading(true);
 
@@ -235,10 +235,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Update existing client
-    const updateClient = async (id: string, clientData: Client, logoFile?: File): Promise<Client | null> => {
+    const updateClient = useCallback(async (id: string, clientData: Client, logoFile?: File): Promise<Client | null> => {
         try {
             setLoading(true);
 
@@ -295,10 +295,10 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     // Delete client
-    const deleteClient = async (id: string): Promise<boolean> => {
+    const deleteClient = useCallback(async (id: string): Promise<boolean> => {
         try {
             const response = await fetch(`${API_URL}/${id}`, {
                 method: 'DELETE',
@@ -319,31 +319,45 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
             toast.error(err.message || 'Failed to delete client');
             return false;
         }
-    };
+    }, []);
 
     // Auto-fetch clients on mount
     useEffect(() => {
         fetchClients();
-    }, []);
+    }, [fetchClients]);
+
+    const contextValue = useMemo(() => ({
+        clients,
+        paginatedClients,
+        pagination,
+        loading,
+        error,
+        fetchClients,
+        fetchPaginatedClients,
+        fetchClientById,
+        createClient,
+        updateClient,
+        deleteClient,
+        bdExecutives,
+        fetchBDExecutives
+    }), [
+        clients,
+        paginatedClients,
+        pagination,
+        loading,
+        error,
+        fetchClients,
+        fetchPaginatedClients,
+        fetchClientById,
+        createClient,
+        updateClient,
+        deleteClient,
+        bdExecutives,
+        fetchBDExecutives
+    ]);
 
     return (
-        <ClientsContext.Provider
-            value={{
-                clients,
-                paginatedClients, // New
-                pagination, // New
-                loading,
-                error,
-                fetchClients,
-                fetchPaginatedClients, // New
-                fetchClientById,
-                createClient,
-                updateClient,
-                deleteClient,
-                bdExecutives,
-                fetchBDExecutives
-            }}
-        >
+        <ClientsContext.Provider value={contextValue}>
             {children}
         </ClientsContext.Provider>
     );

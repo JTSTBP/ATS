@@ -43,7 +43,7 @@ router.post("/", async (req, res) => {
 // 📋 Get All Users (with Pagination & Filtering)
 router.get("/", async (req, res) => {
   try {
-    const { page, limit, search, role, isAdmin } = req.query;
+    const { page, limit, search, role, isAdmin, reporter } = req.query;
 
     // Build Query
     const query = {};
@@ -66,6 +66,11 @@ router.get("/", async (req, res) => {
     // Admin Filter
     if (isAdmin !== undefined) {
       query.isAdmin = isAdmin === "true";
+    }
+
+    // Reporter Filter
+    if (reporter) {
+      query.reporter = reporter;
     }
 
     // If Pagination params are present

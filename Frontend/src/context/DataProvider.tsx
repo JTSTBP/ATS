@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { toast } from "react-toastify";
 
 const API_BASE_URL =
@@ -98,7 +98,8 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     totalJobs: 0,
   });
 
-  const fetchPaginatedJobs = async (
+  // 🔹 Fetch paginated jobs
+  const fetchPaginatedJobs = useCallback(async (
     page: number,
     limit: number,
     filters: any = {}
@@ -131,10 +132,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 🔹 Fetch all jobs
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -147,10 +148,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 🔹 Fetch single job
-  const fetchJobById = async (id: string) => {
+  const fetchJobById = useCallback(async (id: string) => {
     try {
       const res = await fetch(`${API_URL}/${id}`);
       const data = await res.json();
@@ -160,10 +161,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       console.error("Failed to fetch job:", err);
       return null;
     }
-  };
+  }, []);
 
   // 🔹 Create a new job
-  const createJob = async (jobData: any): Promise<void> => {
+  const createJob = useCallback(async (jobData: any): Promise<void> => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}`, {
@@ -181,10 +182,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 🔹 Update a job
-  const updateJob = async (id: string, jobData: Partial<Job>): Promise<void> => {
+  const updateJob = useCallback(async (id: string, jobData: Partial<Job>): Promise<void> => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/${id}`, {
@@ -202,9 +203,9 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const updateJobStatus = async (id: string, status: string, userId: string): Promise<void> => {
+  const updateJobStatus = useCallback(async (id: string, status: string, userId: string): Promise<void> => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/${id}`, {
@@ -226,10 +227,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 🔹 Delete a job
-  const deleteJob = async (id: string, role: string): Promise<void> => {
+  const deleteJob = useCallback(async (id: string, role: string): Promise<void> => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/${id}/${role}`, { method: "DELETE" });
@@ -243,9 +244,9 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchJobsByCreator = async (userId: string) => {
+  const fetchJobsByCreator = useCallback(async (userId: string) => {
     try {
       setLoading(true);
       const { data } = await axios.get(`${API_URL}/createdby/${userId}`);
@@ -260,10 +261,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 🔹 Fetch jobs assigned to a recruiter (Legacy/All)
-  const fetchAssignedJobs = async (recruiterId: string) => {
+  const fetchAssignedJobs = useCallback(async (recruiterId: string) => {
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/assigned/${recruiterId}`);
@@ -279,10 +280,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 🔹 Fetch jobs assigned to a recruiter (Paginated)
-  const fetchPaginatedAssignedJobs = async (
+  const fetchPaginatedAssignedJobs = useCallback(async (
     recruiterId: string,
     page: number,
     limit: number,
@@ -317,35 +318,53 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Auto-fetch jobs on mount
   useEffect(() => {
     fetchJobs();
-  }, []);
+  }, [fetchJobs]);
+
+  const contextValue = useMemo(() => ({
+    jobs,
+    loading,
+    error,
+    fetchJobs,
+    fetchJobById,
+    createJob,
+    updateJob,
+    updateJobStatus,
+    deleteJob,
+    jobsByUser,
+    fetchJobsByCreator,
+    assignedJobs,
+    fetchAssignedJobs,
+    fetchPaginatedAssignedJobs,
+    paginatedJobs,
+    pagination,
+    fetchPaginatedJobs,
+  }), [
+    jobs,
+    loading,
+    error,
+    fetchJobs,
+    fetchJobById,
+    createJob,
+    updateJob,
+    updateJobStatus,
+    deleteJob,
+    jobsByUser,
+    fetchJobsByCreator,
+    assignedJobs,
+    fetchAssignedJobs,
+    fetchPaginatedAssignedJobs,
+    paginatedJobs,
+    pagination,
+    fetchPaginatedJobs,
+  ]);
 
   return (
-    <JobContext.Provider
-      value={{
-        jobs,
-        loading,
-        error,
-        fetchJobs,
-        fetchJobById,
-        createJob,
-        updateJob,
-        updateJobStatus,
-        deleteJob,
-        jobsByUser,
-        fetchJobsByCreator,
-        assignedJobs,
-        fetchAssignedJobs,
-        fetchPaginatedAssignedJobs,
-        paginatedJobs,
-        pagination,
-        fetchPaginatedJobs,
-      }}
-    >
+    <JobContext.Provider value={contextValue}>
       {children}
     </JobContext.Provider>
   );
