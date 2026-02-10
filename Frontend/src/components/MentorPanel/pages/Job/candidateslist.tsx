@@ -17,7 +17,7 @@ import {
   ChevronDown,
   Search,
 } from "lucide-react";
-import { getImageUrl } from "../../../../utils/imageUtils";
+import { getImageUrl, getFilePreviewUrl } from "../../../../utils/imageUtils";
 import { API_BASE_URL } from "../../../../config/config";
 
 import { useEffect, useState } from "react";
@@ -1456,7 +1456,7 @@ const CandidatesList = () => {
                           {/* Offer Letter Link */}
                           {candidate.status === "Joined" && candidate.offerLetter && (
                             <a
-                              href={getImageUrl(candidate.offerLetter)}
+                              href={getFilePreviewUrl(candidate.offerLetter)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
@@ -1811,16 +1811,26 @@ const CandidatesList = () => {
                 </h3>
                 <div className="flex flex-wrap gap-3">
                   {selectedCandidate.resumeUrl && (
-                    <button
-                      onClick={() =>
-                        setPreviewResumeUrl(
-                          getImageUrl(selectedCandidate.resumeUrl)
-                        )
-                      }
-                      className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition text-blue-600 font-medium"
-                    >
-                      <Eye className="w-4 h-4" /> Preview Resume
-                    </button>
+                    ['doc', 'docx'].includes(selectedCandidate.resumeUrl.split('.').pop()?.toLowerCase() || '') ? (
+                      <a
+                        href={getImageUrl(selectedCandidate.resumeUrl)}
+                        download
+                        className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition text-blue-600 font-medium"
+                      >
+                        <Download className="w-4 h-4" /> Download Resume
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() =>
+                          setPreviewResumeUrl(
+                            getFilePreviewUrl(selectedCandidate.resumeUrl)
+                          )
+                        }
+                        className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition text-blue-600 font-medium"
+                      >
+                        <Eye className="w-4 h-4" /> Preview Resume
+                      </button>
+                    )
                   )}
 
                   {selectedCandidate.linkedinUrl && (

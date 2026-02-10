@@ -17,7 +17,7 @@ import { useJobContext } from "../../context/DataProvider";
 import CandidateModal from "./CandidateModal";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
-import { getImageUrl } from "../../utils/imageUtils";
+import { getImageUrl, getFilePreviewUrl } from "../../utils/imageUtils";
 
 // 🔹 Searchable Select Component
 const SearchableSelect = ({
@@ -517,7 +517,7 @@ export default function Candidates() {
                         <td className="px-6 py-4">
                           {candidate.resumeUrl ? (
                             <a
-                              href={getImageUrl(candidate.resumeUrl)}
+                              href={getFilePreviewUrl(candidate.resumeUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors border border-blue-100"
@@ -550,7 +550,7 @@ export default function Candidates() {
                             <td className="px-6 py-4">
                               {candidate.offerLetter ? (
                                 <a
-                                  href={getImageUrl(candidate.offerLetter)}
+                                  href={getFilePreviewUrl(candidate.offerLetter)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-lg text-xs font-bold hover:bg-teal-100 transition-colors border border-teal-100"

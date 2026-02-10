@@ -18,7 +18,7 @@ import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../../utils/dateUtils";
-import { getImageUrl } from "../../../utils/imageUtils";
+import { getImageUrl, getFilePreviewUrl } from "../../../utils/imageUtils";
 
 
 import { useSearchParams } from "react-router-dom";
@@ -577,7 +577,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {candidate.offerLetter ? (
                             <a
-                              href={getImageUrl(candidate.offerLetter)}
+                              href={getFilePreviewUrl(candidate.offerLetter)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-blue-600 hover:underline flex items-center"
@@ -622,7 +622,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                     <td className="px-6 py-4">
                       {candidate.resumeUrl ? (
                         <a
-                          href={getImageUrl(candidate.resumeUrl)}
+                          href={getFilePreviewUrl(candidate.resumeUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center text-blue-600"

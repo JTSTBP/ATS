@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
-import { getImageUrl } from "../../utils/imageUtils";
+import { getImageUrl, getFilePreviewUrl } from "../../utils/imageUtils";
 
 
 // 🔹 Searchable Select Component
@@ -638,7 +638,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         <td className="px-6 py-4">
                                             {candidate.resumeUrl ? (
                                                 <a
-                                                    href={getImageUrl(candidate.resumeUrl)}
+                                                    href={getFilePreviewUrl(candidate.resumeUrl)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="flex items-center text-blue-600"
@@ -706,7 +706,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 <td className="px-6 py-4 text-sm text-gray-700">
                                                     {candidate.offerLetter ? (
                                                         <a
-                                                            href={getImageUrl(candidate.offerLetter)}
+                                                            href={getFilePreviewUrl(candidate.offerLetter)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="text-blue-600 hover:underline flex items-center"

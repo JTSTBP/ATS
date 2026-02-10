@@ -163,16 +163,11 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type - only allow PDF
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    if (fileExtension === 'docx' || fileExtension === 'doc') {
-      toast.error('DOCX files are not supported. Please upload a PDF file only.');
-      e.target.value = ''; // Clear the input
-      return;
-    }
+    const allowedExtensions = ['pdf', 'doc', 'docx'];
 
-    if (fileExtension !== 'pdf') {
-      toast.error('Only PDF files are allowed for resume uploads.');
+    if (!allowedExtensions.includes(fileExtension || "")) {
+      toast.error('Only PDF and Word documents (.doc, .docx) are allowed for resumes.');
       e.target.value = ''; // Clear the input
       return;
     }
@@ -419,7 +414,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".pdf,application/pdf"
+                    accept=".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     onChange={handleFileUpload}
                     className="hidden"
                   />

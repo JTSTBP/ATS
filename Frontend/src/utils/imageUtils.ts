@@ -13,3 +13,22 @@ export const getImageUrl = (path: string | undefined | null) => {
     const normalizedPath = path.replace(/\\/g, "/").startsWith("/") ? path.replace(/\\/g, "/").substring(1) : path.replace(/\\/g, "/");
     return `${backendUrl}/${normalizedPath}`;
 };
+
+/**
+ * Returns a URL for previewing a file.
+ * - PDFs are returned as is (browser-native preview).
+ * - Word documents are wrapped in Google Docs Viewer.
+ */
+export const getFilePreviewUrl = (url: string | undefined | null) => {
+    if (!url) return "";
+
+    const fileUrl = getImageUrl(url);
+    const extension = url.split('.').pop()?.toLowerCase();
+
+    // if (extension === 'doc' || extension === 'docx') {
+    //     // Wrap in Google Docs Viewer for Word documents
+    //     return `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+    // }
+
+    return fileUrl;
+};
