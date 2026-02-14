@@ -17,7 +17,7 @@ import { useJobContext } from "../../context/DataProvider";
 import CandidateModal from "./CandidateModal";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
-import { getImageUrl, getFilePreviewUrl } from "../../utils/imageUtils";
+import { getFilePreviewUrl } from "../../utils/imageUtils";
 
 // 🔹 Searchable Select Component
 const SearchableSelect = ({
@@ -215,7 +215,7 @@ export default function Candidates() {
     }
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string, rejectionReason?: string) => {
+  const confirmStatusChange = async (_comment: string, _joiningDate?: string, _offerLetter?: File, _selectionDate?: string, _expectedJoiningDate?: string, _rejectedBy?: string, _offeredCTC?: string, _rejectionReason?: string) => {
     // Read only for recruiters
   };
 
@@ -242,12 +242,12 @@ export default function Candidates() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 leading-tight">
               Candidates
             </h1>
-            <p className="text-slate-600">
+            <p className="text-sm sm:text-base text-gray-500 mt-1">
               Manage and track your candidate pipeline
             </p>
           </div>
@@ -255,29 +255,27 @@ export default function Candidates() {
 
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
           {/* 🔍 Top Controls */}
-          <div className="p-6 border-b border-slate-100 bg-slate-50/50">
-            <div className="space-y-4">
+          <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/30">
+            <div className="space-y-6">
               {/* Search Bar Row */}
-              <div className="relative">
+              <div className="relative group">
                 <Search
                   size={18}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors"
                 />
                 <input
                   type="text"
                   placeholder="Search by name, email, phone, or skills..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm text-sm"
+                  className="w-full pl-11 pr-4 py-3 rounded-2xl border border-gray-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-sm transition-all text-sm font-medium"
                 />
               </div>
 
-
-
               {/* Filters Grid Row */}
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Client</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+                <div className="space-y-1.5 lg:col-span-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Client</label>
                   <SearchableSelect
                     options={[
                       { value: '', label: 'All Clients' },
@@ -289,8 +287,8 @@ export default function Candidates() {
                   />
                 </div>
 
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Job Title</label>
+                <div className="space-y-1.5 lg:col-span-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Job Title</label>
                   <SearchableSelect
                     options={[
                       { value: 'All', label: 'All Jobs' },
@@ -302,96 +300,100 @@ export default function Candidates() {
                   />
                 </div>
 
-                <div className="space-y-1 md:col-span-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Upload From</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Upload From</label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                    className="w-full px-4 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-sm transition-all font-medium"
                   />
                 </div>
 
-                <div className="space-y-1 md:col-span-1">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Upload To</label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Upload To</label>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 shadow-sm"
+                    className="w-full px-4 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-sm transition-all font-medium"
                   />
                 </div>
               </div>
+
               {/* Status Tabs Row (Direct Filtration) */}
-              <div className="flex flex-wrap gap-2 pt-2 border-b border-slate-100 pb-4">
-                {[
-                  "All Status",
-                  "New",
-                  "Shortlisted",
-                  "Interviewed",
-                  "Selected",
-                  "Joined",
-                  "Rejected",
-                  "Dropped",
-                  "Hold",
-                ].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all border ${statusFilter === status
-                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                      : "bg-white text-slate-600 border-slate-200 hover:border-blue-400 hover:text-blue-600"
-                      }`}
-                  >
-                    {status}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Status Filter</label>
+                <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+                  {[
+                    "All Status",
+                    "New",
+                    "Shortlisted",
+                    "Interviewed",
+                    "Selected",
+                    "Joined",
+                    "Rejected",
+                    "Dropped",
+                    "Hold",
+                  ].map((status) => (
+                    <button
+                      key={status}
+                      onClick={() => setStatusFilter(status)}
+                      className={`px-5 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 whitespace-nowrap ${statusFilter === status
+                        ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200"
+                        : "bg-white text-gray-600 border-gray-100 hover:border-blue-300 hover:text-blue-600 shadow-sm"
+                        }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
             {/* Conditional Date Filters Row */}
             {(statusFilter === "Joined" || statusFilter === "Selected") && (
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 mt-6 px-1">
                 {statusFilter === "Joined" && (
                   <>
-                    <div className="md:col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-teal-500 uppercase tracking-wider ml-1">Joined From</label>
+                    <div className="lg:col-span-3 space-y-1.5">
+                      <label className="text-[10px] font-bold text-teal-600 uppercase tracking-widest ml-1 font-mono">Joined From</label>
                       <input
                         type="date"
                         value={joinStartDate}
                         onChange={(e) => setJoinStartDate(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-teal-100 rounded-lg bg-teal-50/30 focus:ring-2 focus:ring-teal-500 shadow-sm"
+                        className="w-full px-4 py-2 text-sm border border-teal-100 rounded-xl bg-teal-50/30 focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 shadow-sm transition-all font-medium"
                       />
                     </div>
-                    <div className="md:col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-teal-500 uppercase tracking-wider ml-1">Joined To</label>
+                    <div className="lg:col-span-3 space-y-1.5">
+                      <label className="text-[10px] font-bold text-teal-600 uppercase tracking-widest ml-1 font-mono">Joined To</label>
                       <input
                         type="date"
                         value={joinEndDate}
                         onChange={(e) => setJoinEndDate(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-teal-100 rounded-lg bg-teal-50/30 focus:ring-2 focus:ring-teal-500 shadow-sm"
+                        className="w-full px-4 py-2 text-sm border border-teal-100 rounded-xl bg-teal-50/30 focus:ring-4 focus:ring-teal-500/10 focus:border-teal-500 shadow-sm transition-all font-medium"
                       />
                     </div>
                   </>
                 )}
                 {statusFilter === "Selected" && (
                   <>
-                    <div className="md:col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider ml-1">Selected From</label>
+                    <div className="lg:col-span-3 space-y-1.5">
+                      <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest ml-1 font-mono">Selected From</label>
                       <input
                         type="date"
                         value={selectStartDate}
                         onChange={(e) => setSelectStartDate(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-indigo-100 rounded-lg bg-indigo-50/30 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                        className="w-full px-4 py-2 text-sm border border-indigo-100 rounded-xl bg-indigo-50/30 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all font-medium"
                       />
                     </div>
-                    <div className="md:col-span-2 space-y-1">
-                      <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider ml-1">Selected To</label>
+                    <div className="lg:col-span-3 space-y-1.5">
+                      <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest ml-1 font-mono">Selected To</label>
                       <input
                         type="date"
                         value={selectEndDate}
                         onChange={(e) => setSelectEndDate(e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-indigo-100 rounded-lg bg-indigo-50/30 focus:ring-2 focus:ring-indigo-500 shadow-sm"
+                        className="w-full px-4 py-2 text-sm border border-indigo-100 rounded-xl bg-indigo-50/30 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all font-medium"
                       />
                     </div>
                   </>
@@ -548,9 +550,9 @@ export default function Candidates() {
                         {statusFilter === "Joined" && (
                           <>
                             <td className="px-6 py-4">
-                              {candidate.offerLetter ? (
+                              {(candidate as any).offerLetter ? (
                                 <a
-                                  href={getFilePreviewUrl(candidate.offerLetter)}
+                                  href={getFilePreviewUrl((candidate as any).offerLetter)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-lg text-xs font-bold hover:bg-teal-100 transition-colors border border-teal-100"
@@ -562,17 +564,17 @@ export default function Candidates() {
                               ) : "--"}
                             </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                              {candidate.joiningDate ? formatDate(candidate.joiningDate) : "--"}
+                              {(candidate as any).joiningDate ? formatDate((candidate as any).joiningDate) : "--"}
                             </td>
                           </>
                         )}
                         {statusFilter === "Selected" && (
                           <>
                             <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                              {candidate.selectionDate ? formatDate(candidate.selectionDate) : "--"}
+                              {(candidate as any).selectionDate ? formatDate((candidate as any).selectionDate) : "--"}
                             </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-700">
-                              {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "--"}
+                              {(candidate as any).expectedJoiningDate ? formatDate((candidate as any).expectedJoiningDate) : "--"}
                             </td>
                           </>
                         )}
@@ -580,8 +582,8 @@ export default function Candidates() {
                           <div className="text-xs text-slate-500 font-medium truncate italic" title={candidate.notes}>
                             {candidate.notes || "No remarks"}
                           </div>
-                          {candidate.status === "Rejected" && candidate.rejectionReason && (
-                            <div className="text-[10px] text-red-600 font-bold mt-1 uppercase">Reason: {candidate.rejectionReason}</div>
+                          {candidate.status === "Rejected" && (candidate as any).rejectionReason && (
+                            <div className="text-[10px] text-red-600 font-bold mt-1 uppercase">Reason: {(candidate as any).rejectionReason}</div>
                           )}
                         </td>
                       </tr>
@@ -594,21 +596,21 @@ export default function Candidates() {
 
           {/* Pagination Controls */}
           {pagination.totalCandidates > 0 && (
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-              <div className="text-sm font-semibold text-slate-500 uppercase tracking-widest text-[11px]">
-                Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalCandidates)} of {pagination.totalCandidates}
+            <div className="px-4 py-4 sm:px-6 bg-gray-50/50 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono text-center sm:text-left">
+                Showing {((pagination.currentPage - 1) * 10) + 1} - {Math.min(pagination.currentPage * 10, pagination.totalCandidates)} of {pagination.totalCandidates} candidates
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={pagination.currentPage === 1}
-                  className={`p-2 rounded-lg transition-all ${pagination.currentPage === 1 ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-white hover:shadow-sm"
+                  className={`p-2 rounded-xl transition-all ${pagination.currentPage === 1 ? "text-gray-200 cursor-not-allowed" : "text-gray-600 hover:bg-white hover:shadow-md active:scale-95 border border-gray-200"
                     }`}
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={18} />
                 </button>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 overflow-x-auto sm:overflow-visible max-w-[200px] sm:max-w-none px-1">
                   {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
                     let pageNum;
                     if (pagination.totalPages <= 5) pageNum = i + 1;
@@ -620,7 +622,7 @@ export default function Candidates() {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`w-9 h-9 flex items-center justify-center rounded-lg text-sm font-bold transition-all ${pagination.currentPage === pageNum ? "bg-blue-600 text-white shadow-md shadow-blue-200" : "bg-white text-slate-600 border border-slate-200 hover:border-blue-300"
+                        className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all shrink-0 ${pagination.currentPage === pageNum ? "bg-blue-600 text-white shadow-lg shadow-blue-200" : "bg-white text-gray-500 border border-gray-100 hover:border-blue-300 active:scale-95"
                           }`}
                       >
                         {pageNum}
@@ -632,10 +634,10 @@ export default function Candidates() {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={pagination.currentPage === pagination.totalPages}
-                  className={`p-2 rounded-lg transition-all ${pagination.currentPage === pagination.totalPages ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-white hover:shadow-sm"
+                  className={`p-2 rounded-xl transition-all ${pagination.currentPage === pagination.totalPages ? "text-gray-200 cursor-not-allowed" : "text-gray-600 hover:bg-white hover:shadow-md active:scale-95 border border-gray-200"
                     }`}
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={18} />
                 </button>
               </div>
             </div>

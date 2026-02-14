@@ -196,47 +196,52 @@ export default function PerformanceReportTable() {
     return (
         <>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-                <div className="p-4 md:p-6 border-b border-slate-100">
-                    <div className="mb-4">
-                        <h2 className="text-base md:text-lg font-bold text-slate-800">Performance Report</h2>
-                        <p className="text-xs md:text-sm text-slate-500">Breakdown by Job and Candidate Status</p>
+                <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/30">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">Performance Report</h2>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono mt-1">Breakdown by Job and Candidate Status</p>
+                        </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                        <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 w-full md:w-auto justify-center sm:justify-start">
+
+                    <div className="flex flex-col lg:flex-row gap-4">
+                        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all">
                             {['T', 'Y', 'W', 'L'].map(s => (
                                 <button
                                     key={s}
                                     onClick={() => applyDateShortcut(s)}
-                                    className="w-9 h-9 md:w-7 md:h-7 flex items-center justify-center text-xs md:text-[10px] font-bold rounded-md hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all text-slate-500 hover:text-indigo-600"
+                                    className="w-8 h-8 flex items-center justify-center text-[10px] font-bold rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all text-gray-500 hover:text-blue-600"
                                     title={s === 'T' ? 'Today' : s === 'Y' ? 'Yesterday' : s === 'W' ? 'This Week' : 'Last Week'}
                                 >
                                     {s}
                                 </button>
                             ))}
                         </div>
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 w-full md:max-w-md">
-                            <div className="flex items-center gap-2 flex-1">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">From</span>
+
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-sm focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono shrink-0">From</span>
                                 <input
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="bg-transparent text-sm focus:outline-none text-slate-600 w-full"
+                                    className="bg-transparent text-sm focus:outline-none text-gray-700 w-full font-medium"
                                 />
                             </div>
-                            <div className="flex items-center gap-2 flex-1">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">To</span>
+                            <div className="h-px sm:w-px sm:h-4 bg-gray-100" />
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono shrink-0">To</span>
                                 <input
                                     type="date"
                                     value={endDate}
                                     onChange={(e) => setEndDate(e.target.value)}
-                                    className="bg-transparent text-sm focus:outline-none text-slate-600 w-full"
+                                    className="bg-transparent text-sm focus:outline-none text-gray-700 w-full font-medium"
                                 />
                             </div>
                             {(startDate || endDate) && (
                                 <button
                                     onClick={() => { setStartDate(""); setEndDate(""); }}
-                                    className="text-slate-400 hover:text-red-500 transition-colors self-center p-1"
+                                    className="text-gray-400 hover:text-red-500 transition-colors p-1"
                                 >
                                     <X size={16} />
                                 </button>
@@ -245,213 +250,215 @@ export default function PerformanceReportTable() {
                     </div>
 
                     {/* Search Filters Row */}
-                    <div className="flex flex-col md:flex-row gap-2 md:gap-3 w-full mt-4">
-                        <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                    <div className="flex flex-col sm:flex-row gap-4 mt-6">
+                        <div className="relative group flex-1">
+                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search Client..."
                                 value={clientSearch}
                                 onChange={(e) => setClientSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-sm transition-all"
                             />
                         </div>
-                        <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
-                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                        <div className="relative group flex-1">
+                            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                             <input
                                 type="text"
                                 placeholder="Search Job Title..."
                                 value={jobSearch}
                                 onChange={(e) => setJobSearch(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-sm transition-all"
                             />
                         </div>
                     </div>
-
                 </div>
-                <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px]">
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10">
-                            <tr>
-                                <th className="py-3 px-6 min-w-[150px] relative">
-                                    <div className="flex items-center justify-between">
-                                        <span>Date Created</span>
-                                        <button
-                                            onClick={() => { setOpenFilter(openFilter === 'date' ? null : 'date'); setFilterSearch(""); }}
-                                            className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.date.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
-                                        >
-                                            <Filter size={14} fill={selectedFilters.date.length > 0 ? "currentColor" : "none"} />
-                                        </button>
-                                    </div>
-                                    <FilterDropdown
-                                        column="date"
-                                        options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => j.createdAt ? formatDate(j.createdAt) : "N/A"))).sort()}
-                                    />
-                                </th>
-                                <th className="py-3 px-6 min-w-[200px] relative">
-                                    <div className="flex items-center justify-between">
-                                        <span>Job Title</span>
-                                        <button
-                                            onClick={() => { setOpenFilter(openFilter === 'job' ? null : 'job'); setFilterSearch(""); }}
-                                            className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.job.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
-                                        >
-                                            <Filter size={14} fill={selectedFilters.job.length > 0 ? "currentColor" : "none"} />
-                                        </button>
-                                    </div>
-                                    <FilterDropdown
-                                        column="job"
-                                        options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => j.title))).sort()}
-                                    />
-                                </th>
-                                <th className="py-3 px-6 min-w-[200px] relative">
-                                    <div className="flex items-center justify-between">
-                                        <span>Client Name</span>
-                                        <button
-                                            onClick={() => { setOpenFilter(openFilter === 'client' ? null : 'client'); setFilterSearch(""); }}
-                                            className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.client.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
-                                        >
-                                            <Filter size={14} fill={selectedFilters.client.length > 0 ? "currentColor" : "none"} />
-                                        </button>
-                                    </div>
-                                    <FilterDropdown
-                                        column="client"
-                                        options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => {
-                                            const jClientId = typeof j.clientId === 'object' ? (j.clientId as any)?._id : j.clientId;
-                                            return clients.find(c => c._id === jClientId)?.companyName || "Unknown"
-                                        }))).sort()}
-                                    />
-                                </th>
-                                <th className="py-3 px-4 text-center min-w-[100px] relative">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <span>Total Uploads</span>
-                                        <button
-                                            onClick={() => { setOpenFilter(openFilter === 'total' ? null : 'total'); setFilterSearch(""); }}
-                                            className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.total.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
-                                        >
-                                            <Filter size={14} fill={selectedFilters.total.length > 0 ? "currentColor" : "none"} />
-                                        </button>
-                                    </div>
-                                    <FilterDropdown
-                                        column="total"
-                                        options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => {
-                                            const relevantCandidates = candidates.filter(c => {
-                                                const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-                                                return cJobId === j._id;
-                                            });
-                                            return relevantCandidates.length.toString();
-                                        }))).sort((a, b) => parseInt(a) - parseInt(b))}
-                                    />
-                                </th>
-                                <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
-                                <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Shortlisted</th>
-                                <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
-                                <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
-                                <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
-                                <th className="py-3 px-4 text-center text-red-600 min-w-[80px]">Rejected</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {(() => {
-                                const reportRows: any[] = [];
 
-                                const relevantJobs = jobs.filter(job => {
-                                    const isAssigned = isJobAssigned(job);
-                                    const hasUploads = candidates.some(c => {
-                                        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-                                        return cJobId === job._id;
-                                    });
-                                    return isAssigned || hasUploads;
-                                });
-
-                                relevantJobs.forEach(job => {
-                                    const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
-                                    const jobCandidates = candidates.filter(c => {
-                                        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-                                        return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
-                                    });
-
-                                    if (jobCandidates.length === 0 && !isJobAssigned(job)) {
-                                        // If not assigned and no candidates (after date filter), skip
-                                        return;
-                                    }
-
-                                    const jClientId = typeof job.clientId === 'object' ? (job.clientId as any)?._id : job.clientId;
-                                    const client = clients.find(c => c._id === jClientId);
-                                    const clientName = client?.companyName || "Unknown";
-
-                                    const matchesDate = selectedFilters.date.length > 0 ? selectedFilters.date.includes(jobDate) : true;
-                                    const matchesClient = selectedFilters.client.length > 0 ? selectedFilters.client.includes(clientName) : true;
-                                    const matchesJob = selectedFilters.job.length > 0 ? selectedFilters.job.includes(job.title) : true;
-                                    const matchesTotal = selectedFilters.total.length > 0 ? selectedFilters.total.includes(jobCandidates.length.toString()) : true;
-
-                                    const matchesClientSearch = clientSearch ? clientName.toLowerCase().includes(clientSearch.toLowerCase()) : true;
-                                    const matchesJobSearch = jobSearch ? job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
-
-                                    if (matchesDate && matchesClient && matchesJob && matchesTotal && matchesClientSearch && matchesJobSearch) {
-                                        reportRows.push({
-                                            job,
-                                            clientName,
-                                            jobDate,
-                                            jobCandidates
-                                        });
-                                    }
-                                });
-
-                                if (reportRows.length === 0) {
-                                    return (
-                                        <tr>
-                                            <td colSpan={10} className="py-8 text-center text-slate-500">
-                                                No performance data found for the selected criteria.
-                                            </td>
-                                        </tr>
-                                    );
-                                }
-
-                                return reportRows.map((row, i) => (
-                                    <tr key={`${row.job._id}-${i}`} className="hover:bg-slate-50 transition-colors">
-                                        <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
-                                        <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
-                                        <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
-                                        <td className="py-4 px-4 text-center">
+                <div className="overflow-x-auto scrollbar-hide">
+                    <div className="min-w-[1000px]">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-gray-50/50 text-gray-500 font-bold border-y border-gray-100 sticky top-0 z-10">
+                                <tr>
+                                    <th className="py-4 px-6 relative uppercase tracking-widest text-[10px] font-mono">
+                                        <div className="flex items-center justify-between">
+                                            <span>Date Created</span>
                                             <button
-                                                disabled={row.jobCandidates.length === 0}
-                                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
-                                                className={`px-2 py-0.5 rounded-full text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
-                                                    ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
-                                                    : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
+                                                onClick={() => { setOpenFilter(openFilter === 'date' ? null : 'date'); setFilterSearch(""); }}
+                                                className={`p-1.5 rounded-lg hover:bg-white hover:shadow-sm transition-all ${selectedFilters.date.length > 0 ? 'text-blue-600 bg-white shadow-sm' : 'text-gray-400'}`}
                                             >
-                                                {row.jobCandidates.length}
+                                                <Filter size={14} fill={selectedFilters.date.length > 0 ? "currentColor" : "none"} />
                                             </button>
-                                        </td>
-                                        {[
-                                            { key: "New", statuses: ["New", "Screening", "Under Review"] },
-                                            { key: "Shortlisted", statuses: ["Shortlisted"] },
-                                            { key: "Interviewed", statuses: ["Interview", "Interviewed"] },
-                                            { key: "Selected", statuses: ["Selected", "Offer"] },
-                                            { key: "Joined", statuses: ["Joined", "Hired"] },
-                                            { key: "Rejected", statuses: ["Rejected"] }
-                                        ].map(statusGroup => {
-                                            const statusCandidates = row.jobCandidates.filter((c: any) => statusGroup.statuses.includes(c.status));
-                                            const count = statusCandidates.length;
-                                            return (
-                                                <td key={statusGroup.key} className="py-4 px-4 text-center">
-                                                    <button
-                                                        disabled={count === 0}
-                                                        onClick={() => openCandidatePopup(row.job.title, row.clientName, statusGroup.key, statusCandidates)}
-                                                        className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                                            ? `${getStatusColor(statusGroup.key)} hover:scale-110`
-                                                            : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
-                                                    >
-                                                        {count}
-                                                    </button>
+                                        </div>
+                                        <FilterDropdown
+                                            column="date"
+                                            options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => j.createdAt ? formatDate(j.createdAt) : "N/A"))).sort()}
+                                        />
+                                    </th>
+                                    <th className="py-4 px-6 relative uppercase tracking-widest text-[10px] font-mono">
+                                        <div className="flex items-center justify-between">
+                                            <span>Job Title</span>
+                                            <button
+                                                onClick={() => { setOpenFilter(openFilter === 'job' ? null : 'job'); setFilterSearch(""); }}
+                                                className={`p-1.5 rounded-lg hover:bg-white hover:shadow-sm transition-all ${selectedFilters.job.length > 0 ? 'text-blue-600 bg-white shadow-sm' : 'text-gray-400'}`}
+                                            >
+                                                <Filter size={14} fill={selectedFilters.job.length > 0 ? "currentColor" : "none"} />
+                                            </button>
+                                        </div>
+                                        <FilterDropdown
+                                            column="job"
+                                            options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => j.title))).sort()}
+                                        />
+                                    </th>
+                                    <th className="py-4 px-6 relative uppercase tracking-widest text-[10px] font-mono">
+                                        <div className="flex items-center justify-between">
+                                            <span>Client Name</span>
+                                            <button
+                                                onClick={() => { setOpenFilter(openFilter === 'client' ? null : 'client'); setFilterSearch(""); }}
+                                                className={`p-1.5 rounded-lg hover:bg-white hover:shadow-sm transition-all ${selectedFilters.client.length > 0 ? 'text-blue-600 bg-white shadow-sm' : 'text-gray-400'}`}
+                                            >
+                                                <Filter size={14} fill={selectedFilters.client.length > 0 ? "currentColor" : "none"} />
+                                            </button>
+                                        </div>
+                                        <FilterDropdown
+                                            column="client"
+                                            options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => {
+                                                const jClientId = typeof j.clientId === 'object' ? (j.clientId as any)?._id : j.clientId;
+                                                return clients.find(c => c._id === jClientId)?.companyName || "Unknown"
+                                            }))).sort()}
+                                        />
+                                    </th>
+                                    <th className="py-4 px-4 text-center relative uppercase tracking-widest text-[10px] font-mono">
+                                        <div className="flex items-center justify-center gap-2">
+                                            <span>Total Uploads</span>
+                                            <button
+                                                onClick={() => { setOpenFilter(openFilter === 'total' ? null : 'total'); setFilterSearch(""); }}
+                                                className={`p-1.5 rounded-lg hover:bg-white hover:shadow-sm transition-all ${selectedFilters.total.length > 0 ? 'text-blue-600 bg-white shadow-sm' : 'text-gray-400'}`}
+                                            >
+                                                <Filter size={14} fill={selectedFilters.total.length > 0 ? "currentColor" : "none"} />
+                                            </button>
+                                        </div>
+                                        <FilterDropdown
+                                            column="total"
+                                            options={Array.from(new Set(jobs.filter(j => isJobAssigned(j)).map(j => {
+                                                const relevantCandidates = candidates.filter(c => {
+                                                    const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+                                                    return cJobId === j._id;
+                                                });
+                                                return relevantCandidates.length.toString();
+                                            }))).sort((a, b) => parseInt(a) - parseInt(b))}
+                                        />
+                                    </th>
+                                    <th className="py-4 px-4 text-center text-blue-600 uppercase tracking-widest text-[10px] font-mono">New</th>
+                                    <th className="py-4 px-4 text-center text-orange-600 uppercase tracking-widest text-[10px] font-mono">Shortlisted</th>
+                                    <th className="py-4 px-4 text-center text-indigo-600 uppercase tracking-widest text-[10px] font-mono">Interview</th>
+                                    <th className="py-4 px-4 text-center text-teal-600 uppercase tracking-widest text-[10px] font-mono">Selected</th>
+                                    <th className="py-4 px-4 text-center text-emerald-600 uppercase tracking-widest text-[10px] font-mono">Joined</th>
+                                    <th className="py-4 px-4 text-center text-red-600 uppercase tracking-widest text-[10px] font-mono">Rejected</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {(() => {
+                                    const reportRows: any[] = [];
+
+                                    const relevantJobs = jobs.filter(job => {
+                                        const isAssigned = isJobAssigned(job);
+                                        const hasUploads = candidates.some(c => {
+                                            const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+                                            return cJobId === job._id;
+                                        });
+                                        return isAssigned || hasUploads;
+                                    });
+
+                                    relevantJobs.forEach(job => {
+                                        const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
+                                        const jobCandidates = candidates.filter(c => {
+                                            const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+                                            return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
+                                        });
+
+                                        if (jobCandidates.length === 0 && !isJobAssigned(job)) {
+                                            // If not assigned and no candidates (after date filter), skip
+                                            return;
+                                        }
+
+                                        const jClientId = typeof job.clientId === 'object' ? (job.clientId as any)?._id : job.clientId;
+                                        const client = clients.find(c => c._id === jClientId);
+                                        const clientName = client?.companyName || "Unknown";
+
+                                        const matchesDate = selectedFilters.date.length > 0 ? selectedFilters.date.includes(jobDate) : true;
+                                        const matchesClient = selectedFilters.client.length > 0 ? selectedFilters.client.includes(clientName) : true;
+                                        const matchesJob = selectedFilters.job.length > 0 ? selectedFilters.job.includes(job.title) : true;
+                                        const matchesTotal = selectedFilters.total.length > 0 ? selectedFilters.total.includes(jobCandidates.length.toString()) : true;
+
+                                        const matchesClientSearch = clientSearch ? clientName.toLowerCase().includes(clientSearch.toLowerCase()) : true;
+                                        const matchesJobSearch = jobSearch ? job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
+
+                                        if (matchesDate && matchesClient && matchesJob && matchesTotal && matchesClientSearch && matchesJobSearch) {
+                                            reportRows.push({
+                                                job,
+                                                clientName,
+                                                jobDate,
+                                                jobCandidates
+                                            });
+                                        }
+                                    });
+
+                                    if (reportRows.length === 0) {
+                                        return (
+                                            <tr>
+                                                <td colSpan={10} className="py-8 text-center text-slate-500">
+                                                    No performance data found for the selected criteria.
                                                 </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ));
-                            })()}
-                        </tbody>
-                    </table>
+                                            </tr>
+                                        );
+                                    }
+
+                                    return reportRows.map((row, i) => (
+                                        <tr key={`${row.job._id}-${i}`} className="hover:bg-slate-50 transition-colors">
+                                            <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
+                                            <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
+                                            <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
+                                            <td className="py-4 px-4 text-center">
+                                                <button
+                                                    disabled={row.jobCandidates.length === 0}
+                                                    onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
+                                                    className={`px-2 py-0.5 rounded-full text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
+                                                        ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                                                        : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
+                                                >
+                                                    {row.jobCandidates.length}
+                                                </button>
+                                            </td>
+                                            {[
+                                                { key: "New", statuses: ["New", "Screening", "Under Review"] },
+                                                { key: "Shortlisted", statuses: ["Shortlisted"] },
+                                                { key: "Interviewed", statuses: ["Interview", "Interviewed"] },
+                                                { key: "Selected", statuses: ["Selected", "Offer"] },
+                                                { key: "Joined", statuses: ["Joined", "Hired"] },
+                                                { key: "Rejected", statuses: ["Rejected"] }
+                                            ].map(statusGroup => {
+                                                const statusCandidates = row.jobCandidates.filter((c: any) => statusGroup.statuses.includes(c.status));
+                                                const count = statusCandidates.length;
+                                                return (
+                                                    <td key={statusGroup.key} className="py-4 px-4 text-center">
+                                                        <button
+                                                            disabled={count === 0}
+                                                            onClick={() => openCandidatePopup(row.job.title, row.clientName, statusGroup.key, statusCandidates)}
+                                                            className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                                                ? `${getStatusColor(statusGroup.key)} hover:scale-110`
+                                                                : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                                                        >
+                                                            {count}
+                                                        </button>
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ));
+                                })()}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

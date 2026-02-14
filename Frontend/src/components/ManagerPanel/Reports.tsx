@@ -322,48 +322,50 @@ export default function ManagerReports() {
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800">
       {/* Header */}
-      <div className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="mb-6 sm:mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Reports</h1>
-          <p className="text-slate-500 mt-1">Detailed performance and requirement analysis</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">Reports</h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">Detailed performance and requirement analysis</p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-          <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex gap-1.5 sm:gap-2 justify-center sm:justify-start">
             {['T', 'Y', 'W', 'L'].map(shortcut => (
               <button
                 key={shortcut}
                 onClick={() => applyDateShortcut(shortcut)}
-                className="px-3 py-1 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-slate-50 transition-colors"
+                className="w-9 h-9 sm:w-auto sm:px-3 sm:py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold hover:bg-slate-50 transition-all text-slate-600 hover:text-slate-900 shadow-sm"
               >
                 {shortcut}
               </button>
             ))}
           </div>
-          <div className="h-6 w-[1px] bg-slate-200 hidden sm:block"></div>
-          <div className="flex items-center gap-2">
-            <CalendarCheck size={18} className="text-indigo-500" />
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer"
-            />
-          </div>
-          <div className="text-xs font-bold text-slate-400 uppercase">To</div>
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="bg-transparent border-none text-sm font-medium focus:ring-0 cursor-pointer"
-            />
+          <div className="h-[1px] w-full sm:h-6 sm:w-[1px] bg-slate-100"></div>
+          <div className="flex flex-col xs:flex-row items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 flex-1">
+              <CalendarCheck size={16} className="text-indigo-500 shrink-0" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent border-none text-xs sm:text-sm font-semibold focus:ring-0 cursor-pointer p-0"
+              />
+            </div>
+            <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest hidden xs:block">to</div>
+            <div className="flex items-center gap-2 flex-1">
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent border-none text-xs sm:text-sm font-semibold focus:ring-0 cursor-pointer p-0"
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10">
         {[
           { label: "Total Positions", value: dashboardStats.totalPositions, icon: Briefcase, color: "blue", path: "/Manager/jobs" },
           { label: "Positions Left", value: dashboardStats.remainingPositions, icon: Briefcase, color: "emerald", path: "/Manager/jobs" },
@@ -377,24 +379,35 @@ export default function ManagerReports() {
           <div
             key={i}
             onClick={() => navigate(stat.path)}
-            className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+            className="bg-white rounded-xl shadow-sm p-5 sm:p-6 flex justify-between items-center hover:shadow-md transition-all border border-slate-100 cursor-pointer group"
           >
             <div>
-              <p className={`text-slate-500 text-sm font-medium transition-colors`}>{stat.label}</p>
-              <h2 className="text-3xl font-bold mt-1 text-slate-800">{stat.value}</h2>
+              <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest">{stat.label}</p>
+              <h2 className="text-2xl sm:text-3xl font-bold mt-1 text-slate-800">{stat.value}</h2>
             </div>
-            <div className={`bg-${stat.color}-50 text-${stat.color}-600 p-3 rounded-xl group-hover:bg-${stat.color}-100 transition-colors`}>
-              <stat.icon size={24} />
+            <div className={`p-2.5 sm:p-3 rounded-xl transition-colors ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-100' :
+                stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' :
+                  stat.color === 'amber' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-100' :
+                    stat.color === 'orange' ? 'bg-orange-50 text-orange-600 group-hover:bg-orange-100' :
+                      stat.color === 'purple' ? 'bg-purple-50 text-purple-600 group-hover:bg-purple-100' :
+                        'bg-green-50 text-green-600 group-hover:bg-green-100'
+              }`}>
+              <stat.icon size={20} className="sm:w-6 sm:h-6" />
             </div>
           </div>
         ))}
       </div>
 
       {/* Table Section */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <div className="p-4 md:p-6 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Client Job Report</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div className="p-4 sm:p-6 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">Client Job Report</h2>
+              <p className="text-xs text-slate-500 mt-1">Breakdown of metrics per job requirement</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="relative group">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input
@@ -402,7 +415,7 @@ export default function ManagerReports() {
                 placeholder="Search Client..."
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
               />
             </div>
             <div className="relative group">
@@ -412,7 +425,7 @@ export default function ManagerReports() {
                 placeholder="Search Job Title..."
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
               />
             </div>
             <div className="relative group">
@@ -422,14 +435,14 @@ export default function ManagerReports() {
                 placeholder="Search Recruiter..."
                 value={recruiterSearch}
                 onChange={(e) => setRecruiterSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
               />
             </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-          <table className="w-full text-sm text-left">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] scrollbar-thin">
+          <table className="w-full text-sm text-left min-w-[2000px]">
             <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-[30]">
               <tr>
                 <th className="py-3 px-6 min-w-[150px] relative">

@@ -338,14 +338,14 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Candidates (Admin View)</h2>
-                    <p className="text-gray-600">Manage all candidate profiles and CVs</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Candidates (Admin View)</h2>
+                    <p className="text-xs sm:text-sm text-gray-600">Manage all candidate profiles and CVs</p>
                 </div>
                 <button
                     onClick={() => setShowForm(true)}
-                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition shadow-md"
+                    className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition shadow-md w-full sm:w-auto"
                 >
                     <Plus className="w-5 h-5" />
                     <span>Add Candidate</span>
@@ -353,7 +353,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             </div>
 
             {/* Search + Filters */}
-            <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200 space-y-4">
+            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200 space-y-4 sm:space-y-6">
                 {/* Search Bar Row */}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -362,12 +362,12 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                         placeholder="Search by name, email, phone, or skills..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm sm:text-base"
                     />
                 </div>
 
                 {/* Filters Grid Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6 items-end">
                     <div className="space-y-1">
                         <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</label>
                         <SearchableSelect
@@ -499,94 +499,90 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
             {/* Status Filter Buttons */}
             {user?.designation !== 'Finance' && (
-                <div className="flex gap-3 bg-white p-4 rounded-xl shadow-md border border-gray-200">
-                    {[
-                        "all",
-                        "New",
-                        "Shortlisted",
-                        "Interviewed",
-                        "Selected",
-                        "Joined",
-                        "Rejected",
-                        "Dropped",
-                        "Hold",
-                    ].map((status) => (
-                        <button
-                            key={status}
-                            onClick={() => setStatusFilter(status)}
-                            className={`px-3 py-1 rounded-lg text-sm font-medium capitalize
-        ${statusFilter === status
-                                    ? "bg-orange-600 text-white"
-                                    : "bg-gray-100 text-gray-700"
-                                }
-      `}
-                        >
-                            {status}
-                        </button>
-                    ))}
+                <div className="bg-white p-2 sm:p-4 rounded-xl shadow-md border border-gray-200">
+                    <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-0 whitespace-nowrap scrollbar-hide">
+                        {[
+                            "all",
+                            "New",
+                            "Shortlisted",
+                            "Interviewed",
+                            "Selected",
+                            "Joined",
+                            "Rejected",
+                            "Dropped",
+                            "Hold",
+                        ].map((status) => (
+                            <button
+                                key={status}
+                                onClick={() => setStatusFilter(status)}
+                                className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium capitalize transition-colors
+                                ${statusFilter === status
+                                        ? "bg-orange-600 text-white shadow-sm"
+                                        : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                                    }
+                                `}
+                            >
+                                {status}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
 
             {/* Table */}
             <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto whitespace-nowrap">
-                    <table className="w-full">
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[1200px]">
                         <thead className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
                             <tr>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Name
                                 </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Contact
                                 </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Job
                                 </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Client
                                 </th>
-
-
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Resume
                                 </th>
-
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Created By
                                 </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Reportees
                                 </th>
-
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Status
                                 </th>
                                 {statusFilter === "Joined" && (
                                     <>
-
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                             Offer Letter
                                         </th>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                             Joining Date
                                         </th>
                                     </>
                                 )}
-
                                 {statusFilter === "Selected" && (
                                     <>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                             Selection Date
                                         </th>
-                                        <th className="px-6 py-3 text-left text-sm font-semibold">
+                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                             Expected Joining Date
                                         </th>
                                     </>
                                 )}
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Remarks
                                 </th>
-                                <th className="px-6 py-3 text-left text-sm font-semibold">
+                                <th className="px-6 py-4 text-center text-sm font-semibold whitespace-nowrap">
                                     Actions
                                 </th>
                             </tr>
@@ -805,21 +801,21 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
 
             {/* Pagination Controls */}
-            <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-white rounded-b-xl shadow-md border-x border-b border-gray-200 -mt-2 mb-6">
-                <div className="text-sm text-slate-500">
+            <div className="p-4 sm:p-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-b-xl shadow-md border-x border-b border-gray-200 -mt-2 mb-6">
+                <div className="text-xs sm:text-sm text-slate-500 text-center sm:text-left">
                     Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, pagination.totalCandidates)} of {pagination.totalCandidates} candidates
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 sm:gap-3 flex-wrap justify-center">
                     <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Previous
                     </button>
 
                     <div className="flex items-center gap-1">
-                        <span className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-sm font-medium">
+                        <span className="px-3 sm:px-4 py-1.5 sm:py-2 bg-orange-50 text-orange-600 rounded-lg text-xs sm:text-sm font-semibold">
                             Page {pagination.currentPage} of {pagination.totalPages}
                         </span>
                     </div>
@@ -827,7 +823,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                     <button
                         onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
                         disabled={currentPage === pagination.totalPages}
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Next
                     </button>

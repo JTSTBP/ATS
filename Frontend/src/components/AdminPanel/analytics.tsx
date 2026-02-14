@@ -19,12 +19,33 @@ import {
   Legend,
 } from "recharts";
 
+// Helper hook to detect screen size
+function useScreenSize() {
+  const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width < 640) setScreenSize('mobile');
+      else if (width < 1024) setScreenSize('tablet');
+      else setScreenSize('desktop');
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return screenSize;
+}
+
 export default function AnalyticsTab() {
   const { users, fetchUsers } = useUserContext();
   const { candidates, fetchallCandidates } = useCandidateContext();
   const { jobs, fetchJobs } = useJobContext();
   const { clients, fetchClients } = useClientsContext();
   const navigate = useNavigate();
+  const screenSize = useScreenSize();
 
   useEffect(() => {
     console.log("AnalyticsTab loaded - forcing refresh");
@@ -192,10 +213,14 @@ export default function AnalyticsTab() {
       }
     });
 
-    return Object.values(recruiterStats)
-      .filter(r => r.uploaded > 0) // Only show those who have done something
+    const allRecruiters = Object.values(recruiterStats)
+      .filter(r => r.uploaded > 0)
       .sort((a, b) => b.uploaded - a.uploaded);
-  }, [filteredData.candidates, users]);
+
+    // Limit based on screen size to prevent label crowding
+    const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
+    return allRecruiters.slice(0, maxRecruiters);
+  }, [filteredData.candidates, users, screenSize]);
 
   // Prepare Top Recruiters Data (for the table)
   const topRecruiters = useMemo(() => {
@@ -208,39 +233,39 @@ export default function AnalyticsTab() {
   return (
     <div className="text-slate-800 space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Analytics Overview</h1>
-          <p className="text-sm md:text-base text-slate-500 mt-1">
+          <h1 className="text-2xl lg:text-3xl font-bold">Analytics Overview</h1>
+          <p className="text-sm lg:text-base text-slate-500 mt-1">
             Real-time insights into user activity and recruitment performance.
           </p>
         </div>
 
         {/* Date Filter */}
-        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow border border-slate-200">
-          <div className="flex flex-col">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-3 sm:p-2 rounded-lg shadow border border-slate-200">
+          <div className="flex flex-col flex-1 sm:flex-initial">
             <label className="text-[10px] uppercase text-slate-500 font-bold ml-1">Start Date</label>
             <input
               type="date"
               value={dateRange.startDate}
               onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1"
+              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1 w-full"
             />
           </div>
-          <span className="text-slate-400">-</span>
-          <div className="flex flex-col">
+          <span className="text-slate-400 hidden sm:inline">-</span>
+          <div className="flex flex-col flex-1 sm:flex-initial">
             <label className="text-[10px] uppercase text-slate-500 font-bold ml-1">End Date</label>
             <input
               type="date"
               value={dateRange.endDate}
               onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1"
+              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1 w-full"
             />
           </div>
           {(dateRange.startDate || dateRange.endDate) && (
             <button
               onClick={clearFilter}
-              className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 rounded transition-colors"
+              className="px-3 py-2 sm:px-2 sm:py-1 text-xs text-red-500 hover:bg-red-50 rounded transition-colors self-center"
             >
               Clear
             </button>
@@ -312,14 +337,14 @@ export default function AnalyticsTab() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* User Growth Chart */}
-        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">User Signups Trend</h2>
-          <div className="h-64">
+        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">User Signups Trend</h2>
+          <div className="h-56 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={userGrowthData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
                 <Tooltip
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   cursor={{ fill: '#f1f5f9' }}
@@ -331,17 +356,17 @@ export default function AnalyticsTab() {
         </div>
 
         {/* Recruitment Funnel Chart */}
-        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">Candidate Status Distribution</h2>
-          <div className="h-64">
+        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-bold text-slate-800 mb-4 sm:mb-6">Candidate Status Distribution</h2>
+          <div className="h-56 sm:h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={recruitmentData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={50}
+                  outerRadius={70}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -350,20 +375,25 @@ export default function AnalyticsTab() {
                   ))}
                 </Pie>
                 <Tooltip />
-                <Legend verticalAlign="bottom" height={36} />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '12px' }} />
               </PieChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Recruiter Performance Chart */}
-        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-6 lg:col-span-2">
-          <div className="flex justify-between items-center mb-6">
+        <div className="bg-white shadow-sm border border-slate-200 rounded-xl p-4 sm:p-6 lg:col-span-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
             <div>
-              <h2 className="text-lg font-bold text-slate-800">Recruiter Performance</h2>
-              <p className="text-sm text-slate-500">Comparison of candidates uploaded, shortlisted, and joined per recruiter (in selected period)</p>
+              <h2 className="text-base sm:text-lg font-bold text-slate-800">Recruiter Performance</h2>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Comparison of candidates uploaded, shortlisted, and joined per recruiter (in selected period)
+                {screenSize === 'mobile' && ' - Top 5'}
+                {screenSize === 'tablet' && ' - Top 8'}
+                {screenSize === 'desktop' && ' - Top 12'}
+              </p>
             </div>
-            <div className="flex items-center gap-4 text-xs font-medium">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-medium">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
                 <span>Uploaded</span>
@@ -378,25 +408,31 @@ export default function AnalyticsTab() {
               </div>
             </div>
           </div>
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={recruiterPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart
+                data={recruiterPerformanceData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 80 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: '#64748b', fontSize: 12 }}
+                  tick={{ fill: '#64748b', fontSize: screenSize === 'mobile' ? 9 : 10 }}
                   interval={0}
+                  angle={-45}
+                  textAnchor="end"
+                  height={70}
                 />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} />
                 <Tooltip
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   cursor={{ fill: '#f8fafc' }}
                 />
-                <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
-                <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20} />
-                <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 20} />
+                <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 20} />
+                <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 20} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -404,26 +440,26 @@ export default function AnalyticsTab() {
 
         {/* Top Recruiters Table */}
         <div className="bg-white shadow-sm border border-slate-200 rounded-xl overflow-hidden">
-          <div className="p-6 border-b border-slate-100">
-            <h2 className="text-lg font-bold text-slate-800">Top Performing Recruiters</h2>
+          <div className="p-4 sm:p-6 border-b border-slate-100">
+            <h2 className="text-base sm:text-lg font-bold text-slate-800">Top Performing Recruiters</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className="w-full text-sm text-left min-w-[500px]">
               <thead className="bg-slate-50 text-slate-700 font-semibold">
                 <tr>
-                  <th className="py-3 px-6">Recruiter Name</th>
-                  <th className="py-3 px-6">Candidates Added</th>
-                  <th className="py-3 px-6">Performance Tier</th>
+                  <th className="py-3 px-4 sm:px-6 whitespace-nowrap">Recruiter Name</th>
+                  <th className="py-3 px-4 sm:px-6 whitespace-nowrap">Candidates Added</th>
+                  <th className="py-3 px-4 sm:px-6 whitespace-nowrap">Performance Tier</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {topRecruiters.length > 0 ? (
                   topRecruiters.map((recruiter, index) => (
                     <tr key={index} className="hover:bg-slate-50">
-                      <td className="py-3 px-6 font-medium text-slate-800">{recruiter.name}</td>
-                      <td className="py-3 px-6 text-slate-600">{recruiter.count}</td>
-                      <td className="py-3 px-6">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${index === 0 ? "bg-yellow-100 text-yellow-700" :
+                      <td className="py-3 px-4 sm:px-6 font-medium text-slate-800 whitespace-nowrap">{recruiter.name}</td>
+                      <td className="py-3 px-4 sm:px-6 text-slate-600">{recruiter.count}</td>
+                      <td className="py-3 px-4 sm:px-6">
+                        <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${index === 0 ? "bg-yellow-100 text-yellow-700" :
                           index === 1 ? "bg-gray-100 text-gray-700" :
                             "bg-blue-100 text-blue-700"
                           }`}>

@@ -142,34 +142,34 @@ export const MentorReports = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Reports & Analytics</h2>
-                    <p className="text-gray-600">Detailed insights into recruitment performance</p>
+                    <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-800 leading-tight">Reports & Analytics</h2>
+                    <p className="text-sm sm:text-base text-gray-500 mt-1">Detailed insights into recruitment performance</p>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex flex-col">
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1">Year</label>
+                <div className="flex flex-wrap items-end gap-3 sm:gap-4">
+                    <div className="flex flex-col min-w-[100px] flex-1 sm:flex-none">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Year</label>
                         <select
                             value={selectedYear === null ? "" : selectedYear}
                             onChange={(e) => setSelectedYear(e.target.value === "" ? null : Number(e.target.value))}
-                            className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+                            className="bg-gray-50 border border-gray-100 text-gray-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 block w-full p-2.5 transition-all outline-none cursor-pointer"
                         >
-                            <option value="">All</option>
+                            <option value="">All Years</option>
                             {years.map(year => (
                                 <option key={year} value={year}>{year}</option>
                             ))}
                         </select>
                     </div>
-                    <div className="flex flex-col">
-                        <label className="text-xs font-bold text-gray-400 uppercase mb-1">Month</label>
+                    <div className="flex flex-col min-w-[140px] flex-1 sm:flex-none">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Month</label>
                         <select
                             value={selectedMonth === null ? "" : selectedMonth}
                             onChange={(e) => setSelectedMonth(e.target.value === "" ? null : Number(e.target.value))}
-                            className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+                            className="bg-gray-50 border border-gray-100 text-gray-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 block w-full p-2.5 transition-all outline-none cursor-pointer"
                         >
-                            <option value="">All</option>
+                            <option value="">All Months</option>
                             {months.map((month, index) => (
                                 <option key={month} value={index}>{month}</option>
                             ))}
@@ -181,85 +181,84 @@ export const MentorReports = () => {
                                 setSelectedMonth(null);
                                 setSelectedYear(null);
                             }}
-                            className="mt-5 px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
+                            className="px-4 py-2.5 bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all border border-red-100 h-[42px]"
                         >
-                            Clear
+                            Reset
                         </button>
                     )}
                 </div>
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-6">
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="bg-blue-50 p-3 rounded-lg">
-                            <UserPlus className="w-6 h-6 text-blue-500" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-6">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="bg-blue-50 p-2.5 rounded-xl group-hover:bg-blue-100 transition-colors">
+                            <UserPlus className="w-5 h-5 text-blue-500" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">New</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">New</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.new}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.new}</h3>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="bg-orange-50 p-3 rounded-lg">
-                            <ClipboardCheck className="w-6 h-6 text-orange-500" />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="bg-orange-50 p-2.5 rounded-xl group-hover:bg-orange-100 transition-colors">
+                            <ClipboardCheck className="w-5 h-5 text-orange-500" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">Screen</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Screen</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.shortlisted}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.shortlisted}</h3>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="bg-purple-50 p-3 rounded-lg">
-                            <Clock className="w-6 h-6 text-purple-500" />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="bg-purple-50 p-2.5 rounded-xl group-hover:bg-purple-100 transition-colors">
+                            <Clock className="w-5 h-5 text-purple-500" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">Interviewed</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Interview</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.interviewed}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.interviewed}</h3>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="bg-green-50 p-3 rounded-lg">
-                            <CheckCircle className="w-6 h-6 text-green-500" />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="bg-green-50 p-2.5 rounded-xl group-hover:bg-green-100 transition-colors">
+                            <CheckCircle className="w-5 h-5 text-green-500" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">Selected</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Select</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.selected}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.selected}</h3>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="bg-emerald-50 p-3 rounded-lg">
-                            <Users className="w-6 h-6 text-emerald-500" />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="bg-emerald-50 p-2.5 rounded-xl group-hover:bg-emerald-100 transition-colors">
+                            <Users className="w-5 h-5 text-emerald-500" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">Joined</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Joined</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.joined}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.joined}</h3>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="bg-green-100 p-3 rounded-lg">
-                            <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="bg-green-50 p-2.5 rounded-xl group-hover:bg-green-100 transition-colors">
+                            <TrendingUp className="w-5 h-5 text-green-600" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">Total Hired</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Hired</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.selected + stats.joined}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.selected + stats.joined}</h3>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="bg-red-100 p-3 rounded-lg">
-                            <XCircle className="w-6 h-6 text-red-600" />
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="bg-red-50 p-2.5 rounded-xl group-hover:bg-red-100 transition-colors">
+                            <XCircle className="w-5 h-5 text-red-600" />
                         </div>
-                        <span className="text-sm font-medium text-gray-500">Rejected</span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Reject</span>
                     </div>
-                    <h3 className="text-3xl font-bold text-gray-800">{stats.rejected}</h3>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.rejected}</h3>
                 </div>
             </div>
 
@@ -293,14 +292,14 @@ export const MentorReports = () => {
                 </div>
 
                 {/* Job Performance Table */}
-                <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200 overflow-hidden">
+                <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="flex items-center space-x-2 mb-6">
-                        <TrendingUp className="w-5 h-5 text-gray-600" />
+                        <TrendingUp className="w-5 h-5 text-gray-400" />
                         <h3 className="text-xl font-bold text-gray-800">Job Performance</h3>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left text-gray-500">
-                            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                        <table className="w-full text-left min-w-[700px]">
+                            <thead className="text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-50">
                                 <tr>
                                     <th className="px-4 py-3">Job Title</th>
                                     <th className="px-4 py-3 text-center">Candidates</th>
@@ -309,16 +308,16 @@ export const MentorReports = () => {
                                     <th className="px-4 py-3 text-center">Status</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="text-sm font-medium text-gray-600">
                                 {jobPerformance.length > 0 ? (
                                     jobPerformance.map((job) => (
-                                        <tr key={job.id} className="border-b hover:bg-gray-50">
-                                            <td className="px-4 py-3 font-medium text-gray-900">{job.title}</td>
-                                            <td className="px-4 py-3 text-center">{job.totalCandidates}</td>
-                                            <td className="px-4 py-3 text-center text-blue-600 font-medium">{job.activePipeline}</td>
-                                            <td className="px-4 py-3 text-center text-green-600 font-medium">{job.hired}</td>
-                                            <td className="px-4 py-3 text-center">
-                                                <span className={`px-2 py-1 rounded-full text-xs ${job.status === 'Open' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                        <tr key={job.id} className="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
+                                            <td className="px-4 py-4 text-gray-900 font-bold">{job.title}</td>
+                                            <td className="px-4 py-4 text-center">{job.totalCandidates}</td>
+                                            <td className="px-4 py-4 text-center text-blue-600 font-bold">{job.activePipeline}</td>
+                                            <td className="px-4 py-4 text-center text-green-600 font-bold">{job.hired}</td>
+                                            <td className="px-4 py-4 text-center">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${job.status === 'Open' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-gray-50 text-gray-500 border border-gray-100'
                                                     }`}>
                                                     {job.status}
                                                 </span>
@@ -327,7 +326,7 @@ export const MentorReports = () => {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                                        <td colSpan={5} className="px-4 py-12 text-center text-gray-400 italic">
                                             No job data available
                                         </td>
                                     </tr>

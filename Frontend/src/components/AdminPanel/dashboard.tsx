@@ -17,12 +17,33 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+// Helper hook to detect screen size
+function useScreenSize() {
+  const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width < 640) setScreenSize('mobile');
+      else if (width < 1024) setScreenSize('tablet');
+      else setScreenSize('desktop');
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return screenSize;
+}
+
 export default function AdminDashboard() {
   const { users, leaves, fetchAllLeaves, fetchUsers } = useUserContext();
   const { jobs, fetchJobs } = useJobContext();
   const { candidates, fetchallCandidates } = useCandidateContext();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const screenSize = useScreenSize();
 
   console.log(user, "user")
   // Fetch data on mount
@@ -135,34 +156,38 @@ export default function AdminDashboard() {
       }
     });
 
-    return Object.values(recruiterStats)
+    const allRecruiters = Object.values(recruiterStats)
       .sort((a, b) => b.uploaded - a.uploaded);
-  }, [candidates, users, selectedMonth]);
+
+    // Limit based on screen size to prevent label crowding
+    const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
+    return allRecruiters.slice(0, maxRecruiters);
+  }, [candidates, users, selectedMonth, screenSize]);
 
   return (
     <div className="text-slate-800">
       {/* Page Header */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Dashboard Overview</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Overview</h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">
             Welcome back, Admin! Here's a quick summary of your portal activity.
           </p>
         </div>
 
         {/* Month Filter */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-600">Filter by Month:</span>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <span className="text-xs sm:text-sm font-medium text-slate-600">Filter by Month:</span>
           <input
             type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
           />
           {selectedMonth && (
             <button
               onClick={() => setSelectedMonth("")}
-              className="text-xs text-red-500 hover:text-red-700 underline"
+              className="text-xs text-red-500 hover:text-red-700 underline py-1"
             >
               Clear
             </button>
@@ -336,13 +361,18 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recruiter Performance Chart */}
-      <div className="bg-white rounded-xl shadow border border-slate-100 p-6 mb-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="bg-white rounded-xl shadow border border-slate-100 p-4 sm:p-6 mb-10">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
           <div>
-            <h3 className="font-bold text-lg text-slate-800">Recruiter Performance</h3>
-            <p className="text-sm text-slate-500">Candidates uploaded, shortlisted, and joined</p>
+            <h3 className="font-bold text-base sm:text-lg text-slate-800">Recruiter Performance</h3>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Candidates uploaded, shortlisted, and joined
+              {screenSize === 'mobile' && ' - Top 5'}
+              {screenSize === 'tablet' && ' - Top 8'}
+              {screenSize === 'desktop' && ' - Top 12'}
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-medium">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
               <span>Uploaded</span>
@@ -357,47 +387,50 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-        <div className="h-72">
+        <div className="h-64 sm:h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={recruiterPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart data={recruiterPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 80 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: '#64748b', fontSize: 11 }}
+                tick={{ fill: '#64748b', fontSize: screenSize === 'mobile' ? 9 : 10 }}
                 interval={0}
+                angle={-45}
+                textAnchor="end"
+                height={70}
               />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} />
               <Tooltip
                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 cursor={{ fill: '#f8fafc' }}
               />
-              <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+              <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 20 : 24} />
+              <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 20 : 24} />
+              <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 20 : 24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
         <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
-          <p className="text-[11px] text-slate-600 leading-relaxed">
+          <p className="text-[10px] sm:text-[11px] text-slate-600 leading-relaxed">
             <span className="font-bold text-slate-800 uppercase mr-1">Note:</span>
             <span className="text-blue-600 font-semibold">Blue</span>: Total Uploads |
             <span className="text-orange-600 font-semibold ml-1">Orange</span>: Shortlisted |
             <span className="text-emerald-600 font-semibold ml-1">Green</span>: Selected/Joined.
-            Showing all recruiters.
+            {screenSize === 'desktop' ? ' Showing top 12 recruiters.' : screenSize === 'tablet' ? ' Showing top 8 recruiters.' : ' Showing top 5 recruiters.'}
           </p>
         </div>
       </div>
 
       {/* Active Jobs Section */}
       <div className="bg-white rounded-xl shadow border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h3 className="font-bold text-lg text-slate-800">
+            <h3 className="font-bold text-base sm:text-lg text-slate-800">
               Active Job Postings
             </h3>
-            <p className="text-sm text-slate-500">Currently open positions</p>
+            <p className="text-xs sm:text-sm text-slate-500">Currently open positions</p>
           </div>
           <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold">
             {stats.remainingPositions} openings
@@ -405,15 +438,15 @@ export default function AdminDashboard() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[800px]">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 font-semibold">
               <tr>
-                <th className="px-6 py-4">Job Title</th>
-                <th className="px-6 py-4">Location</th>
-                <th className="px-6 py-4">Client</th>
-                <th className="px-6 py-4">Posted Date</th>
-                <th className="px-6 py-4">Posted By</th>
-                <th className="px-6 py-4 text-right">Status</th>
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Job Title</th>
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Location</th>
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Client</th>
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Posted Date</th>
+                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Posted By</th>
+                <th className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -427,10 +460,10 @@ export default function AdminDashboard() {
                       key={job._id}
                       className="hover:bg-slate-50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-medium text-slate-800">
+                      <td className="px-4 sm:px-6 py-4 font-medium text-slate-800 text-sm">
                         {job.title}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">
                         {Array.isArray(job.location)
                           ? job.location.map((l: any) => l.name).join(", ")
                           : typeof job.location === "object" &&
@@ -438,20 +471,20 @@ export default function AdminDashboard() {
                             ? (job.location as any).name
                             : job.location}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">
                         {job.clientId?.companyName || "N/A"}
                       </td>
 
-                      <td className="px-6 py-4 text-slate-500">
+                      <td className="px-4 sm:px-6 py-4 text-slate-500 text-sm">
                         {job.createdAt
                           ? formatDate(job.createdAt)
                           : "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-slate-600">
+                      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">
                         {job.CreatedBy?.name || "N/A"}
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">
+                      <td className="px-4 sm:px-6 py-4 text-right">
+                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap">
                           {job.status}
                         </span>
                       </td>
@@ -461,7 +494,7 @@ export default function AdminDashboard() {
                 <tr>
                   <td
                     colSpan={6}
-                    className="px-6 py-8 text-center text-slate-500"
+                    className="px-4 sm:px-6 py-8 text-center text-slate-500"
                   >
                     No active jobs found.
                   </td>

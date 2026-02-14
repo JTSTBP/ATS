@@ -64,7 +64,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white overflow-hidden">
+    <div className="min-h-screen flex bg-slate-50 lg:bg-white overflow-hidden relative">
       {/* Left Side - Visuals */}
       <div className="hidden lg:flex w-1/2 bg-slate-900 relative items-center justify-center overflow-hidden">
         {/* Animated Background Elements */}
@@ -135,28 +135,34 @@ export default function Login() {
         </div>
       </div>
 
+      {/* Mobile Background Decoration (Visible only on small screens) */}
+      <div className="absolute inset-0 lg:hidden overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -right-[20%] w-[80%] h-[80%] bg-blue-100/40 rounded-full blur-3xl opacity-60" />
+        <div className="absolute -bottom-[20%] -left-[20%] w-[80%] h-[80%] bg-purple-100/40 rounded-full blur-3xl opacity-60" />
+      </div>
+
       {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-16 bg-slate-50">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 relative z-10">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="w-full max-w-md bg-white p-8 rounded-3xl shadow-xl border border-slate-100"
+          className="w-full max-w-md bg-white p-6 md:p-8 rounded-3xl shadow-xl border border-slate-100"
         >
-          <div className="text-center mb-10">
+          <div className="text-center mb-8 md:mb-10">
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: 0.2, type: "spring" }}
-              className="inline-block p-3 rounded-2xl text-blue-600"
+              className="inline-block p-3 rounded-2xl text-blue-600 mb-2"
             >
-              <img src={logo} className="w-20 h-20 object-contain" />
+              <img src={logo} className="w-16 h-16 md:w-20 md:h-20 object-contain mx-auto" />
             </motion.div>
             <motion.h2
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.3 }}
-              className="text-3xl font-bold text-slate-900 mb-2 flex items-center justify-center gap-2"
+              className="text-2xl md:text-3xl font-bold text-slate-900 mb-2 flex items-center justify-center gap-2 flex-wrap"
             >
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                 Welcome Back
@@ -173,13 +179,13 @@ export default function Login() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="text-slate-500"
+              className="text-slate-500 text-sm md:text-base"
             >
               Please enter your details to sign in
             </motion.p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 ml-1">
                 Email Address
@@ -195,9 +201,9 @@ export default function Login() {
                   onChange={(e) =>
                     setFormData({ ...formData, email: e.target.value })
                   }
-                  className={`w-full pl-12 pr-4 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.email
-                      ? "border-red-500 bg-red-50"
-                      : "border-slate-200"
+                  className={`w-full pl-12 pr-4 py-3 md:py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.email
+                    ? "border-red-500 bg-red-50"
+                    : "border-slate-200"
                     }`}
                   placeholder="name@company.com"
                 />
@@ -222,9 +228,9 @@ export default function Login() {
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
                   }
-                  className={`w-full pl-12 pr-12 py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.password
-                      ? "border-red-500 bg-red-50"
-                      : "border-slate-200"
+                  className={`w-full pl-12 pr-12 py-3 md:py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.password
+                    ? "border-red-500 bg-red-50"
+                    : "border-slate-200"
                     }`}
                   placeholder="••••••••"
                 />
@@ -241,6 +247,16 @@ export default function Login() {
               )}
             </div>
 
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowForgotPassword(true)}
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
+
             {errors.general && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -255,7 +271,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-bold shadow-lg hover:shadow-blue-500/30 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full py-3.5 md:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-bold shadow-lg hover:shadow-blue-500/30 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -281,7 +297,7 @@ export default function Login() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative"
+              className="bg-white rounded-2xl shadow-2xl w-[90%] max-w-md p-6 md:p-8 relative"
             >
               <button
                 onClick={() => {
@@ -298,7 +314,7 @@ export default function Login() {
                 <div className="inline-block mb-4 p-3 rounded-2xl bg-blue-50 text-blue-600">
                   <Mail size={32} />
                 </div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-2">
+                <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">
                   Forgot Password?
                 </h3>
                 <p className="text-slate-500 text-sm">

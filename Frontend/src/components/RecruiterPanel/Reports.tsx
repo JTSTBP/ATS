@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { TrendingUp, Calendar } from 'lucide-react';
+import { TrendingUp, Calendar, Users } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { useCandidateContext } from '../../context/CandidatesProvider';
 import { useAuth } from '../../context/AuthProvider';
@@ -65,7 +65,7 @@ export default function Reports() {
     const userCandidates = candidates;
 
     const jobCounts = userCandidates.reduce((acc, candidate) => {
-      const jobTitle = typeof candidate.jobId === 'string' ? 'Unknown Position' : (candidate.jobId?.title || 'Unknown Position');
+      const jobTitle = typeof candidate.jobId === 'string' ? 'Unknown Position' : (candidate.jobId as any)?.title || 'Unknown Position';
       acc[jobTitle] = (acc[jobTitle] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
@@ -125,102 +125,93 @@ export default function Reports() {
       transition={{ duration: 0.5 }}
       className="text-slate-800 space-y-6"
     >
-      <div className="flex items-center justify-between mb-6 md:mb-8">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-1 md:mb-2">Recruitment Reports Overview</h1>
-          <p className="text-sm md:text-base text-slate-600">Analytics and insights for your recruitment process</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 leading-tight">
+            Recruitment Reports
+          </h1>
+          <p className="text-sm sm:text-base text-gray-500 mt-1">
+            Analytics and insights for your recruitment pipeline
+          </p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
-        <div
-          onClick={() => navigate('/Recruiter/candidates')}
-          className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800">Applications</h3>
-            <TrendingUp size={20} className="text-green-500" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+        {[
+          { label: 'Applications', value: stats.totalApplications, icon: TrendingUp, color: 'text-blue-600', hover: 'hover:border-blue-300', route: '/Recruiter/candidates', description: 'Total candidates uploaded' },
+          { label: 'Interviews', value: stats.interviews, icon: TrendingUp, color: 'text-indigo-600', hover: 'hover:border-indigo-300', route: '/Recruiter/candidates?status=Interview', description: 'Candidates interviewed' },
+          { label: 'Hires', value: stats.hires, icon: TrendingUp, color: 'text-purple-600', hover: 'hover:border-purple-300', route: '/Recruiter/candidates?status=Selected', description: 'Successfully hired' }
+        ].map((item, idx) => (
+          <div
+            key={idx}
+            onClick={() => navigate(item.route)}
+            className={`bg-white rounded-2xl shadow-sm p-6 border border-gray-100 cursor-pointer hover:shadow-md transition-all group ${item.hover}`}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest font-mono">{item.label}</h3>
+              <item.icon size={20} className="text-green-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <p className={`text-3xl font-extrabold ${item.color} mb-2`}>{item.value}</p>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{item.description}</p>
           </div>
-          <p className="text-3xl font-bold text-blue-600 mb-2">{stats.totalApplications}</p>
-          <p className="text-sm text-slate-500">Total candidates uploaded</p>
-        </div>
-
-        <div
-          onClick={() => navigate('/Recruiter/candidates?status=Interview')}
-          className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800">Interviews</h3>
-            <TrendingUp size={20} className="text-blue-500" />
-          </div>
-          <p className="text-3xl font-bold text-blue-600 mb-2">{stats.interviews}</p>
-          <p className="text-sm text-slate-500">Candidates interviewed</p>
-        </div>
-
-        <div
-          onClick={() => navigate('/Recruiter/candidates?status=Hired')}
-          className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800">Hires</h3>
-            <TrendingUp size={20} className="text-purple-500" />
-          </div>
-          <p className="text-3xl font-bold text-blue-600 mb-2">{stats.hires}</p>
-          <p className="text-sm text-slate-500">Successfully hired</p>
-        </div>
+        ))}
       </div>
 
       {/* Top Positions and Hiring Funnel */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
-        <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
-          <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">Top Positions</h2>
-          <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">Top Positions</h2>
+          <div className="space-y-6">
             {topPositions.length > 0 ? (
               topPositions.map((item) => (
                 <div
                   key={item.position}
                   onClick={() => navigate(`/Recruiter/candidates?jobTitle=${encodeURIComponent(item.position)}`)}
-                  className="cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-all"
+                  className="cursor-pointer group"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-700">{item.position}</span>
-                    <span className="text-sm font-semibold text-slate-800">{item.count} applicants</span>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">{item.position}</span>
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">{item.count} applicants</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div className="w-full bg-gray-50 rounded-full h-2.5 overflow-hidden border border-gray-100 shadow-inner">
                     <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                      className="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-700 ease-out"
                       style={{ width: `${item.percentage}%` }}
                     />
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-slate-500 text-center py-4">No data available yet. Upload candidates to see top positions.</p>
+              <div className="text-center py-12 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-gray-400 font-medium">No data available yet.</p>
+              </div>
             )}
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
-          <h2 className="text-lg md:text-xl font-bold text-slate-800 mb-4 md:mb-6">Hiring Funnel</h2>
-          <div className="space-y-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">Hiring Funnel</h2>
+          <div className="space-y-4">
             {[
-              { stage: 'Applications Received', count: stats.totalApplications, color: 'bg-slate-500', status: '' },
-              { stage: 'Screening', count: stats.screening, color: 'bg-blue-500', status: 'New' },
-              { stage: 'Shortlisted', count: stats.shortlisted, color: 'bg-cyan-500', status: 'Shortlisted' },
-              { stage: 'Interview', count: stats.interviews, color: 'bg-green-500', status: 'Interview' },
-              { stage: 'Hired', count: stats.hires, color: 'bg-purple-500', status: 'Hired' },
+              { stage: 'Applications Received', count: stats.totalApplications, color: 'bg-gray-400', status: '', icon: Users },
+              { stage: 'Screening', count: stats.screening, color: 'bg-blue-500', status: 'New', icon: TrendingUp },
+              { stage: 'Shortlisted', count: stats.shortlisted, color: 'bg-indigo-500', status: 'Shortlisted', icon: TrendingUp },
+              { stage: 'Interview', count: stats.interviews, color: 'bg-purple-500', status: 'Interview', icon: TrendingUp },
+              { stage: 'Hired', count: stats.hires, color: 'bg-emerald-500', status: 'Selected', icon: TrendingUp },
             ].map((stage) => (
               <div
                 key={stage.stage}
                 onClick={() => navigate(stage.status ? `/Recruiter/candidates?status=${stage.status}` : '/Recruiter/candidates')}
-                className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition-all"
+                className="flex items-center gap-4 cursor-pointer hover:bg-gray-50/50 p-3 rounded-xl transition-all border border-transparent hover:border-gray-100 group"
               >
-                <div className={`w-4 h-4 rounded-full ${stage.color}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-slate-700">{stage.stage}</p>
+                <div className={`w-10 h-10 rounded-xl ${stage.color.replace('bg-', 'bg-')}/10 flex items-center justify-center`}>
+                  <div className={`w-2.5 h-2.5 rounded-full ${stage.color}`} />
                 </div>
-                <span className="text-sm font-bold text-blue-600 hover:text-blue-700">{stage.count}</span>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-gray-700 group-hover:text-blue-600 transition-colors">{stage.stage}</p>
+                </div>
+                <span className="text-sm font-extrabold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg font-mono">{stage.count}</span>
               </div>
             ))}
           </div>
@@ -231,27 +222,34 @@ export default function Reports() {
       <PerformanceReportTable />
 
       {/* Recent Activity */}
-      <div className="mt-4 md:mt-6 bg-white rounded-xl shadow-md p-4 md:p-6 border border-slate-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 md:mb-6">
-          <h2 className="text-lg md:text-xl font-bold text-slate-800">Recent Activity Log</h2>
-          <div className="flex items-center gap-2 text-xs md:text-sm text-slate-600">
-            <Calendar size={14} className="md:w-4 md:h-4" />
+      <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-gray-50 rounded-xl">
+              <TrendingUp className="w-5 h-5 text-gray-400" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Recent Activity Log</h2>
+          </div>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold border border-blue-100">
+            <Calendar size={14} />
             <span>Last 7 days</span>
           </div>
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {recentActivity.length > 0 ? (
             recentActivity.map((log, index) => (
-              <div key={index} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-slate-800">{log.action}</p>
-                  <p className="text-xs text-slate-500">{log.date}</p>
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-transparent hover:border-gray-100 transition-all">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-gray-800 truncate">{log.action}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono mt-1">{log.date}</p>
                 </div>
-                <span className="text-sm font-semibold text-slate-600">{log.count} items</span>
+                <span className="text-sm font-extrabold text-blue-600 bg-white px-3 py-1 rounded-lg border border-gray-100 font-mono shrink-0 ml-4">{log.count} uploads</span>
               </div>
             ))
           ) : (
-            <p className="text-slate-500 text-center py-4">No recent activity in the last 7 days</p>
+            <div className="text-center py-12 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+              <p className="text-gray-400 font-medium">No recent activity detected.</p>
+            </div>
           )}
         </div>
       </div>

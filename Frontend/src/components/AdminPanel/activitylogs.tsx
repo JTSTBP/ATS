@@ -1,8 +1,8 @@
-// src/pages/ActivityLogs.jsx
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useUserContext } from "../../context/UserProvider";
+import { ClipboardCheck, X } from "lucide-react";
 
 interface Log {
   _id: string;
@@ -119,29 +119,33 @@ const ActivityLogs = ({ externalStartDate, externalEndDate }: { externalStartDat
     return <p className="text-center mt-5">Loading Activity Logs...</p>;
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen mt-3">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Activity Logs</h2>
+    <div className="p-4 md:p-6 bg-slate-50 min-h-screen">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Activity Logs</h2>
+          <p className="text-sm text-slate-500 font-medium">Track system activities and user actions</p>
+        </div>
 
         {/* Date Filter Inputs - Hide if external props provided */}
         {!externalStartDate && !externalEndDate && (
-          <div className="flex gap-4">
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Start Date:</label>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full md:w-auto">
+            <div className="flex items-center gap-2 px-2">
+              <span className="text-xs font-bold text-slate-400 uppercase">From</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="border rounded p-2 text-sm"
+                className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">End Date:</label>
+            <div className="w-px h-6 bg-slate-200 hidden sm:block"></div>
+            <div className="flex items-center gap-2 px-2 border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0">
+              <span className="text-xs font-bold text-slate-400 uppercase">To</span>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="border rounded p-2 text-sm"
+                className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none"
               />
             </div>
             {(startDate || endDate) && (
@@ -150,79 +154,104 @@ const ActivityLogs = ({ externalStartDate, externalEndDate }: { externalStartDat
                   setStartDate("");
                   setEndDate("");
                 }}
-                className="text-sm text-red-600 hover:text-red-800 underline"
+                className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-lg transition-colors ml-auto sm:ml-0"
+                title="Clear Filters"
               >
-                Clear
+                <X size={16} />
               </button>
             )}
           </div>
         )}
       </div>
 
-      <div className="overflow-auto shadow-lg rounded-lg bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-200 text-gray-700">
-            <tr>
-              <th className="p-3 text-left">User</th>
-              <th className="p-3 text-left">Action</th>
-              <th className="p-3 text-left">Description</th>
-              <th className="p-3 text-left">Target</th>
-              <th className="p-3 text-left">Date</th>
-            </tr>
-          </thead>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
+            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10">
+              <tr>
+                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">User</th>
+                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Action</th>
+                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Description</th>
+                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Target</th>
+                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Date</th>
+              </tr>
+            </thead>
 
-          <tbody>
-            {filteredlogs.length > 0 ? (
-              filteredlogs.map((log) => (
-                <tr key={log._id} className="border-b hover:bg-gray-50">
-                  {/* USER */}
-                  <td className="p-3">{log.userId?.name || "Unknown User"}</td>
+            <tbody className="divide-y divide-slate-100">
+              {filteredlogs.length > 0 ? (
+                filteredlogs.map((log) => (
+                  <tr key={log._id} className="hover:bg-slate-50 transition-colors group">
+                    {/* USER */}
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs">
+                          {log.userId?.name?.charAt(0) || "U"}
+                        </div>
+                        <div className="font-bold text-slate-700">{log.userId?.name || "Unknown User"}</div>
+                      </div>
+                    </td>
 
-                  {/* ACTION */}
-                  <td className="p-3">{log.action}</td>
-
-                  {/* DESCRIPTION */}
-                  <td className="p-3">{log.description}</td>
-
-                  {/* TARGET MODEL */}
-                  <td className="p-3">
-                    {log.targetModel === "CandidateByJob" && (
-                      <span className="text-blue-700 font-semibold">
-                        {log.targetId?.dynamicFields?.candidateName ||
-                          "Candidate"}
+                    {/* ACTION */}
+                    <td className="py-4 px-6">
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wide">
+                        {log.action}
                       </span>
-                    )}
+                    </td>
 
-                    {log.targetModel === "Job" && (
-                      <span className="text-green-700 font-semibold">
-                        {log.targetId?.title || "Job"}
-                      </span>
-                    )}
+                    {/* DESCRIPTION */}
+                    <td className="py-4 px-6 text-slate-600 font-medium">{log.description}</td>
 
-                    {log.targetModel === "LeaveApplication" && (
-                      <span className="text-purple-700 font-semibold">
-                        Leave Request ({log.targetId?.leaveType})
-                      </span>
-                    )}
+                    {/* TARGET MODEL */}
+                    <td className="py-4 px-6">
+                      {log.targetModel === "CandidateByJob" && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                          {log.targetId?.dynamicFields?.candidateName || "Candidate"}
+                        </span>
+                      )}
 
-                    {!log.targetModel && "—"}
-                  </td>
+                      {log.targetModel === "Job" && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                          {log.targetId?.title || "Job"}
+                        </span>
+                      )}
 
-                  {/* DATE */}
-                  <td className="p-3 text-gray-600">
-                    {new Date(log.createdAt).toLocaleString()}
+                      {log.targetModel === "LeaveApplication" && (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                          Leave Request ({log.targetId?.leaveType})
+                        </span>
+                      )}
+
+                      {!log.targetModel && <span className="text-slate-400">-</span>}
+                    </td>
+
+                    {/* DATE */}
+                    <td className="py-4 px-6 text-slate-500 font-mono text-xs">
+                      {new Date(log.createdAt).toLocaleString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center text-slate-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                        <ClipboardCheck className="w-8 h-8 text-slate-300" />
+                      </div>
+                      <p className="font-bold text-lg text-slate-600">No activity logs found</p>
+                      <p className="text-sm">Try adjusting your date filters</p>
+                    </div>
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="p-5 text-center text-gray-500">
-                  No activity logs found for the selected criteria.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

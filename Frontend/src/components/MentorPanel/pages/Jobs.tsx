@@ -39,14 +39,12 @@ interface JobsManagerProps {
   initialFormOpen?: boolean;
   onFormClose?: () => void;
   initialSearchTerm?: string;
-  onNavigateToCandidates?: (jobTitle: string) => void;
 }
 
 export const JobsManager = ({
   initialFormOpen = false,
   onFormClose,
   initialSearchTerm = "",
-  onNavigateToCandidates,
 }: JobsManagerProps = {}) => {
   // console.log("JobsManager rendered. onNavigateToCandidates defined:", !!onNavigateToCandidates);
   /* New Pagination Logic */
@@ -65,7 +63,6 @@ export const JobsManager = ({
   const { candidates, fetchallCandidates } = useCandidateContext(); // Get all candidates
 
   const { user } = useAuth();
-  const navigate = useNavigate();
 
   // Fetch candidates and users for stats calculation
   useEffect(() => {
@@ -130,7 +127,7 @@ export const JobsManager = ({
     const activeJobIds = new Set(activeJobsList.map(j => j._id));
     const joinedCandidatesCount = scopedCandidates.filter(c => {
       if (c.status !== 'Joined') return false;
-      const jId = c.jobId?._id || c.jobId;
+      const jId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
       return activeJobIds.has(jId);
     }).length;
 
@@ -145,16 +142,7 @@ export const JobsManager = ({
 
 
 
-  const handleNavigateToCandidates = (jobTitle: string) => {
-    if (onNavigateToCandidates) {
-      onNavigateToCandidates(jobTitle);
-    } else {
-      const basePath = user?.designation === "Manager" ? "/Manager" : "/Mentor";
-      navigate(
-        `${basePath}/candidates?jobTitle=${encodeURIComponent(jobTitle)}`
-      );
-    }
-  };
+
 
   const [showForm, setShowForm] = useState(initialFormOpen);
   const [editingJob, setEditingJob] = useState<any | null>(null);
@@ -236,17 +224,17 @@ export const JobsManager = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 leading-tight">
             Job Openings
           </h2>
-          <p className="text-gray-600">Manage job postings and openings</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage job postings and openings</p>
         </div>
         {canManageJobs && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition shadow-md"
+            className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold hover:from-orange-600 hover:to-orange-700 transition shadow-md hover:shadow-orange-200/50 w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
             <span>Post New Job</span>
@@ -255,36 +243,36 @@ export const JobsManager = ({
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Active Clients */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex justify-between items-center group hover:shadow-md transition-all">
+        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all">
           <div>
-            <p className="text-slate-500 text-sm font-medium mb-1 group-hover:text-blue-600 transition-colors">Active Clients</p>
-            <h3 className="text-3xl font-bold text-slate-800">{stats.activeClients}</h3>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-blue-600 transition-colors">Active Clients</p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.activeClients}</h3>
           </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+          <div className="bg-blue-50 text-blue-600 p-3 sm:p-4 rounded-2xl group-hover:bg-blue-100 transition-colors">
             <Users size={24} />
           </div>
         </div>
 
         {/* Active Jobs */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex justify-between items-center group hover:shadow-md transition-all">
+        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all">
           <div>
-            <p className="text-slate-500 text-sm font-medium mb-1 group-hover:text-amber-600 transition-colors">Active Jobs</p>
-            <h3 className="text-3xl font-bold text-slate-800">{stats.activeJobs}</h3>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-amber-600 transition-colors">Active Jobs</p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.activeJobs}</h3>
           </div>
-          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
+          <div className="bg-amber-50 text-amber-600 p-3 sm:p-4 rounded-2xl group-hover:bg-amber-100 transition-colors">
             <Briefcase size={24} />
           </div>
         </div>
 
         {/* Positions Left */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-slate-100 flex justify-between items-center group hover:shadow-md transition-all">
+        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all sm:col-span-2 lg:col-span-1">
           <div>
-            <p className="text-slate-500 text-sm font-medium mb-1 group-hover:text-emerald-600 transition-colors">Positions Left</p>
-            <h3 className="text-3xl font-bold text-slate-800">{stats.positionsLeft}</h3>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-emerald-600 transition-colors">Positions Left</p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.positionsLeft}</h3>
           </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+          <div className="bg-emerald-50 text-emerald-600 p-3 sm:p-4 rounded-2xl group-hover:bg-emerald-100 transition-colors">
             <CalendarCheck size={24} />
           </div>
         </div>
@@ -292,33 +280,34 @@ export const JobsManager = ({
 
 
       {/* Search + Filter */}
-      <div className="bg-white rounded-xl p-4 shadow-md border border-gray-200">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-orange-500 transition-colors" />
             <input
               type="text"
               placeholder="Search by title, dept, loc..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all bg-gray-50/50 font-medium"
             />
           </div>
 
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-orange-500 transition-colors" />
             <input
               type="text"
               placeholder="Search by client name..."
               value={clientSearchTerm}
               onChange={(e) => setClientSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all bg-gray-50/50 font-medium"
             />
           </div>
+
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none bg-white cursor-pointer font-medium text-gray-700"
+            className="w-full px-4 py-2 text-sm border border-gray-200 rounded-xl focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all bg-gray-50/50 font-bold text-gray-700 cursor-pointer outline-none"
           >
             <option value="all">All Statuses</option>
             <option value="Open">Open</option>
@@ -380,38 +369,47 @@ export const JobsManager = ({
                   role: user?.designation || ""
                 });
               }}
-              onNavigateToCandidates={handleNavigateToCandidates}
             />
           ))
         )}
       </div>
 
       {/* Pagination Controls */}
-      <div className="p-4 flex flex-col sm:flex-row items-center justify-between bg-white rounded-xl shadow-md border border-gray-200 gap-4">
-        <div className="text-sm text-slate-500 font-medium">
-          Showing <span className="text-slate-900 font-bold">{((currentPage - 1) * limit) + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * limit, pagination?.totalJobs || 0)}</span> of <span className="text-slate-900 font-bold">{pagination?.totalJobs || 0}</span> jobs
+      <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 gap-4">
+        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+          Showing <span className="text-gray-700 font-extrabold">{((currentPage - 1) * limit) + 1}</span> to <span className="text-gray-700 font-extrabold">{Math.min(currentPage * limit, pagination?.totalJobs || 0)}</span> of <span className="text-gray-700 font-extrabold">{pagination?.totalJobs || 0}</span> jobs
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-4 py-1.5 text-sm font-semibold border rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`flex items-center px-4 py-2 rounded-xl text-xs font-bold transition-all border
+              ${currentPage === 1
+                ? "bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed"
+                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600 shadow-sm"
+              }
+            `}
           >
             Prev
           </button>
           <div className="flex items-center gap-1">
-            <span className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-sm font-bold border border-orange-100">
+            <span className="px-3 py-1.5 bg-orange-50 text-orange-600 rounded-lg text-xs font-bold border border-orange-100">
               {currentPage}
             </span>
-            <span className="text-slate-400 text-xs px-1">of</span>
-            <span className="px-3 py-1.5 bg-slate-50 text-slate-600 rounded-lg text-sm font-bold border border-slate-100">
+            <span className="text-gray-400 text-[10px] font-bold uppercase px-1">of</span>
+            <span className="px-3 py-1.5 bg-gray-50 text-gray-500 rounded-lg text-xs font-bold border border-gray-100">
               {pagination?.totalPages || 1}
             </span>
           </div>
           <button
             onClick={() => setCurrentPage(p => Math.min(pagination?.totalPages || 1, p + 1))}
             disabled={currentPage === (pagination?.totalPages || 1)}
-            className="px-4 py-1.5 text-sm font-semibold border rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className={`flex items-center px-4 py-2 rounded-xl text-xs font-bold transition-all border
+              ${currentPage === (pagination?.totalPages || 1)
+                ? "bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed"
+                : "bg-white text-gray-600 border-gray-200 hover:border-orange-300 hover:text-orange-600 shadow-sm"
+              }
+            `}
           >
             Next
           </button>

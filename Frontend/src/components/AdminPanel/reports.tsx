@@ -56,6 +56,11 @@ export default function ReportsTab() {
   const [clientSearch, setClientSearch] = useState("");
   const [recruiterSearch, setRecruiterSearch] = useState("");
   const [jobSearch, setJobSearch] = useState("");
+  const [dailyReportsSearch, setDailyReportsSearch] = useState({
+    client: "",
+    recruiter: "",
+    job: ""
+  });
 
   useEffect(() => {
     fetchUsers();
@@ -265,7 +270,11 @@ export default function ReportsTab() {
       const matchesJob = selectedFilters.daily_job.length > 0 ? selectedFilters.daily_job.includes(row.job.title) : true;
       const matchesTotal = selectedFilters.daily_total.length > 0 ? selectedFilters.daily_total.includes(row.jobCandidates.length.toString()) : true;
 
-      return matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal && matchesSource;
+      const matchesClientSearch = dailyReportsSearch.client ? row.clientName.toLowerCase().includes(dailyReportsSearch.client.toLowerCase()) : true;
+      const matchesRecruiterSearch = dailyReportsSearch.recruiter ? row.recruiter.name.toLowerCase().includes(dailyReportsSearch.recruiter.toLowerCase()) : true;
+      const matchesJobSearch = dailyReportsSearch.job ? row.job.title.toLowerCase().includes(dailyReportsSearch.job.toLowerCase()) : true;
+
+      return matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal && matchesSource && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch;
     });
 
     const totals = reportRows.reduce((acc, row) => {
@@ -283,11 +292,12 @@ export default function ReportsTab() {
     }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
 
     return { reportRows, totals };
-  }, [baseDailyLineupRows, selectedFilters]);
+  }, [baseDailyLineupRows, selectedFilters, dailyReportsSearch]);
 
   const getDailyLineupOptions = (column: string) => {
     const relevantRows = baseDailyLineupRows.filter(row => {
       if (column !== 'daily_req' && selectedFilters.daily_req.length > 0 && !selectedFilters.daily_req.includes(row.jobDate)) return false;
+      if (column !== 'daily_source' && selectedFilters.daily_source.length > 0 && !selectedFilters.daily_source.includes(row.sourceDate)) return false;
       if (column !== 'daily_recruiter' && selectedFilters.daily_recruiter.length > 0 && !selectedFilters.daily_recruiter.includes(row.recruiter.name)) return false;
       if (column !== 'daily_client' && selectedFilters.daily_client.length > 0 && !selectedFilters.daily_client.includes(row.clientName)) return false;
       if (column !== 'daily_job' && selectedFilters.daily_job.length > 0 && !selectedFilters.daily_job.includes(row.job.title)) return false;
@@ -299,6 +309,9 @@ export default function ReportsTab() {
     switch (column) {
       case 'daily_req':
         options = Array.from(new Set(relevantRows.map(r => r.jobDate))).sort();
+        break;
+      case 'daily_source':
+        options = Array.from(new Set(relevantRows.map(r => r.sourceDate))).sort();
         break;
       case 'daily_recruiter':
         options = Array.from(new Set(relevantRows.map(r => r.recruiter.name))).sort();
@@ -485,39 +498,43 @@ export default function ReportsTab() {
   return (
     <div className="text-slate-800 space-y-6">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Reports & Insights</h1>
-          <p className="text-sm md:text-base text-slate-500 mt-1">
-            Real-time system overview and detailed reports.
+          <h1 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tight">Reports & Insights</h1>
+          <p className="text-sm md:text-base text-slate-500 mt-2 font-medium">
+            Real-time system overview and detailed performance metrics.
           </p>
         </div>
 
         {/* Top Date Filter */}
-        <div className="flex items-center gap-2 bg-white p-2 rounded-lg shadow border border-slate-200">
-          <div className="flex flex-col">
-            <label className="text-[10px] uppercase text-slate-500 font-bold ml-1">Start Date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1"
-            />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-3 flex-1 px-2">
+            <div className="flex flex-col w-full">
+              <label className="text-[10px] uppercase text-slate-400 font-bold ml-1 mb-0.5">Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="text-sm font-bold border-none focus:ring-0 text-slate-700 bg-transparent p-1 w-full"
+              />
+            </div>
           </div>
-          <span className="text-slate-400">-</span>
-          <div className="flex flex-col">
-            <label className="text-[10px] uppercase text-slate-500 font-bold ml-1">End Date</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="text-sm border-none focus:ring-0 text-slate-700 bg-transparent p-1"
-            />
+          <div className="hidden sm:block w-px h-8 bg-slate-100"></div>
+          <div className="flex items-center gap-3 flex-1 px-2">
+            <div className="flex flex-col w-full">
+              <label className="text-[10px] uppercase text-slate-400 font-bold ml-1 mb-0.5">End Date</label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="text-sm font-bold border-none focus:ring-0 text-slate-700 bg-transparent p-1 w-full"
+              />
+            </div>
           </div>
           {(startDate || endDate) && (
             <button
               onClick={() => { setStartDate(""); setEndDate(""); }}
-              className="px-2 py-1 text-xs text-red-500 hover:bg-red-50 rounded transition-colors"
+              className="px-4 py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-all h-full self-stretch sm:self-auto flex items-center justify-center"
             >
               Clear
             </button>
@@ -527,21 +544,21 @@ export default function ReportsTab() {
 
       {/* Summary Cards */}
       {/* Stats Grid (Dashboard Style) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mb-10">
         {/* Total Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-indigo-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-indigo-600 transition-colors">
               Total Candidates
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.totalCandidates}
             </h2>
           </div>
-          <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-100 transition-colors">
+          <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <Users size={24} />
           </div>
         </div>
@@ -549,17 +566,17 @@ export default function ReportsTab() {
         {/* Total Positions */}
         <div
           onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-blue-600 transition-colors">
               Total Positions
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.totalPositions}
             </h2>
           </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <Briefcase size={24} />
           </div>
         </div>
@@ -567,17 +584,17 @@ export default function ReportsTab() {
         {/* Positions Left */}
         <div
           onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
               Positions Left
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.remainingPositions}
             </h2>
           </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <Briefcase size={24} />
           </div>
         </div>
@@ -585,17 +602,17 @@ export default function ReportsTab() {
         {/* Active Jobs */}
         <div
           onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-amber-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-amber-600 transition-colors">
               Active Jobs
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.activeJobs}
             </h2>
           </div>
-          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
+          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <CalendarCheck size={24} />
           </div>
         </div>
@@ -603,17 +620,17 @@ export default function ReportsTab() {
         {/* New Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-blue-600 transition-colors">
               New
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.newCandidates}
             </h2>
           </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <UserPlus size={24} />
           </div>
         </div>
@@ -621,17 +638,17 @@ export default function ReportsTab() {
         {/* Shortlisted Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-orange-600 transition-colors">
-              Screen
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-orange-600 transition-colors">
+              Screening
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.shortlistedCandidates}
             </h2>
           </div>
-          <div className="bg-orange-50 text-orange-600 p-3 rounded-xl group-hover:bg-orange-100 transition-colors">
+          <div className="bg-orange-50 text-orange-600 p-3 rounded-xl group-hover:bg-orange-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <ClipboardCheck size={24} />
           </div>
         </div>
@@ -639,17 +656,17 @@ export default function ReportsTab() {
         {/* Interviewed Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-purple-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-purple-600 transition-colors">
               Interviewed
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.interviewedCandidates}
             </h2>
           </div>
-          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-100 transition-colors">
+          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <Clock size={24} />
           </div>
         </div>
@@ -657,17 +674,17 @@ export default function ReportsTab() {
         {/* Selected Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-green-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-green-600 transition-colors">
               Selected
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.selectedCandidates}
             </h2>
           </div>
-          <div className="bg-green-50 text-green-600 p-3 rounded-xl group-hover:bg-green-100 transition-colors">
+          <div className="bg-green-50 text-green-600 p-3 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <CheckCircle size={24} />
           </div>
         </div>
@@ -675,17 +692,17 @@ export default function ReportsTab() {
         {/* Joined Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
               Joined
             </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.joinedCandidates}
             </h2>
           </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <Users size={24} />
           </div>
         </div>
@@ -693,57 +710,57 @@ export default function ReportsTab() {
 
 
       {/* Client Job Report Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8">
-        <div className="p-4 md:p-6 border-b border-slate-100">
-          <div className="mb-4">
-            <h2 className="text-base md:text-lg font-bold text-slate-800">Client Job Report</h2>
-            <p className="text-xs md:text-sm text-slate-500">Overview of requirement status by client</p>
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-black text-slate-800 tracking-tight">Client Job Report</h2>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Overview of requirement status by client</p>
           </div>
-          <div className="flex flex-col md:flex-row gap-2 md:gap-3 w-full">
-            <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="relative group w-full sm:w-auto md:min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Search Client..."
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
               />
             </div>
-            <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
+            <div className="relative group w-full sm:w-auto md:min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Search Recruiter..."
                 value={recruiterSearch}
                 onChange={(e) => setRecruiterSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
               />
             </div>
-            <div className="relative group w-full md:w-auto md:flex-1 md:max-w-[220px]">
+            <div className="relative group w-full sm:w-auto md:min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
               <input
                 type="text"
                 placeholder="Search Job Title..."
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full"
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
               />
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px]">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-[30]">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px] custom-scrollbar">
+          <table className="w-full text-sm text-left border-collapse min-w-[1500px]">
+            <thead className="bg-slate-50/50 text-slate-700 font-semibold sticky top-0 z-[30] backdrop-blur-sm">
               <tr>
-                <th className="py-3 px-6 min-w-[150px] relative">
-                  <div className="flex items-center justify-between">
+                <th className="py-4 px-6 min-w-[150px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
                     <span>Date Received</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'date' ? null : 'date'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.date.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.date.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.date.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -751,14 +768,14 @@ export default function ReportsTab() {
                     options={getClientJobOptions('date')}
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
+                <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
                     <span>Client Name</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'client' ? null : 'client'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.client.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.client.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.client.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -766,14 +783,14 @@ export default function ReportsTab() {
                     options={getClientJobOptions('client')}
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
+                <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
                     <span>Job Title</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'job' ? null : 'job'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.job.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.job.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.job.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -781,18 +798,18 @@ export default function ReportsTab() {
                     options={getClientJobOptions('job')}
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[100px]">
-                  <span>Positions</span>
+                <th className="py-4 px-6 min-w-[80px] text-[10px] uppercase tracking-widest font-black text-slate-400 text-center">
+                  <span>Pos</span>
                 </th>
 
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
+                <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
                     <span>Assigned Recruiters</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'recruiter' ? null : 'recruiter'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.recruiter.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.recruiter.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.recruiter.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -801,14 +818,14 @@ export default function ReportsTab() {
                     align="right"
                   />
                 </th>
-                <th className="py-3 px-4 text-center min-w-[100px] relative">
+                <th className="py-4 px-4 text-center min-w-[100px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
                   <div className="flex items-center justify-center gap-2">
-                    <span>Total Lineups</span>
+                    <span>Total</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'total' ? null : 'total'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.total.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.total.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.total.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -817,16 +834,16 @@ export default function ReportsTab() {
                     align="right"
                   />
                 </th>
-                <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
-                <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Screen</th>
-                <th className="py-3 px-4 text-center text-gray-600 min-w-[100px]">Dropped</th>
-                <th className="py-3 px-4 text-center text-red-600 min-w-[100px]">Reject by Mentor</th>
-                <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
-                <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
-                <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
-                <th className="py-3 px-4 text-center text-amber-600 min-w-[80px]">Hold</th>
-                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Dropped</th>
-                <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
+                <th className="py-4 px-4 text-center text-blue-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">New</th>
+                <th className="py-4 px-4 text-center text-orange-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Screen</th>
+                <th className="py-4 px-4 text-center text-gray-400 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Drop (M)</th>
+                <th className="py-4 px-4 text-center text-red-400 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Rej (M)</th>
+                <th className="py-4 px-4 text-center text-purple-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Int</th>
+                <th className="py-4 px-4 text-center text-green-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Sel</th>
+                <th className="py-4 px-4 text-center text-emerald-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Join</th>
+                <th className="py-4 px-4 text-center text-amber-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Hold</th>
+                <th className="py-4 px-4 text-center text-slate-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Drop (C)</th>
+                <th className="py-4 px-4 text-center text-red-700 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Rej (C)</th>
 
 
               </tr>
@@ -838,8 +855,14 @@ export default function ReportsTab() {
                 if (reportRows.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={16} className="py-8 text-center text-slate-500">
-                        No job report data found for the selected criteria.
+                      <td colSpan={16} className="py-20 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                            <Filter className="w-8 h-8 text-slate-300" />
+                          </div>
+                          <p className="font-bold text-lg text-slate-600">No job report data found</p>
+                          <p className="text-sm">Try adjusting your filters</p>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -848,25 +871,25 @@ export default function ReportsTab() {
                 return (
                   <>
                     {reportRows.map((row, i) => (
-                      <tr key={`${row.job._id}-${i}`} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-6 text-slate-600">{row.dateReceived}</td>
-                        <td className="py-4 px-6 font-medium text-slate-800">{row.clientName}</td>
-                        <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
-                        <td className="py-4 px-6 text-slate-600 text-center">{row.job.noOfPositions || '-'}</td>
+                      <tr key={`${row.job._id}-${i}`} className="hover:bg-slate-50/80 transition-colors group">
+                        <td className="py-4 px-6 text-slate-600 text-xs font-bold">{row.dateReceived}</td>
+                        <td className="py-4 px-6 font-bold text-slate-700 text-xs">{row.clientName}</td>
+                        <td className="py-4 px-6 text-slate-700 font-bold text-xs">{row.job.title}</td>
+                        <td className="py-4 px-6 text-slate-600 text-center text-xs font-bold">{row.job.noOfPositions || '-'}</td>
                         <td className="py-4 px-6 text-slate-600">
                           <div className="flex flex-wrap gap-1">
                             {row.recruitersInvolved.map((r: string) => (
-                              <span key={r} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-[10px] border border-slate-200">{r}</span>
+                              <span key={r} className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold border border-slate-200">{r}</span>
                             ))}
-                            {row.recruitersInvolved.length === 0 && <span className="text-slate-400 text-xs italic">No recruiters assigned</span>}
+                            {row.recruitersInvolved.length === 0 && <span className="text-slate-400 text-[10px] italic">No recruiters assigned</span>}
                           </div>
                         </td>
                         <td className="py-4 px-4 text-center">
                           <button
                             disabled={row.jobCandidates.length === 0}
                             onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
-                            className={`px-2 py-0.5 rounded-full text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
-                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
+                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:border-slate-300 transform hover:scale-105"
                               : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
                           >
                             {row.jobCandidates.length}
@@ -880,8 +903,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110 shadow-sm border border-transparent`
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -898,8 +921,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Mentor", mentorDropped)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110 hover:bg-gray-200"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -916,8 +939,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Mentor", mentorRejected)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-red-100 text-red-700 border border-red-200 hover:scale-110"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-red-50 text-red-600 border border-red-200 hover:scale-110 hover:bg-red-100"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -933,8 +956,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110 shadow-sm border border-transparent`
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -942,7 +965,7 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
-                        {["Selected", "Joined", "Hold"].map(status => {
+                        {["Selected", "Joined"].map(status => {
                           const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
                           const count = statusCandidates.length;
                           return (
@@ -950,8 +973,25 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110 shadow-sm border border-transparent`
+                                  : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            </td>
+                          );
+                        })}
+                        {["Hold"].map(status => {
+                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const count = statusCandidates.length;
+                          return (
+                            <td key={status} className="py-4 px-4 text-center">
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110 shadow-sm border border-transparent`
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -968,8 +1008,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Client", clientDropped)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-slate-50 text-slate-600 border border-slate-200 hover:scale-110"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-slate-100 text-slate-600 border border-slate-200 hover:scale-110 hover:bg-slate-200"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -977,7 +1017,7 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
-                        <td className="py-4 px-4 text-center text-red-700 font-bold">
+                        <td className="py-4 px-4 text-center">
                           {(() => {
                             const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
                             const count = clientRejected.length;
@@ -985,8 +1025,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Client", clientRejected)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-red-50 text-red-600 border border-red-100 hover:scale-110"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-red-50 text-red-600 border border-red-200 hover:scale-110 hover:bg-red-100"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -997,26 +1037,26 @@ export default function ReportsTab() {
                       </tr>
                     ))}
                     {/* Total Row */}
-                    <tr className="bg-slate-100 font-bold border-t-2 border-slate-200 sticky bottom-0 z-10 shadow-sm">
-                      <td colSpan={3} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
-                      <td className="py-4 px-6 text-center text-slate-800">{totals.positions}</td>
+                    <tr className="bg-slate-50 font-bold border-t border-slate-200 sticky bottom-0 z-10 shadow-sm">
+                      <td colSpan={3} className="py-4 px-6 text-right text-slate-500 uppercase tracking-widest text-[10px]">Total</td>
+                      <td className="py-4 px-6 text-center text-slate-800 text-xs">{totals.positions}</td>
                       <td className="py-4 px-6"></td>
-                      <td className="py-4 px-4 text-center text-slate-800">{totals.uploads}</td>
+                      <td className="py-4 px-4 text-center text-slate-800 text-xs">{totals.uploads}</td>
                       {["New", "Shortlisted"].map(status => (
-                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                        <td key={status} className="py-4 px-4 text-center text-slate-800 text-xs">
                           {totals[status] || 0}
                         </td>
                       ))}
-                      <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.dropByMentor || 0}</td>
-                      <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
-                      <td className="py-4 px-4 text-center text-slate-800">{totals.Interviewed || 0}</td>
+                      <td className="py-4 px-4 text-center text-gray-600 font-bold text-xs">{totals.dropByMentor || 0}</td>
+                      <td className="py-4 px-4 text-center text-red-600 font-bold text-xs">{totals.rejectByMentor}</td>
+                      <td className="py-4 px-4 text-center text-slate-800 text-xs">{totals.Interviewed || 0}</td>
                       {["Selected", "Joined", "Hold"].map(status => (
-                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                        <td key={status} className="py-4 px-4 text-center text-slate-800 text-xs">
                           {totals[status] || 0}
                         </td>
                       ))}
-                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
-                      <td className="py-4 px-4 text-center text-red-700 font-bold">{totals.rejectByClient}</td>
+                      <td className="py-4 px-4 text-center text-slate-500 font-bold text-xs">{totals.dropByClient || 0}</td>
+                      <td className="py-4 px-4 text-center text-red-700 font-bold text-xs">{totals.rejectByClient}</td>
                     </tr>
                   </>
                 );
@@ -1027,68 +1067,58 @@ export default function ReportsTab() {
       </div>
 
 
-      {/* Daily Lineup Reports Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 md:p-6 border-b border-slate-100">
-          <div className="mb-4">
-            <h2 className="text-base md:text-lg font-bold text-slate-800">Daily Lineup Reports</h2>
-            <p className="text-xs md:text-sm text-slate-500">Recruiter performance breakdown by job</p>
+      {/* Daily Lineup Reports */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-8">
+        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-black text-slate-800 tracking-tight">Daily Lineup Report</h2>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">Recruiter performance by job</p>
           </div>
-          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto">
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 w-full md:w-auto justify-center sm:justify-start">
-              {['T', 'Y', 'W', 'L'].map(s => (
-                <button
-                  key={s}
-                  onClick={() => applyDateShortcut(s)}
-                  className="w-9 h-9 md:w-7 md:h-7 flex items-center justify-center text-xs md:text-[10px] font-bold rounded-md hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 transition-all text-slate-500 hover:text-indigo-600"
-                  title={s === 'T' ? 'Today' : s === 'Y' ? 'Yesterday' : s === 'W' ? 'This Week' : 'Last Week'}
-                >
-                  {s}
-                </button>
-              ))}
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="relative group w-full sm:w-auto md:min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search Client..."
+                value={dailyReportsSearch.client}
+                onChange={(e) => setDailyReportsSearch(prev => ({ ...prev, client: e.target.value }))}
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
+              />
             </div>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 w-full md:max-w-md">
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">From</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-600 w-full"
-                />
-              </div>
-              <div className="flex items-center gap-2 flex-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">To</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-transparent text-sm focus:outline-none text-slate-600 w-full"
-                />
-              </div>
-              {(startDate || endDate) && (
-                <button
-                  onClick={() => { setStartDate(""); setEndDate(""); }}
-                  className="text-slate-400 hover:text-red-500 transition-colors self-center p-1"
-                >
-                  <X size={16} />
-                </button>
-              )}
+            <div className="relative group w-full sm:w-auto md:min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search Recruiter..."
+                value={dailyReportsSearch.recruiter}
+                onChange={(e) => setDailyReportsSearch(prev => ({ ...prev, recruiter: e.target.value }))}
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
+              />
+            </div>
+            <div className="relative group w-full sm:w-auto md:min-w-[200px]">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search Job Title..."
+                value={dailyReportsSearch.job}
+                onChange={(e) => setDailyReportsSearch(prev => ({ ...prev, job: e.target.value }))}
+                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
+              />
             </div>
           </div>
         </div>
-        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px]">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-[30]">
+        <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px] custom-scrollbar">
+          <table className="w-full text-sm text-left border-collapse min-w-[1500px]">
+            <thead className="bg-slate-50/50 text-slate-700 font-semibold sticky top-0 z-[30] backdrop-blur-sm">
               <tr>
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
-                    <span>Requirement Received Date</span>
+                <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Req Date</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_req' ? null : 'daily_req'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_req.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.daily_req.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.daily_req.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -1096,17 +1126,29 @@ export default function ReportsTab() {
                     options={getDailyLineupOptions('daily_req')}
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[150px]">
-                  <span>Joining Date</span>
+                <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Source Date</span>
+                    <button
+                      onClick={() => { setOpenFilter(openFilter === 'daily_source' ? null : 'daily_source'); setFilterSearch(""); }}
+                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_source.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                    >
+                      <Filter size={12} fill={selectedFilters.daily_source.length > 0 ? "currentColor" : "none"} />
+                    </button>
+                  </div>
+                  <FilterDropdown
+                    column="daily_source"
+                    options={getDailyLineupOptions('daily_source')}
+                  />
                 </th>
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
-                    <span>Recruiter Name</span>
+                <th className="py-4 px-6 min-w-[150px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Recruiter</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_recruiter' ? null : 'daily_recruiter'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_recruiter.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.daily_recruiter.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.daily_recruiter.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -1114,14 +1156,14 @@ export default function ReportsTab() {
                     options={getDailyLineupOptions('daily_recruiter')}
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
+                <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
                     <span>Client Name</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_client' ? null : 'daily_client'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_client.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.daily_client.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.daily_client.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -1129,33 +1171,29 @@ export default function ReportsTab() {
                     options={getDailyLineupOptions('daily_client')}
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[200px] relative">
-                  <div className="flex items-center justify-between">
+                <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
                     <span>Job Title</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_job' ? null : 'daily_job'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_job.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.daily_job.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.daily_job.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
                     column="daily_job"
                     options={getDailyLineupOptions('daily_job')}
-                    align="right"
                   />
                 </th>
-                <th className="py-3 px-6 min-w-[100px]">
-                  <span>Positions</span>
-                </th>
-                <th className="py-3 px-4 text-center min-w-[120px] relative">
+                <th className="py-4 px-4 text-center min-w-[100px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
                   <div className="flex items-center justify-center gap-2">
-                    <span>Total Lineups</span>
+                    <span>Total</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_total' ? null : 'daily_total'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_total.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
                     >
-                      <Filter size={14} fill={selectedFilters.daily_total.length > 0 ? "currentColor" : "none"} />
+                      <Filter size={12} fill={selectedFilters.daily_total.length > 0 ? "currentColor" : "none"} />
                     </button>
                   </div>
                   <FilterDropdown
@@ -1164,16 +1202,17 @@ export default function ReportsTab() {
                     align="right"
                   />
                 </th>
-                <th className="py-3 px-4 text-center text-blue-600 min-w-[80px]">New</th>
-                <th className="py-3 px-4 text-center text-orange-600 min-w-[80px]">Screen</th>
-                <th className="py-3 px-4 text-center text-gray-600 min-w-[100px]">Dropped</th>
-                <th className="py-3 px-4 text-center text-red-600 min-w-[100px]">Reject by Mentor</th>
-                <th className="py-3 px-4 text-center text-purple-600 min-w-[80px]">Interviewed</th>
-                <th className="py-3 px-4 text-center text-green-600 min-w-[80px]">Selected</th>
-                <th className="py-3 px-4 text-center text-emerald-600 min-w-[80px]">Joined</th>
-                <th className="py-3 px-4 text-center text-amber-600 min-w-[80px]">Hold</th>
-                <th className="py-3 px-4 text-center text-slate-600 min-w-[100px]">Dropped</th>
-                <th className="py-3 px-4 text-center text-red-700 min-w-[100px]">Reject by Client</th>
+                <th className="py-4 px-4 text-center text-blue-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">New</th>
+                <th className="py-4 px-4 text-center text-orange-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Screen</th>
+                <th className="py-4 px-4 text-center text-gray-400 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Drop (M)</th>
+                <th className="py-4 px-4 text-center text-red-400 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Rej (M)</th>
+                <th className="py-4 px-4 text-center text-purple-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Int</th>
+                <th className="py-4 px-4 text-center text-green-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Sel</th>
+                <th className="py-4 px-4 text-emerald-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Join</th>
+                <th className="py-4 px-4 text-center text-amber-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Hold</th>
+                <th className="py-4 px-4 text-center text-slate-600 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Drop (C)</th>
+                <th className="py-4 px-4 text-center text-red-700 min-w-[80px] text-[10px] uppercase tracking-widest font-black">Rej (C)</th>
+
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1183,37 +1222,48 @@ export default function ReportsTab() {
                 if (reportRows.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={16} className="py-8 text-center text-slate-500">
-                        No lineup data found for the selected criteria.
+                      <td colSpan={16} className="py-20 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                            <Filter className="w-8 h-8 text-slate-300" />
+                          </div>
+                          <p className="font-bold text-lg text-slate-600">No daily report data found</p>
+                          <p className="text-sm">Try adjusting your filters</p>
+                        </div>
                       </td>
                     </tr>
                   );
                 }
 
-                // Note: The original logic for `totals` calculated inside the render here has been moved to useMemo.
-                // We reuse `totals` from `dailyLineupReportData`.
-
                 return (
                   <>
                     {reportRows.map((row: any, i: number) => (
-                      <tr key={`${row.job._id}-${row.recruiter._id}-${row.sourceDate}-${i}`} className="hover:bg-slate-50 transition-colors">
-                        <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
-                        <td className="py-4 px-6 text-slate-600">{formatDate(row.recruiter.dateOfJoining || row.recruiter.joinDate)}</td>
-                        <td className="py-4 px-6 font-medium text-slate-800">{row.recruiter.name}</td>
-                        <td className="py-4 px-6 text-slate-600">{row.clientName}</td>
-                        <td className="py-4 px-6 text-slate-600 max-w-[200px] truncate" title={row.job.title}>{row.job.title}</td>
-                        <td className="py-4 px-6 text-center text-slate-600">{row.job.noOfPositions || '-'}</td>
+                      <tr key={`${row.job._id}-${row.recruiter._id}-${row.sourceDate}-${i}`} className="hover:bg-slate-50/80 transition-colors group">
+                        <td className="py-4 px-6 text-slate-600 text-xs font-bold">{row.dateReceived}</td>
+                        <td className="py-4 px-6 text-slate-600 text-xs font-bold">{row.sourceDate}</td>
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
+                              {row?.recruiter?.name?.charAt(0) || 'U'}
+                            </div>
+                            <span className="text-slate-700 font-bold text-xs">{row?.recruiter?.name || 'Unknown'}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-6 font-bold text-slate-700 text-xs">{row.clientName}</td>
+                        <td className="py-4 px-6 text-slate-700 font-bold text-xs">{row.job.title}</td>
+
                         <td className="py-4 px-4 text-center">
                           <button
                             disabled={row.jobCandidates.length === 0}
-                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
-                            className={`px-2 py-0.5 rounded-full text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
-                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Lineups", row.jobCandidates)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
+                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:border-slate-300 transform hover:scale-105"
                               : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
                           >
                             {row.jobCandidates.length}
                           </button>
                         </td>
+
                         {["New", "Shortlisted"].map(status => {
                           const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
                           const count = statusCandidates.length;
@@ -1222,8 +1272,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110 shadow-sm border border-transparent`
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -1231,7 +1281,7 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
-                        {/* Drop by Mentor Column */}
+                        {/* Dropped by Mentor Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
                             const mentorDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor");
@@ -1240,8 +1290,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Mentor", mentorDropped)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-gray-100 text-gray-700 border border-gray-200 hover:scale-110 hover:bg-gray-200"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -1258,8 +1308,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Mentor", mentorRejected)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-red-100 text-red-700 border border-red-200 hover:scale-110"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-red-50 text-red-600 border border-red-200 hover:scale-110 hover:bg-red-100"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -1267,6 +1317,7 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
+
                         {["Interviewed"].map(status => {
                           const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
                           const count = statusCandidates.length;
@@ -1275,8 +1326,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110 shadow-sm border border-transparent`
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -1292,8 +1343,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, status, statusCandidates)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? `${getStatusColor(status)} hover:scale-110`
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? `${getStatusColor(status)} hover:scale-110 shadow-sm border border-transparent`
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -1301,7 +1352,7 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
-                        {/* Drop by Client Column */}
+                        {/* Dropped by Client Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
                             const clientDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client");
@@ -1310,8 +1361,8 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Drop by Client", clientDropped)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                  ? "bg-slate-50 text-slate-600 border border-slate-200 hover:scale-110"
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                  ? "bg-slate-100 text-slate-600 border border-slate-200 hover:scale-110 hover:bg-slate-200"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
                                 {count}
@@ -1327,7 +1378,7 @@ export default function ReportsTab() {
                               <button
                                 disabled={count === 0}
                                 onClick={() => openCandidatePopup(row.job.title, row.clientName, "Reject by Client", clientRejected)}
-                                className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold min-w-[32px] transition-all ${count > 0
                                   ? "bg-red-50 text-red-600 border border-red-100 hover:scale-110"
                                   : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                               >
@@ -1339,25 +1390,24 @@ export default function ReportsTab() {
                       </tr>
                     ))}
                     {/* Total Row */}
-                    <tr className="bg-slate-100 font-bold border-t-2 border-slate-200 sticky bottom-0 z-10 shadow-sm">
-                      <td colSpan={5} className="py-4 px-6 text-right text-slate-800 uppercase tracking-wider text-xs">Total</td>
-                      <td className="py-4 px-6 text-center text-slate-800">{totals.positions}</td>
-                      <td className="py-4 px-4 text-center text-slate-800">{totals.uploads}</td>
+                    <tr className="bg-slate-50 font-bold border-t border-slate-200 sticky bottom-0 z-10 shadow-sm">
+                      <td colSpan={5} className="py-4 px-6 text-right text-slate-500 uppercase tracking-widest text-[10px]">Total</td>
+                      <td className="py-4 px-4 text-center text-slate-800 text-xs">{totals.lineups}</td>
                       {["New", "Shortlisted"].map(status => (
-                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                        <td key={status} className="py-4 px-4 text-center text-slate-800 text-xs text-xs">
                           {totals[status] || 0}
                         </td>
                       ))}
-                      <td className="py-4 px-4 text-center text-gray-600 font-bold">{totals.dropByMentor || 0}</td>
-                      <td className="py-4 px-4 text-center text-red-600 font-bold">{totals.rejectByMentor}</td>
-                      <td className="py-4 px-4 text-center text-slate-800">{totals.Interviewed || 0}</td>
+                      <td className="py-4 px-4 text-center text-gray-600 font-bold text-xs">{totals.dropByMentor || 0}</td>
+                      <td className="py-4 px-4 text-center text-red-600 font-bold text-xs">{totals.rejectByMentor}</td>
+                      <td className="py-4 px-4 text-center text-slate-800 text-xs">{totals.Interviewed || 0}</td>
                       {["Selected", "Joined", "Hold"].map(status => (
-                        <td key={status} className="py-4 px-4 text-center text-slate-800">
+                        <td key={status} className="py-4 px-4 text-center text-slate-800 text-xs">
                           {totals[status] || 0}
                         </td>
                       ))}
-                      <td className="py-4 px-4 text-center text-slate-500 font-bold">{totals.dropByClient || 0}</td>
-                      <td className="py-4 px-4 text-center text-red-700 font-bold">{totals.rejectByClient}</td>
+                      <td className="py-4 px-4 text-center text-slate-500 font-bold text-xs">{totals.dropByClient || 0}</td>
+                      <td className="py-4 px-4 text-center text-red-700 font-bold text-xs">{totals.rejectByClient}</td>
                     </tr>
                   </>
                 );
@@ -1365,7 +1415,7 @@ export default function ReportsTab() {
             </tbody>
           </table>
         </div>
-      </div >
+      </div>
 
 
       {/* Candidate Details Popup */}
@@ -1374,176 +1424,116 @@ export default function ReportsTab() {
           candidatePopupData && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-0 md:p-4 bg-black/50 backdrop-blur-sm">
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-none md:rounded-xl shadow-xl w-full h-full md:h-auto md:max-w-4xl md:max-h-[80vh] flex flex-col"
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white rounded-none md:rounded-2xl shadow-2xl w-full h-full md:h-auto md:max-h-[85vh] md:max-w-5xl flex flex-col overflow-hidden"
               >
-                <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-base md:text-xl font-bold text-slate-800 truncate">
-                      {candidatePopupData.title}
+                <div className="flex justify-between items-center p-5 md:p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
+                  <div>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight mb-1">
+                      {candidatePopupData.status} Candidates
                     </h2>
-                    <p className="text-xs md:text-sm font-semibold text-indigo-600 truncate">Client: {candidatePopupData.clientName}</p>
+                    <p className="text-sm text-slate-500 font-medium">
+                      {candidatePopupData.jobTitle} • <span className="text-indigo-600 font-bold">{candidatePopupData.clientName}</span>
+                    </p>
                   </div>
                   <button
-                    onClick={() => setCandidatePopupData(null)}
-                    className="p-2 hover:bg-slate-100 rounded-full transition-colors flex-shrink-0 ml-2"
+                    onClick={closeCandidatePopup}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
                   >
-                    <X size={20} className="text-slate-500 md:w-6 md:h-6" />
+                    <X size={24} />
                   </button>
                 </div>
 
-                <div className="flex-1 overflow-auto p-4 md:p-6">
-                  {(() => {
-                    // Check if any candidate has status details worth showing
-                    const hasStatusDetails = candidatePopupData.candidates.some((c: any) =>
-                      (c.status === "Interviewed" && c.interviewStage) ||
-                      (c.status === "Selected" && (c.selectionDate || c.expectedJoiningDate || c.joiningDate)) ||
-                      (c.status === "Joined" && c.joiningDate) ||
-                      (c.status === "Dropped" && (c.droppedReason || c.droppedBy))
-                    );
-
-                    return (
-                      <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
+                <div className="flex-1 overflow-auto p-0 md:p-2 custom-scrollbar bg-slate-50/50">
+                  <div className="md:rounded-xl overflow-hidden border-y md:border border-slate-200 bg-white m-0 md:m-4 shadow-sm">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
+                        <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10 shadow-sm">
                           <tr>
-                            <th className="py-3 px-4 text-center">Source Date</th>
-                            <th className="py-3 px-4">Name</th>
-                            <th className="py-3 px-4">Phone</th>
-                            <th className="py-3 px-4">Recruiter</th>
-                            <th className="py-3 px-4">Status</th>
-                            {hasStatusDetails && <th className="py-3 px-4">Status Details</th>}
-                            <th className="py-3 px-4">Notes</th>
+                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Source Date</th>
+                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Name</th>
+                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Phone</th>
+                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Recruiter</th>
+                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status</th>
+                            {hasStatusDetails && <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status Details</th>}
+                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500 min-w-[200px]">Notes</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {candidatePopupData.candidates.length > 0 ? (
-                            candidatePopupData.candidates.map((c: any, i: number) => {
-                              const dynamicKeys = Object.keys(c.dynamicFields || {});
-                              const nameKey = dynamicKeys.find(k => k.toLowerCase().includes("name")) || dynamicKeys[0];
-                              const phoneKey = dynamicKeys.find(k => k.toLowerCase().includes("phone")) || dynamicKeys[1];
-
-                              const creatorId = typeof c.createdBy === 'object' ? c.createdBy._id : c.createdBy;
-                              const creatorName = users.find(u => u._id === creatorId)?.name || "Unknown";
-
-                              // Find the "Dropped" entry in statusHistory to get the reason/comment
-                              const droppedEntry = Array.isArray(c.statusHistory)
-                                ? c.statusHistory.find((h: any) => h.status === "Dropped")
-                                : null;
-                              const droppedComment = droppedEntry?.comment || "";
-
-                              const rejectedEntry = Array.isArray(c.statusHistory)
-                                ? c.statusHistory.find((h: any) => h.status === "Rejected")
-                                : null;
-                              const rejectedComment = rejectedEntry?.comment || "";
-                              const rejectionReason = rejectedEntry?.rejectionReason || c.rejectionReason;
-
-                              return (
-                                <tr key={i} className="hover:bg-slate-50">
-                                  <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
-                                  <td className="py-3 px-4 font-medium text-slate-800">{c.dynamicFields?.[nameKey] || "N/A"}</td>
-                                  <td className="py-3 px-4 text-slate-600">{c.dynamicFields?.[phoneKey] || "N/A"}</td>
-                                  <td className="py-3 px-4 text-slate-600">
-                                    <span className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-full text-[10px] font-medium border border-slate-200">
-                                      {creatorName}
-                                    </span>
-                                  </td>
-                                  <td className="py-3 px-4">
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusColor(c.status)}`}>
-                                      {c.status === "Shortlisted" ? "Screen" : c.status}
-                                    </span>
-                                  </td>
-                                  {hasStatusDetails && (
-                                    <td className="py-3 px-4 text-slate-600">
-                                      {c.status === "Interviewed" && c.interviewStage && (
-                                        <div className="text-xs">
-                                          <span className="font-semibold">Stage:</span> {c.interviewStage}
-                                        </div>
-                                      )}
-                                      {c.status === "Selected" && (
-                                        <div className="text-xs space-y-1">
-                                          {c.selectionDate && (
-                                            <div>
-                                              <span className="font-semibold">Selected:</span> {formatDate(c.selectionDate)}
-                                            </div>
-                                          )}
-                                          {(c.expectedJoiningDate || c.joiningDate) && (
-                                            <div>
-                                              <span className="font-semibold">Joining:</span> {formatDate(c.expectedJoiningDate || c.joiningDate)}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      {c.status === "Joined" && c.joiningDate && (
-                                        <div className="text-xs">
-                                          <span className="font-semibold">Joined:</span> {formatDate(c.joiningDate)}
-                                        </div>
-                                      )}
-                                      {c.status === "Rejected" && (rejectionReason || c.rejectedBy) && (
-                                        <div className="text-xs space-y-1">
-                                          {rejectionReason && (
-                                            <div>
-                                              <span className="font-semibold text-red-600">Reason:</span> {rejectionReason}
-                                            </div>
-                                          )}
-                                          {c.rejectedBy && (
-                                            <div>
-                                              <span className="font-semibold">By:</span> {c.rejectedBy}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      {c.status === "Dropped" && (droppedComment || c.droppedReason || c.droppedBy) && (
-                                        <div className="text-xs space-y-1">
-                                          {(droppedComment || c.droppedReason) && (
-                                            <div>
-                                              <span className="font-semibold text-red-600">Reason:</span> {droppedComment || c.droppedReason}
-                                            </div>
-                                          )}
-                                          {c.droppedBy && (
-                                            <div>
-                                              <span className="font-semibold">By:</span> {c.droppedBy}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      {!((c.status === "Interviewed" && c.interviewStage) || c.status === "Selected" || (c.status === "Joined" && c.joiningDate) || (c.status === "Dropped" && (droppedComment || c.droppedReason || c.droppedBy)) || (c.status === "Rejected" && (rejectionReason || c.rejectedBy))) && (
-                                        <span className="text-slate-400">-</span>
-                                      )}
-                                    </td>
-                                  )}
-                                  <td className="py-3 px-4 text-slate-600">
-                                    <div className="max-w-[200px] truncate" title={c.status === "Dropped" ? droppedComment || c.droppedReason || c.notes : c.status === "Rejected" ? rejectedComment || c.notes : c.notes}>
-                                      {c.status === "Dropped" ? (
-                                        <span>{droppedComment || c.droppedReason || c.notes || <span className="text-slate-400">-</span>}</span>
-                                      ) : c.status === "Rejected" ? (
-                                        <span>{rejectedComment || c.notes || <span className="text-slate-400">-</span>}</span>
-                                      ) : (
-                                        <span>{c.notes || <span className="text-slate-400">-</span>}</span>
-                                      )}
+                          {candidatePopupData.candidates.map((candidate: any, index: number) => (
+                            <tr key={index} className="hover:bg-slate-50 transition-colors group">
+                              <td className="py-4 px-6 text-slate-600 text-xs font-bold whitespace-nowrap">{candidate.sourceDate || '-'}</td>
+                              <td className="py-4 px-6 font-bold text-slate-700">{candidate.name}</td>
+                              <td className="py-4 px-6 text-slate-600 font-mono text-xs">{candidate.phone}</td>
+                              <td className="py-4 px-6">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                  {candidate.recruiterName || 'Unknown'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-6">
+                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${(() => {
+                                  switch (candidate.status) {
+                                    case 'New': return 'bg-blue-50 text-blue-700 border-blue-200';
+                                    case 'Shortlisted': return 'bg-orange-50 text-orange-700 border-orange-200';
+                                    case 'Interviewed': return 'bg-purple-50 text-purple-700 border-purple-200';
+                                    case 'Selected': return 'bg-green-50 text-green-700 border-green-200';
+                                    case 'Joined': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                    case 'Rejected': return 'bg-red-50 text-red-700 border-red-200';
+                                    default: return 'bg-slate-100 text-slate-700 border-slate-200';
+                                  }
+                                })()}`}>
+                                  {candidate.status}
+                                </span>
+                              </td>
+                              {hasStatusDetails && (
+                                <td className="py-4 px-6 text-xs space-y-1">
+                                  {candidate.status === 'Interviewed' && (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-bold text-slate-700">R{candidate.interviewRound}</span>
+                                      <span className="text-slate-500">{candidate.interviewDate ? new Date(candidate.interviewDate).toLocaleDateString() : '-'}</span>
                                     </div>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          ) : (
-                            <tr>
-                              <td colSpan={hasStatusDetails ? 7 : 6} className="py-8 text-center text-slate-500">
-                                No candidates found.
+                                  )}
+                                  {candidate.status === 'Selected' && (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-bold text-slate-700">Select: {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : '-'}</span>
+                                    </div>
+                                  )}
+                                  {candidate.status === 'Joined' && (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-bold text-slate-700">Join: {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : '-'}</span>
+                                    </div>
+                                  )}
+                                  {candidate.status === 'Rejected' && (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-bold text-red-600">By {candidate.rejectedBy}</span>
+                                      <span className="text-slate-500 italic">{candidate.rejectionReason}</span>
+                                    </div>
+                                  )}
+                                  {candidate.status === 'Dropped' && (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="font-bold text-slate-600">By {candidate.droppedBy}</span>
+                                      <span className="text-slate-500 italic">{candidate.droppingReason}</span>
+                                    </div>
+                                  )}
+                                </td>
+                              )}
+                              <td className="py-4 px-6 text-slate-500 text-xs italic max-w-[250px] truncate" title={candidate.remark}>
+                                {candidate.remark || '-'}
                               </td>
                             </tr>
-                          )}
+                          ))}
                         </tbody>
                       </table>
-                    );
-                  })()}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end">
+                <div className="p-4 md:p-5 border-t border-slate-100 bg-slate-50 flex justify-end">
                   <button
-                    onClick={() => setCandidatePopupData(null)}
-                    className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 font-medium"
+                    onClick={closeCandidatePopup}
+                    className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-sm font-bold rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
                   >
                     Close
                   </button>

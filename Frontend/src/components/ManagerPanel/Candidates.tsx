@@ -371,22 +371,22 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Candidates</h1>
-          <p className="text-slate-500 mt-1">Manage and track your candidate pipeline</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">Candidates</h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">Manage and track your candidate pipeline</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all shadow-lg hover:shadow-orange-200/50 font-semibold"
+          className="flex items-center justify-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all shadow-md hover:shadow-orange-200/50 font-semibold w-full sm:w-auto"
         >
           <Plus size={20} />
           <span>Add Candidate</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 group transition-all hover:shadow-md">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 mb-6 sm:mb-8 transition-all hover:shadow-md">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Search</label>
             <div className="relative group">
@@ -433,7 +433,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mt-6 pt-6 border-t border-slate-100">
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mt-6 pt-6 border-t border-slate-100">
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 block">From Date</label>
             <input
@@ -514,12 +514,12 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
         {["all", "New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped", "Hold"].map((status) => (
           <button
             key={status}
             onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${statusFilter === status
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border whitespace-nowrap ${statusFilter === status
               ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200"
               : "bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
               }`}
@@ -529,14 +529,14 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative mb-6 sm:mb-8">
         {loading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
           </div>
         )}
-        <div className="overflow-x-auto whitespace-nowrap">
-          <table className="w-full text-sm text-left">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left min-w-[1200px]">
             <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px] tracking-widest border-b border-slate-100">
               <tr>
                 <th className="px-6 py-4">Name</th>
@@ -715,33 +715,34 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
           </table>
         </div>
 
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
             Showing {Math.min(pagination.totalCandidates, (currentPage - 1) * limit + 1)} - {Math.min(pagination.totalCandidates, currentPage * limit)} of {pagination.totalCandidates}
           </span>
-          <div className="flex gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1 text-xs font-bold bg-white border border-slate-200 rounded-lg disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 text-xs font-bold bg-white border border-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 transition-all text-slate-600 hover:text-slate-900"
             >
               Prev
             </button>
-            <div className="flex gap-1">
-              {[...Array(pagination.totalPages)].map((_, i) => (
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide py-1">
+              {[...Array(Math.min(5, pagination.totalPages))].map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setCurrentPage(i + 1)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${currentPage === i + 1 ? "bg-orange-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+                  className={`w-9 h-9 flex items-center justify-center rounded-xl text-xs font-bold transition-all border ${currentPage === i + 1 ? "bg-orange-600 text-white border-orange-600 shadow-md shadow-orange-100" : "bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50"}`}
                 >
                   {i + 1}
                 </button>
               ))}
+              {pagination.totalPages > 5 && <span className="flex items-center text-slate-300 px-1">...</span>}
             </div>
             <button
               onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
               disabled={currentPage === pagination.totalPages}
-              className="px-3 py-1 text-xs font-bold bg-white border border-slate-200 rounded-lg disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 text-xs font-bold bg-white border border-slate-200 rounded-xl disabled:opacity-50 hover:bg-slate-50 transition-all text-slate-600 hover:text-slate-900"
             >
               Next
             </button>

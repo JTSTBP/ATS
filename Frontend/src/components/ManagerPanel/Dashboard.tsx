@@ -21,8 +21,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { formatDate } from "../../utils/dateUtils";
+import { useScreenSize } from "../../hooks/useScreenSize";
 
 export default function ManagerDashboard() {
+  const screenSize = useScreenSize();
   const { user } = useAuth();
   const { candidates, fetchallCandidates } = useCandidateContext();
   const { users, fetchUsers } = useUserContext();
@@ -142,63 +144,73 @@ export default function ManagerDashboard() {
       }
     });
 
+    const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
     return Object.values(recruiterStats)
-      .sort((a, b) => b.uploaded - a.uploaded);
-  }, [scopedCandidates, users, user, selectedMonth, allReporteeIds]);
+      .sort((a, b) => b.uploaded - a.uploaded)
+      .slice(0, maxRecruiters);
+  }, [scopedCandidates, users, user, selectedMonth, allReporteeIds, screenSize]);
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800">
       {/* Header */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-6 sm:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Manager Dashboard</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Manager Dashboard</h1>
+          <p className="text-sm sm:text-base text-slate-500 mt-1">
             Welcome back! Here's a summary of your team's recruitment activities.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-          <span className="text-sm font-medium text-slate-600 whitespace-nowrap">Filter by Month:</span>
+        <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-slate-200 w-fit">
+          <span className="text-xs sm:text-sm font-semibold text-slate-600 whitespace-nowrap uppercase tracking-wider">Month:</span>
           <input
             type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-2 py-1 border-none bg-transparent focus:ring-0 text-sm font-bold curso-pointer"
+            className="px-2 py-0.5 border-none bg-transparent focus:ring-0 text-sm sm:text-base font-bold text-blue-600 cursor-pointer"
           />
         </div>
       </div>
 
-      {/* Stats Grid - MATCH ADMIN DASHBOARD */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-10">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 mb-8 sm:mb-10">
         {[
-          { label: "Total Candidates", value: stats.totalCandidates, icon: Users, color: "indigo", path: "/Manager/candidates" },
-          { label: "Total Positions", value: stats.totalPositions, icon: Briefcase, color: "blue", path: "/Manager/jobs" },
-          { label: "Positions Left", value: stats.remainingPositions, icon: Briefcase, color: "emerald", path: "/Manager/jobs" },
-          { label: "Selected", value: stats.selectedCandidates, icon: CheckCircle, color: "green", path: "/Manager/candidates?status=Selected" },
-          { label: "Joined", value: stats.joinedCandidates, icon: Users, color: "emerald", path: "/Manager/candidates?status=Joined" }
+          { label: "Total Candidates", value: stats.totalCandidates, icon: Users, color: "blue", path: "/Manager/candidates" },
+          { label: "Total Positions", value: stats.totalPositions, icon: Briefcase, color: "indigo", path: "/Manager/jobs" },
+          { label: "Positions Left", value: stats.remainingPositions, icon: Briefcase, color: "orange", path: "/Manager/jobs" },
+          { label: "Selected", value: stats.selectedCandidates, icon: CheckCircle, color: "emerald", path: "/Manager/candidates?status=Selected" },
+          { label: "Joined", value: stats.joinedCandidates, icon: Users, color: "green", path: "/Manager/candidates?status=Joined" }
         ].map((stat, i) => (
           <div
             key={i}
             onClick={() => navigate(stat.path)}
-            className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+            className="bg-white rounded-xl shadow-sm p-5 sm:p-6 flex justify-between items-center hover:shadow-md transition-all border border-slate-100 cursor-pointer group"
           >
             <div>
-              <p className={`text-slate-500 text-sm font-medium group-hover:text-${stat.color}-600 transition-colors`}>{stat.label}</p>
-              <h2 className="text-3xl font-bold mt-1 text-slate-800">{stat.value}</h2>
+              <p className="text-slate-500 text-xs sm:text-sm font-semibold uppercase tracking-wider">{stat.label}</p>
+              <h2 className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-slate-800">{stat.value}</h2>
             </div>
-            <div className={`bg-${stat.color}-50 text-${stat.color}-600 p-3 rounded-xl group-hover:bg-${stat.color}-100 transition-colors`}>
-              <stat.icon size={24} />
+            <div className={`p-3 rounded-xl transition-colors ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-100' :
+                stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100' :
+                  stat.color === 'orange' ? 'bg-orange-50 text-orange-600 group-hover:bg-orange-100' :
+                    stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' :
+                      'bg-green-50 text-green-600 group-hover:bg-green-100'
+              }`}>
+              <stat.icon size={screenSize === 'mobile' ? 20 : 24} />
             </div>
           </div>
         ))}
       </div>
 
       {/* Recruiter Performance Chart */}
-      <div className="bg-white rounded-xl shadow border border-slate-100 p-6 mb-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4 sm:p-8 mb-8 sm:mb-10">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 sm:mb-8 gap-4 sm:gap-6">
           <div>
-            <h3 className="font-bold text-lg text-slate-800">Team Performance</h3>
-            <p className="text-sm text-slate-500">Candidates uploaded, shortlisted, and joined by team members</p>
+            <h3 className="font-bold text-lg sm:text-xl text-slate-800 flex items-center gap-2">
+              <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
+              Team Performance
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">Candidates uploaded, shortlisted, and joined by team members</p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-blue-500"></div><span>Uploaded</span></div>
@@ -206,38 +218,59 @@ export default function ManagerDashboard() {
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500"></div><span>Joined/Selected</span></div>
           </div>
         </div>
-        <div className="h-80">
+        <div className="h-64 sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={recruiterPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <BarChart
+              data={recruiterPerformanceData}
+              margin={{
+                top: 10,
+                right: 10,
+                left: -20,
+                bottom: screenSize === 'mobile' ? 50 : 20
+              }}
+            >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} interval={0} />
+              <XAxis
+                dataKey="name"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#64748b', fontSize: screenSize === 'mobile' ? 9 : 11 }}
+                interval={0}
+                angle={screenSize === 'mobile' ? -45 : 0}
+                textAnchor={screenSize === 'mobile' ? 'end' : 'middle'}
+              />
               <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11 }} />
               <Tooltip
                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)' }}
                 cursor={{ fill: '#f8fafc' }}
               />
-              <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={24} />
-              <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+              <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 24} />
+              <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 24} />
+              <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 24} />
             </BarChart>
           </ResponsiveContainer>
         </div>
+        {recruiterPerformanceData.length > 0 && (
+          <p className="mt-4 text-[10px] sm:text-xs text-slate-400 italic text-center">
+            Showing top {recruiterPerformanceData.length} team members based on screen size
+          </p>
+        )}
       </div>
 
-      {/* Active Jobs Table - MATCH ADMIN DASHBOARD */}
-      <div className="bg-white rounded-xl shadow border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+      {/* Active Jobs Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6 sm:mb-10">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-slate-50/50 gap-4">
           <div>
             <h3 className="font-bold text-lg text-slate-800">Your Team's Active Jobs</h3>
-            <p className="text-sm text-slate-500">Positions currently being worked on by your team</p>
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">Positions currently being worked on by your team</p>
           </div>
-          <span className="bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-bold">
+          <span className="bg-indigo-100 text-indigo-700 text-[10px] sm:text-xs px-3 py-1.5 rounded-full font-bold uppercase tracking-wider">
             {scopedJobs.filter(j => j.status === "Open").length} Open Jobs
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left min-w-[800px]">
             <thead className="bg-slate-50 text-[10px] uppercase text-slate-400 font-bold tracking-widest border-b border-slate-100">
               <tr>
                 <th className="px-6 py-4">Job Title</th>

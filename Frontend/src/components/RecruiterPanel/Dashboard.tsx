@@ -123,26 +123,29 @@ export default function Dashboard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 leading-tight">
             Welcome back, {user?.name}
           </h1>
-          <p className="text-sm md:text-base text-slate-600">
-            Here's what's happening with your recruitment today.
+          <p className="text-sm sm:text-base text-gray-500 mt-1">
+            Track your recruitment progress for the month
           </p>
         </div>
-        <div>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-          />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div className="flex flex-col w-full sm:w-auto">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1 font-mono">Select Month</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 mb-8">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -152,18 +155,19 @@ export default function Dashboard() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               onClick={() => stat.clickable && navigate(stat.route)}
-              className={`bg-white rounded-xl shadow-md p-6 border border-slate-200 hover:shadow-lg transition-shadow ${stat.clickable ? "cursor-pointer" : ""
+              className={`bg-white rounded-2xl shadow-sm p-5 border border-gray-100 group hover:shadow-md transition-all ${stat.clickable ? "cursor-pointer" : ""
                 }`}
             >
               <div className="flex items-center justify-between mb-4">
-                <div className={`${stat.color} p-3 rounded-lg`}>
-                  <Icon size={24} className="text-white" />
+                <div className={`${stat.color} p-2.5 rounded-xl text-white shadow-lg shadow-${stat.color.split('-')[1]}-200 group-hover:scale-110 transition-transform`}>
+                  <Icon size={20} />
                 </div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Current Month</span>
               </div>
-              <p className="text-3xl font-bold text-slate-800 mb-1">
+              <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-1">
                 {stat.value}
               </p>
-              <p className="text-sm text-slate-600">{stat.label}</p>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">{stat.label}</p>
             </motion.div>
           );
         })}
@@ -172,12 +176,15 @@ export default function Dashboard() {
       {/* Performance Report Table */}
       <PerformanceReportTable />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Recent Activity */}
-        <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">
-            Recent Activity
-          </h2>
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Users className="w-5 h-5 text-blue-500" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Recent Activity</h2>
+          </div>
           <div className="space-y-4">
             {candidates
               .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
@@ -191,36 +198,41 @@ export default function Dashboard() {
                 return (
                   <div
                     key={candidate._id || index}
-                    className="flex items-center gap-4 pb-4 border-b border-slate-100 last:border-0"
+                    className="flex items-center gap-4 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
                   >
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                      <Users size={18} className="text-slate-600" />
+                    <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 font-bold shrink-0">
+                      {name.charAt(0)}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-slate-800">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-800 truncate">
                         New candidate added
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-gray-500 truncate">
                         {name}
                       </p>
                     </div>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-[10px] font-bold text-gray-400 font-mono whitespace-nowrap">
                       {formatDate(candidate.createdAt || Date.now())}
                     </span>
                   </div>
                 );
               })}
             {candidates.length === 0 && (
-              <p className="text-sm text-slate-500 text-center py-4">No recent activity.</p>
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-400 italic">No recent activity.</p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Upcoming Interviews */}
-        <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
-          <h2 className="text-xl font-bold text-slate-800 mb-4">
-            Upcoming Interviews
-          </h2>
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-amber-50 rounded-lg">
+              <Clock className="w-5 h-5 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-800">Shortlisted Pipeline</h2>
+          </div>
           <div className="space-y-4">
             {candidates
               .filter((c) => c.status === "Shortlisted")
@@ -236,7 +248,7 @@ export default function Dashboard() {
                   candidate.dynamicFields?.position ||
                   candidate.dynamicFields?.jobTitle ||
                   "Candidate";
-                // Smart field mapping for Company
+
                 const dynamicKeys = Object.keys(candidate.dynamicFields || {});
                 let companyKey = dynamicKeys.find(k => k.toLowerCase() === "current company");
                 if (!companyKey) companyKey = dynamicKeys.find(k => k.toLowerCase() === "company");
@@ -247,35 +259,33 @@ export default function Dashboard() {
                 return (
                   <div
                     key={candidate._id || index}
-                    className="flex items-center gap-4 pb-4 border-b border-slate-100 last:border-0"
+                    className="flex items-center gap-4 pb-4 border-b border-gray-50 last:border-0 last:pb-0"
                   >
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                      <Clock size={18} className="text-blue-600" />
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                      <Clock size={18} className="text-blue-500" />
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-slate-800">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-800 truncate">
                         {name}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-gray-500 truncate">
                         {role} • {company}
                       </p>
                     </div>
-                    <span className="text-xs text-slate-600 font-medium">
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg font-mono whitespace-nowrap">
                       {candidate.dynamicFields?.interviewDate
-                        ? new Date(candidate.dynamicFields.interviewDate).toLocaleString([], {
+                        ? new Date(candidate.dynamicFields.interviewDate).toLocaleDateString([], {
                           month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
+                          day: 'numeric'
                         })
-                        : "Scheduled"}
+                        : "Shortlisted"}
                     </span>
                   </div>
                 );
               })}
             {candidates.filter((c) => c.status === "Shortlisted").length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-sm text-slate-500">No interviews scheduled.</p>
+              <div className="text-center py-8">
+                <p className="text-sm text-gray-400 italic">No candidates in shortlisted pipeline.</p>
               </div>
             )}
           </div>

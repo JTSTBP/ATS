@@ -16,6 +16,8 @@ import {
   Edit,
   ChevronDown,
   Search,
+  CalendarCheck,
+  FileText,
 } from "lucide-react";
 import { getImageUrl, getFilePreviewUrl } from "../../../../utils/imageUtils";
 import { API_BASE_URL } from "../../../../config/config";
@@ -850,176 +852,93 @@ const CandidatesList = () => {
         </div>
       )}
 
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition font-medium"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Back to Jobs
-          </button>
+      <div className="bg-white border-b sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition font-medium self-start lg:self-auto"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              <span className="text-sm sm:text-base">Back to Jobs</span>
+            </button>
 
-          <div className="flex items-center gap-4 flex-1 max-w-2xl ml-8">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="Search candidates by name, email, skills..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-              />
-              <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 lg:max-w-2xl lg:ml-8">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search candidates..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all text-sm font-medium"
+                />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
 
-            <div className="w-64">
-              <SearchableSelect
-                options={[
-                  { value: "all", label: "All Recruiters" },
-                  ...Array.from(new Set(candidates
-                    .filter(c => (c.jobId as any)?._id === id)
-                    .map(c => ({
-                      value: (c.createdBy as any)?._id,
-                      label: (c.createdBy as any)?.name
-                    }))
-                    .filter(r => {
-                      if (!r.value || !r.label) return false;
-                      // Check if this recruiter is not disabled
-                      const recruiterUser = users.find(u => u._id === r.value);
-                      return recruiterUser && !recruiterUser.isDisabled;
-                    })
-                    .map(r => JSON.stringify(r))
-                  )).map(rJson => JSON.parse(rJson))
-                ]}
-                value={recruiterFilter}
-                onChange={(val) => setRecruiterFilter(val)}
-                placeholder="Select Recruiter"
-              />
+              <div className="sm:w-64">
+                <SearchableSelect
+                  options={[
+                    { value: "all", label: "All Recruiters" },
+                    ...Array.from(new Set(candidates
+                      .filter(c => (c.jobId as any)?._id === id)
+                      .map(c => ({
+                        value: (c.createdBy as any)?._id,
+                        label: (c.createdBy as any)?.name
+                      }))
+                      .filter(r => {
+                        if (!r.value || !r.label) return false;
+                        const recruiterUser = users.find(u => u._id === r.value);
+                        return recruiterUser && !recruiterUser.isDisabled;
+                      })
+                      .map(r => JSON.stringify(r))
+                    )).map(rJson => JSON.parse(rJson))
+                  ]}
+                  value={recruiterFilter}
+                  onChange={(val) => setRecruiterFilter(val)}
+                  placeholder="Select Recruiter"
+                  className="h-full"
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6">
-
-          <div className="flex items-center gap-8 border-b border-gray-200">
-            {/* ALL */}
-            <button
-              onClick={() => {
-                setStatusFilter("all");
-                setInterviewStageFilter("all");
-              }}
-              className={`px-1 py-4 text-sm font-medium ${statusFilter === "all"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              All responses{" "}
-              <span className="ml-1">
-                {statusFilter === "all" ? filteredList.length : ""}
-              </span>
-            </button>
-
-            {/* NEW */}
-            <button
-              onClick={() => {
-                setStatusFilter("New");
-                setInterviewStageFilter("all");
-              }}
-              className={`px-1 py-4 text-sm font-medium ${statusFilter === "New"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              New{" "}
-              <span className="ml-1">
-                {statusFilter === "New" ? filteredList.length : ""}
-              </span>
-            </button>
-
-            {/* SHORTLISTED */}
-            <button
-              onClick={() => {
-                setStatusFilter("Shortlisted");
-                setInterviewStageFilter("all");
-              }}
-              className={`px-1 py-4 text-sm font-medium ${statusFilter === "Shortlisted"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              Shortlisted{" "}
-              <span className="ml-1">
-                {statusFilter === "Shortlisted" ? filteredList.length : ""}
-              </span>
-            </button>
-
-            {/* INTERVIEWED */}
-            <button
-              onClick={() => {
-                setStatusFilter("Interviewed");
-                setInterviewStageFilter("all");
-              }}
-              className={`px-1 py-4 text-sm font-medium ${statusFilter === "Interviewed"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              Interviewed{" "}
-              <span className="ml-1">
-                {statusFilter === "Interviewed" ? filteredList.length : ""}
-              </span>
-            </button>
-
-            {/* SELECTED */}
-            <button
-              onClick={() => {
-                setStatusFilter("Selected");
-                setInterviewStageFilter("all");
-              }}
-              className={`px-1 py-4 text-sm font-medium ${statusFilter === "Selected"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              Selected{" "}
-              <span className="ml-1">
-                {statusFilter === "Selected" ? filteredList.length : ""}
-              </span>
-            </button>
-
-            {/* JOINED */}
-            <button
-              onClick={() => {
-                setStatusFilter("Joined");
-                setInterviewStageFilter("all");
-              }}
-              className={`px-1 py-4 text-sm font-medium ${statusFilter === "Joined"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              Joined{" "}
-              <span className="ml-1">
-                {statusFilter === "Joined" ? filteredList.length : ""}
-              </span>
-            </button>
-
-            {/* REJECTED */}
-            <button
-              onClick={() => {
-                setStatusFilter("Rejected");
-                setInterviewStageFilter("all");
-              }}
-              className={`px-1 py-4 text-sm font-medium ${statusFilter === "Rejected"
-                ? "text-blue-600 border-b-2 border-blue-600"
-                : "text-gray-600 hover:text-gray-900"
-                }`}
-            >
-              Rejected{" "}
-              <span className="ml-1">
-                {statusFilter === "Rejected" ? filteredList.length : ""}
-              </span>
-            </button>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center gap-1 sm:gap-4 lg:gap-8 border-b border-gray-100 overflow-x-auto scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+            {[
+              { id: 'all', label: 'All responses' },
+              { id: 'New', label: 'New' },
+              { id: 'Shortlisted', label: 'Shortlisted' },
+              { id: 'Interviewed', label: 'Interviewed' },
+              { id: 'Selected', label: 'Selected' },
+              { id: 'Joined', label: 'Joined' },
+              { id: 'Rejected', label: 'Rejected' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setStatusFilter(tab.id);
+                  setInterviewStageFilter("all");
+                }}
+                className={`px-3 sm:px-1 py-4 text-xs sm:text-sm font-bold transition-all whitespace-nowrap relative ${statusFilter === tab.id
+                  ? "text-blue-600"
+                  : "text-gray-500 hover:text-gray-800"
+                  }`}
+              >
+                {tab.label}
+                {statusFilter === tab.id && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                )}
+                <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === tab.id ? 'bg-blue-50 text-blue-600' : 'bg-gray-50 text-gray-400'}`}>
+                  {statusFilter === tab.id ? fullFilteredList.length : candidates.filter(c => {
+                    const cid = (c.jobId as any)?._id || c.jobId;
+                    if (cid !== id) return false;
+                    if (tab.id === 'all') return true;
+                    return c.status === tab.id;
+                  }).length}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -1054,262 +973,179 @@ const CandidatesList = () => {
       )}
 
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="text-sm text-gray-600">
-            Showing <span className="font-medium">{filteredList.length}</span>{" "}
-            responses
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-6">
+          <div className="flex items-center justify-between w-full lg:w-auto">
+            <div className="text-xs sm:text-sm font-bold text-gray-400 uppercase tracking-widest">
+              Showing <span className="text-gray-800 font-extrabold">{filteredList.length}</span> candidates
+            </div>
+
+            <div className="flex lg:hidden items-center gap-2">
+              <button onClick={goPrev} disabled={currentPage === 1} className="p-2 text-gray-400 hover:text-blue-600 disabled:opacity-30">
+                <ChevronLeft size={20} />
+              </button>
+              <span className="text-xs font-bold font-mono">{currentPage}/{totalPages || 1}</span>
+              <button onClick={goNext} disabled={currentPage === totalPages} className="p-2 text-gray-400 hover:text-blue-600 disabled:opacity-30">
+                <ChevronRight size={20} />
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="Relevance">Relevance</option>
-              <option value="Date">Date</option>
-              <option value="Name">Name</option>
-            </select>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest shrink-0">Sort By</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm"
+              >
+                <option value="Relevance">Relevance</option>
+                <option value="Date">Date</option>
+                <option value="Name">Name</option>
+              </select>
+            </div>
 
-            {statusFilter === "Joined" && (
-              <div className="flex items-center gap-2">
+            {(statusFilter === "Joined" || statusFilter === "Selected") && (
+              <div className="flex flex-wrap items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm">
+                <CalendarCheck size={14} className="text-blue-500" />
                 <input
                   type="date"
-                  value={joinStartDate}
-                  onChange={(e) => setJoinStartDate(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Joining Date From"
+                  value={statusFilter === "Joined" ? joinStartDate : selectStartDate}
+                  onChange={(e) => statusFilter === "Joined" ? setJoinStartDate(e.target.value) : setSelectStartDate(e.target.value)}
+                  className="bg-transparent text-[10px] font-bold text-gray-700 focus:outline-none min-w-[100px]"
                 />
                 <span className="text-gray-400">-</span>
                 <input
                   type="date"
-                  value={joinEndDate}
-                  onChange={(e) => setJoinEndDate(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Joining Date To"
+                  value={statusFilter === "Joined" ? joinEndDate : selectEndDate}
+                  onChange={(e) => statusFilter === "Joined" ? setJoinEndDate(e.target.value) : setSelectEndDate(e.target.value)}
+                  className="bg-transparent text-[10px] font-bold text-gray-700 focus:outline-none min-w-[100px]"
                 />
+                {(joinStartDate || joinEndDate || selectStartDate || selectEndDate) && (
+                  <button
+                    onClick={() => {
+                      setJoinStartDate(""); setJoinEndDate("");
+                      setSelectStartDate(""); setSelectEndDate("");
+                    }}
+                    className="p-1 text-red-400 hover:text-red-600 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             )}
 
-            {statusFilter === "Selected" && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={selectStartDate}
-                  onChange={(e) => setSelectStartDate(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Selection Date From"
-                />
-                <span className="text-gray-400">-</span>
-                <input
-                  type="date"
-                  value={selectEndDate}
-                  onChange={(e) => setSelectEndDate(e.target.value)}
-                  className="border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Selection Date To"
-                />
+            <div className="hidden lg:flex items-center gap-3">
+              <button disabled={currentPage === 1} onClick={goPrev} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-30">
+                <ChevronLeft size={20} />
+              </button>
+              <div className="flex items-center gap-1">
+                <span className="w-8 h-8 flex items-center justify-center bg-blue-50 text-blue-600 rounded-lg text-xs font-bold border border-blue-100">
+                  {currentPage}
+                </span>
+                <span className="text-gray-400 text-[10px] font-bold uppercase px-1">of</span>
+                <span className="w-8 h-8 flex items-center justify-center bg-gray-50 text-gray-500 rounded-lg text-xs font-bold border border-gray-100">
+                  {totalPages || 1}
+                </span>
               </div>
-            )}
-
-            {(joinStartDate || joinEndDate || selectStartDate || selectEndDate) && (
-              <button
-                onClick={() => {
-                  setJoinStartDate("");
-                  setJoinEndDate("");
-                  setSelectStartDate("");
-                  setSelectEndDate("");
-                }}
-                className="text-xs text-red-600 hover:text-red-700 font-medium"
-              >
-                Reset Dates
+              <button disabled={currentPage === totalPages} onClick={goNext} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-30">
+                <ChevronRight size={20} />
               </button>
-            )}
-
-
-            <button
-              onClick={goPrev}
-              className="p-1.5 text-gray-400 hover:text-gray-600"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-
-            <span className="text-sm text-gray-600">
-              Page {currentPage}/{totalPages || 1}
-            </span>
-
-            <button
-              onClick={goNext}
-              className="p-1.5 text-gray-400 hover:text-gray-600"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-
-            {/* <div className="flex items-center gap-1 border border-gray-300 rounded">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-1.5 ${viewMode === "grid"
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-50"
-                  }`}
-              >
-                <Grid className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-1.5 ${viewMode === "list"
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-50"
-                  }`}
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div> */}
+            </div>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg mb-4 px-4 py-3">
-          <div className="flex items-center gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
+        {/* Bulk Action Bar */}
+        <div className="bg-white border border-gray-100 rounded-2xl mb-6 shadow-sm overflow-hidden">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4">
+            <label className="flex items-center gap-3 cursor-pointer group shrink-0 bg-gray-50/50 sm:bg-transparent p-2 sm:p-0 rounded-xl sm:rounded-none">
               <input
                 type="checkbox"
-                checked={
-                  filteredList.length > 0 &&
-                  selectedCandidates.length === filteredList.length
-                }
+                checked={filteredList.length > 0 && selectedCandidates.length === filteredList.length}
                 onChange={handleSelectAll}
-                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="w-5 h-5 rounded-lg border-gray-300 text-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer"
               />
-
-              <span className="text-sm text-gray-700">Select all</span>
+              <span className="text-xs font-bold text-gray-600 group-hover:text-gray-900 uppercase tracking-widest">Select All</span>
             </label>
 
-            <button
-              onClick={async () => {
-                if (!user?._id || selectedCandidates.length === 0) {
-                  toast.error("Please select at least one candidate");
-                  return;
-                }
-                for (const candidateId of selectedCandidates) {
-                  await updateStatus(candidateId, "Shortlisted", user._id);
-                }
-                toast.success(
-                  `${selectedCandidates.length} candidate(s) shortlisted`
-                );
-                if (id) fetchCandidatesByJob(id);
-                setSelectedCandidates([]);
-              }}
-              disabled={selectedCandidates.length === 0}
-              className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <UserCheck className="w-4 h-4" />
-              Shortlist
-            </button>
+            <div className="h-px sm:h-6 sm:w-px bg-gray-100" />
 
-            <button
-              onClick={async () => {
-                if (!user?._id || selectedCandidates.length === 0) {
-                  toast.error("Please select at least one candidate");
-                  return;
-                }
-                const confirmReject = window.confirm(
-                  `Are you sure you want to reject ${selectedCandidates.length} candidate(s)?`
-                );
-                if (!confirmReject) return;
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={async () => {
+                  if (!user?._id || selectedCandidates.length === 0) return;
+                  for (const cid of selectedCandidates) await updateStatus(cid, "Shortlisted", user._id);
+                  toast.success(`${selectedCandidates.length} shortlisted`);
+                  if (id) fetchCandidatesByJob(id);
+                  setSelectedCandidates([]);
+                }}
+                disabled={selectedCandidates.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-all disabled:opacity-50 whitespace-nowrap"
+              >
+                <UserCheck size={16} /> Shortlist
+              </button>
 
-                for (const candidateId of selectedCandidates) {
-                  await updateStatus(candidateId, "Rejected", user._id);
-                }
-                toast.success(
-                  `${selectedCandidates.length} candidate(s) rejected`
-                );
-                if (id) fetchCandidatesByJob(id);
-                setSelectedCandidates([]);
-              }}
-              disabled={selectedCandidates.length === 0}
-              className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="text-red-500">⊘</span>
-              Reject
-            </button>
+              <button
+                onClick={async () => {
+                  if (!user?._id || selectedCandidates.length === 0) return;
+                  if (!window.confirm(`Reject ${selectedCandidates.length}?`)) return;
+                  for (const cid of selectedCandidates) await updateStatus(cid, "Rejected", user._id);
+                  toast.success(`${selectedCandidates.length} rejected`);
+                  if (id) fetchCandidatesByJob(id);
+                  setSelectedCandidates([]);
+                }}
+                disabled={selectedCandidates.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-all disabled:opacity-50 whitespace-nowrap"
+              >
+                <X size={16} /> Reject
+              </button>
 
-            <button
-              onClick={() => {
-                if (selectedCandidates.length === 0) {
-                  toast.error("Please select at least one candidate");
-                  return;
-                }
-                const selectedObjs = filteredList.filter((c: any) =>
-                  selectedCandidates.includes(c._id)
-                );
-                setEmailCandidates(selectedObjs);
-                setSelectedPocs([]);
-                setShowEmailModal(true);
-              }}
-              disabled={selectedCandidates.length === 0}
-              className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {/* <Mail className="w-4 h-4" /> */}
-              <Share2 className="w-5 h-5" />
-              Email
-            </button>
+              <button
+                onClick={() => {
+                  if (selectedCandidates.length === 0) return;
+                  const selectedObjs = filteredList.filter((c: any) => selectedCandidates.includes(c._id));
+                  setEmailCandidates(selectedObjs);
+                  setSelectedPocs([]);
+                  setShowEmailModal(true);
+                }}
+                disabled={selectedCandidates.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all disabled:opacity-50 whitespace-nowrap"
+              >
+                <Share2 size={16} /> Share
+              </button>
 
-            <button
-              onClick={() => {
-                if (selectedCandidates.length === 0) {
-                  toast.error("Please select at least one candidate");
-                  return;
-                }
-                const candidatesWithResume = filteredList.filter(
-                  (c: any) => selectedCandidates.includes(c._id) && c.resumeUrl
-                );
-                if (candidatesWithResume.length === 0) {
-                  toast.error("No resumes available for selected candidates");
-                  return;
-                }
-                candidatesWithResume.forEach((c: any) => {
-                  const link = document.createElement("a");
-                  link.href = getImageUrl(c.resumeUrl);
-                  link.download = `${c.dynamicFields?.candidateName || "candidate"
-                    }_resume.pdf`;
-                  link.click();
-                });
-                toast.success(
-                  `Downloading ${candidatesWithResume.length} resume(s)`
-                );
-              }}
-              disabled={selectedCandidates.length === 0}
-              className="flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span>👤</span>
-              Download
-            </button>
+              <button
+                onClick={() => {
+                  if (selectedCandidates.length === 0) return;
+                  const withResume = filteredList.filter((c: any) => selectedCandidates.includes(c._id) && c.resumeUrl);
+                  if (withResume.length === 0) { toast.error("No resumes"); return; }
+                  withResume.forEach((c: any) => {
+                    const link = document.createElement("a");
+                    link.href = getImageUrl(c.resumeUrl);
+                    link.download = `${c.dynamicFields?.candidateName || "candidate"}_resume.pdf`;
+                    link.click();
+                  });
+                }}
+                disabled={selectedCandidates.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all disabled:opacity-50 whitespace-nowrap"
+              >
+                <Download size={16} /> Resume
+              </button>
 
-            <button
-              onClick={async () => {
-                if (!user?._id || selectedCandidates.length === 0) {
-                  toast.error("Please select at least one candidate");
-                  return;
-                }
-                const confirmDelete = window.confirm(
-                  `⚠️ Are you sure you want to delete ${selectedCandidates.length} candidate(s)? This action cannot be undone.`
-                );
-                if (!confirmDelete) return;
-
-                for (const candidateId of selectedCandidates) {
-                  await deleteCandidate(candidateId, user._id);
-                }
-                toast.success(
-                  `${selectedCandidates.length} candidate(s) deleted`
-                );
-                if (id) fetchCandidatesByJob(id);
-                setSelectedCandidates([]);
-              }}
-              disabled={selectedCandidates.length === 0}
-              className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete
-            </button>
+              <button
+                onClick={async () => {
+                  if (!user?._id || selectedCandidates.length === 0) return;
+                  if (!window.confirm(`Delete ${selectedCandidates.length}?`)) return;
+                  for (const cid of selectedCandidates) await deleteCandidate(cid, user._id);
+                  toast.success(`${selectedCandidates.length} deleted`);
+                  if (id) fetchCandidatesByJob(id);
+                  setSelectedCandidates([]);
+                }}
+                disabled={selectedCandidates.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-500 rounded-xl text-xs font-bold hover:bg-red-50 hover:text-red-600 transition-all disabled:opacity-50 whitespace-nowrap"
+              >
+                <Trash2 size={16} /> Delete
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1332,354 +1168,145 @@ const CandidatesList = () => {
             </div>
           ) : (
             filteredList.map((candidate: any) => (
-
               <div
                 key={candidate._id}
-                className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                className="bg-white border border-gray-100 rounded-2xl p-4 sm:p-6 hover:shadow-xl hover:shadow-blue-500/5 transition-all group relative overflow-hidden"
               >
-                <div className="flex items-start gap-4">
-                  {/* LEFT CHECKBOX */}
-                  <div className="flex items-start gap-3 pt-1">
-                    <div className="w-1 h-12 bg-blue-500 rounded-full"></div>
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
+
+                <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+                  {/* Selection & Avatar */}
+                  <div className="flex items-center gap-4 shrink-0">
                     <input
                       type="checkbox"
                       checked={selectedCandidates.includes(candidate._id)}
                       onChange={() => toggleCandidate(candidate._id)}
-                      className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-1"
+                      className="w-5 h-5 rounded-lg border-gray-300 text-blue-600 focus:ring-4 focus:ring-blue-500/10 transition-all cursor-pointer"
                     />
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl flex items-center justify-center text-blue-700 font-extrabold shadow-sm border border-blue-100">
+                      {candidate.dynamicFields?.candidateName?.substring(0, 2).toUpperCase() || "NA"}
+                    </div>
                   </div>
 
-                  {/* MAIN CONTENT */}
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-4">
-                      {/* Candidate Info */}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          {/* Candidate Name */}
+                  {/* Main Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-4">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
                           <h3
-                            className="text-lg font-semibold text-gray-900 hover:text-blue-600 cursor-pointer"
+                            className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors cursor-pointer"
                             onClick={() => setSelectedCandidate(candidate)}
                           >
-                            {candidate.dynamicFields?.candidateName ||
-                              "Unnamed Candidate"}
+                            {candidate.dynamicFields?.candidateName || "Unnamed Candidate"}
                           </h3>
-
-                          {/* Status */}
-                          <span className="px-2.5 py-0.5 bg-green-50 text-green-700 text-xs font-medium rounded border border-green-200">
+                          <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border ${candidate.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
                             {candidate.status}
                           </span>
-
-                          {/* Joining Date Badge */}
-                          {candidate.status === "Joined" && candidate.joiningDate && (
-                            <span className="px-2.5 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded border border-green-200 flex items-center gap-1">
-                              Joining: {formatDate(candidate.joiningDate)}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Prevent card click
-                                  setPendingAction({
-                                    type: 'statusChange',
-                                    candidateId: candidate._id,
-                                    newStatus: 'Joined',
-                                    currentJoiningDate: candidate.joiningDate
-                                  });
-                                  setStatusModalOpen(true);
-                                }}
-                                className="ml-1 p-0.5 hover:bg-green-200 rounded text-green-800"
-                                title="Edit Joining Details"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </button>
-                            </span>
-                          )}
-                          {/* Selection Date Badge */}
-                          {candidate.status === "Selected" && candidate.selectionDate && (
-                            <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded border border-indigo-200 flex items-center gap-1">
-                              Selected: {formatDate(candidate.selectionDate)}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPendingAction({
-                                    type: 'statusChange',
-                                    candidateId: candidate._id,
-                                    newStatus: 'Selected',
-                                    currentSelectionDate: candidate.selectionDate,
-                                    currentExpectedJoiningDate: candidate.expectedJoiningDate
-                                  });
-                                  setStatusModalOpen(true);
-                                }}
-                                className="ml-1 p-0.5 hover:bg-indigo-200 rounded text-indigo-800"
-                                title="Edit Selection Details"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </button>
-                            </span>
-                          )}
-
-                          {/* Expected Joining Date (Optional, shown if Selected) */}
-                          {candidate.status === "Selected" && candidate.expectedJoiningDate && (
-                            <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-600 text-xs font-medium rounded border border-indigo-100 flex items-center gap-1">
-                              Exp. Join: {formatDate(candidate.expectedJoiningDate)}
-                            </span>
-                          )}
-
-                          {/* Interview Stage Badge */}
-                          {candidate.status === "Interviewed" &&
-                            candidate.interviewStage && (
-                              <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded border border-blue-200">
-                                {candidate.interviewStage}
-                              </span>
-                            )}
-
-                          {/* Job Title */}
-                          <span className="px-2.5 py-0.5 bg-purple-50 text-purple-700 text-xs font-medium rounded border border-purple-200">
-                            {candidate.jobId?.title || "No Job Assigned"}
-                          </span>
-                          {candidate.jobId?.clientId?.companyName && (
-                            <p className="text-sm text-gray-600 mt-1">
-                              Client: {candidate.jobId.clientId.companyName}
-                            </p>
-                          )}
                         </div>
 
-                        {/* Email + Phone */}
-                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-1">
+                        <div className="flex flex-wrap items-center gap-3 text-xs font-bold text-gray-400">
                           {candidate.dynamicFields?.Email && (
-                            <span className="flex items-center gap-1">
-                              📧 {candidate.dynamicFields.Email}
-                            </span>
+                            <div className="flex items-center gap-1.5 hover:text-blue-600 transition-colors cursor-pointer" onClick={() => window.location.href = `mailto:${candidate.dynamicFields.Email}`}>
+                              <Mail size={12} />
+                              <span className="truncate max-w-[150px]">{candidate.dynamicFields.Email}</span>
+                            </div>
                           )}
                           {candidate.dynamicFields?.Phone && (
-                            <span className="flex items-center gap-1">
-                              📞 {candidate.dynamicFields.Phone}
-                            </span>
-                          )}
-                          {/* Offer Letter Link */}
-                          {candidate.status === "Joined" && candidate.offerLetter && (
-                            <a
-                              href={getFilePreviewUrl(candidate.offerLetter)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-1 text-blue-600 hover:underline ml-2"
-                            >
-                              <Users className="w-4 h-4" /> View Offer Letter
-                            </a>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* RIGHT USER ICON + EMAIL */}
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-700 font-semibold">
-                          {candidate.dynamicFields?.candidateName
-                            ?.substring(0, 2)
-                            .toUpperCase() || "NA"}
-                        </div>
-
-                        {/* <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded">
-                          <Mail className="w-5 h-5" />
-                        </button> */}
-                      </div>
-                    </div>
-
-                    {/* Dynamic Info Section */}
-                    <div className="grid grid-cols-2 gap-x-12 gap-y-3 mb-4">
-                      {/* Skills */}
-                      {candidate.dynamicFields?.Skills && (
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">
-                            Skills
-                          </div>
-                          <div className="text-sm text-gray-900">
-                            {candidate.dynamicFields.Skills}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Experience */}
-                      {candidate.dynamicFields?.Experience && (
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">
-                            Experience
-                          </div>
-                          <div className="text-sm text-gray-900">
-                            {candidate.dynamicFields.Experience} years
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Current Company */}
-                      {candidate.dynamicFields?.currentCompany && (
-                        <div>
-                          <div className="text-xs text-gray-500 mb-1">
-                            Current Company
-                          </div>
-                          <div className="text-sm text-gray-900">
-                            {candidate.dynamicFields.currentCompany}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* CTC */}
-                      {(candidate.dynamicFields?.currentCTC ||
-                        candidate.dynamicFields?.expectedCTC) && (
-                          <div>
-                            <div className="text-xs text-gray-500 mb-1">CTC</div>
-                            <div className="text-sm text-gray-900">
-                              CTC: ₹{candidate.dynamicFields.currentCTC} →
-                              Expected: ₹{candidate.dynamicFields.expectedCTC}
+                            <div className="flex items-center gap-1.5 hover:text-green-600 transition-colors cursor-pointer" onClick={() => window.location.href = `tel:${candidate.dynamicFields.Phone}`}>
+                              <Phone size={12} />
+                              <span>{candidate.dynamicFields.Phone}</span>
                             </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {/* Action Badges */}
+                        {candidate.interviewStage && (
+                          <div className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100">
+                            Stage: {candidate.interviewStage}
                           </div>
                         )}
+                        {candidate.joiningDate && (
+                          <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold border border-emerald-100">
+                            Joined: {formatDate(candidate.joiningDate)}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Remarks Section */}
-                    {(candidate.notes || (candidate.status === "Rejected" && candidate.rejectionReason)) && (
-                      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                        {candidate.status === "Rejected" && candidate.rejectionReason && (
-                          <div className="text-xs font-bold text-red-600 mb-1 flex items-center gap-1">
-                            <X className="w-3 h-3 text-red-600" /> Rejection Reason: {candidate.rejectionReason}
-                          </div>
-                        )}
-                        {candidate.notes && (
-                          <div className="text-xs text-gray-600 flex items-start gap-1">
-                            <MessageSquare className="w-3 h-3 mt-0.5 shrink-0 text-gray-400" />
-                            <span>{candidate.notes}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* BOTTOM BAR */}
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                      <button
-                        onClick={() => {
-                          setPendingAction({
-                            type: 'commentOnly',
-                            candidateId: candidate._id,
-                            newStatus: candidate.status,
-                          });
-                          setStatusModalOpen(true);
-                        }}
-                        className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        Add comment
-                      </button>
-
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-400">
-                          <span>posted by {candidate.createdBy?.name || "Unknown"}</span> |{" "}
-                          {formatDate(candidate.createdAt)}
-                        </span>
-
-                        {/* Status button */}
-                        <select
-                          value={candidate.status}
-                          onChange={(e) => {
-                            if (!user?._id) return;
-                            const newStatus = e.target.value;
-                            setPendingAction({
-                              type: 'statusChange',
-                              candidateId: candidate._id,
-                              newStatus: newStatus,
-                              currentJoiningDate: candidate.joiningDate,
-                              currentSelectionDate: candidate.selectionDate,
-                              currentExpectedJoiningDate: candidate.expectedJoiningDate,
-                              droppedBy: newStatus === 'Dropped'
-                                ? (candidate.status === 'Shortlisted' ? 'Mentor' : (candidate.status === 'Interviewed' ? 'Client' : 'Mentor')) // Default to Mentor if neither
-                                : undefined
-                            });
-                            setStatusModalOpen(true);
-                          }}
-                          className="px-4 py-2 text-sm rounded-xl border border-gray-300 bg-gray-50
-               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-               hover:bg-white transition-all shadow-sm"
-                        >
-                          <option value="New">New</option>
-                          <option value="Shortlisted">Shortlisted</option>
-                          <option value="Interviewed">Interviewed</option>
-                          <option value="Selected">Selected</option>
-                          <option value="Joined">Joined</option>
-                          <option value="Rejected">Rejected</option>
-                          {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
-                            <option value="Dropped">Dropped</option>
-                          )}
-                          <option value="Hold">Hold</option>
-                        </select>
-
-                        {/* Delete */}
-                        <button
-                          onClick={() => handleDelete(candidate._id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-gray-50 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                    {/* Dynamic Tags/Fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {[
+                        { label: 'Skills', value: candidate.dynamicFields?.Skills },
+                        { label: 'Experience', value: candidate.dynamicFields?.Experience ? `${candidate.dynamicFields.Experience} Years` : null },
+                        { label: 'Current Company', value: candidate.dynamicFields?.currentCompany }
+                      ].filter(f => f.value).map((field, idx) => (
+                        <div key={idx} className="bg-gray-50/50 rounded-xl p-3 border border-gray-100/50">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{field.label}</p>
+                          <p className="text-xs font-bold text-gray-700 truncate">{field.value}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
-                  {/* RIGHT ACTION BUTTONS */}
-                  <div className="flex flex-col gap-3 pt-1">
-                    {/* Share Button with Dropdown */}
-                    <div className="relative share-menu-container">
-                      <button
-                        onClick={() =>
-                          setShareMenuOpen(
-                            shareMenuOpen === candidate._id
-                              ? null
-                              : candidate._id
-                          )
-                        }
-                        className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded"
-                      >
-                        <Share2 className="w-5 h-5" />
-                      </button>
-
-                      {/* Share Dropdown Menu */}
-                      {shareMenuOpen === candidate._id && (
-                        <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-lg shadow-lg z-10 w-48">
-                          <button
-                            onClick={() => {
-                              setEmailCandidates([candidate]);
-                              setSelectedPocs([]);
-                              setShowEmailModal(true);
-                              setShareMenuOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
-                          >
-                            <Mail className="w-4 h-4 text-blue-600" />
-                            Email
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              const details = `Name: ${candidate.dynamicFields?.candidateName}\nEmail: ${candidate.dynamicFields?.Email}\nPhone: ${candidate.dynamicFields?.Phone}\nPosition: ${candidate.jobId?.title}`;
-                              navigator.clipboard.writeText(details);
-                              toast.success("Details copied to clipboard");
-                              setShareMenuOpen(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 border-t"
-                          >
-                            <Download className="w-4 h-4 text-gray-600" />
-                            Copy Details
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Phone Button */}
+                  {/* Actions Bar */}
+                  <div className="flex sm:flex-col lg:flex-row items-center gap-2 w-full sm:w-auto mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-gray-100">
                     <button
                       onClick={() => {
-                        const phone = candidate.dynamicFields?.Phone;
-                        if (phone) {
-                          window.location.href = `tel:${phone}`;
-                        } else {
-                          toast.error("No phone number available");
-                        }
+                        setPendingAction({ type: 'commentOnly', candidateId: candidate._id, newStatus: candidate.status });
+                        setStatusModalOpen(true);
                       }}
-                      className="p-2 text-gray-400 hover:text-green-600 hover:bg-gray-50 rounded"
+                      className="flex-1 sm:flex-none p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100 shadow-sm sm:shadow-none"
                     >
-                      <Phone className="w-5 h-5" />
+                      <MessageSquare size={18} />
+                    </button>
+
+                    <select
+                      value={candidate.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        setPendingAction({
+                          type: 'statusChange',
+                          candidateId: candidate._id,
+                          newStatus: newStatus,
+                          currentJoiningDate: candidate.joiningDate,
+                          currentSelectionDate: candidate.selectionDate,
+                          currentExpectedJoiningDate: candidate.expectedJoiningDate,
+                          droppedBy: newStatus === 'Dropped' ? (candidate.status === 'Shortlisted' ? 'Mentor' : 'Client') : undefined
+                        });
+                        setStatusModalOpen(true);
+                      }}
+                      className="flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm"
+                    >
+                      <option value="New">New</option>
+                      <option value="Shortlisted">Shortlist</option>
+                      <option value="Interviewed">Interview</option>
+                      <option value="Selected">Selected</option>
+                      <option value="Joined">Joined</option>
+                      <option value="Rejected">Rejected</option>
+                      {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
+                        <option value="Dropped">Dropped</option>
+                      )}
+                      <option value="Hold">Hold</option>
+                    </select>
+
+                    <button
+                      onClick={() => handleDelete(candidate._id)}
+                      className="flex-1 sm:flex-none p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100 shadow-sm sm:shadow-none"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setEmailCandidates([candidate]);
+                        setSelectedPocs([]);
+                        setShowEmailModal(true);
+                      }}
+                      className="flex-1 sm:flex-none p-2.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all border border-transparent hover:border-indigo-100 shadow-sm sm:shadow-none"
+                    >
+                      <Share2 size={18} />
                     </button>
                   </div>
                 </div>
@@ -1689,382 +1316,145 @@ const CandidatesList = () => {
         </div>
       </div>
       {selectedCandidate && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-50 flex items-start justify-center overflow-y-auto">
-          <div className="bg-white/95 w-full max-w-4xl my-12 rounded-3xl shadow-2xl border border-gray-200 backdrop-blur-xl">
-            {/* ---------- HEADER ---------- */}
-            <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-3xl">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/20">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
               <div className="flex items-center gap-4">
-                {/* Avatar */}
-                <div className="w-16 h-16 rounded-full bg-white shadow-inner flex items-center justify-center text-indigo-600 text-2xl font-bold">
-                  {selectedCandidate.dynamicFields?.candidateName
-                    ?.substring(0, 2)
-                    .toUpperCase()}
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white shadow-sm flex items-center justify-center text-blue-600 text-xl sm:text-2xl font-black border border-blue-100">
+                  {selectedCandidate.dynamicFields?.candidateName?.substring(0, 2).toUpperCase() || "NA"}
                 </div>
-
-                {/* Name + Status + Tags */}
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    {selectedCandidate.dynamicFields?.candidateName ||
-                      "Unknown Candidate"}
+                  <h2 className="text-lg sm:text-2xl font-black text-slate-900 leading-tight">
+                    {selectedCandidate.dynamicFields?.candidateName || "Candidate Details"}
                   </h2>
-
-                  <div className="flex flex-wrap items-center gap-2 mt-2">
-                    {/* Status */}
-                    <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full border border-green-300 shadow-sm">
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-lg border border-emerald-100 uppercase tracking-widest">
                       {selectedCandidate.status}
                     </span>
-
-                    {/* Joining Date Badge */}
-                    {selectedCandidate.status === "Joined" && selectedCandidate.joiningDate && (
-                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full border border-green-300 shadow-sm">
-                        Joining: {formatDate(selectedCandidate.joiningDate)}
-                      </span>
-                    )}
-                    {/* Selection Date Badge */}
-                    {selectedCandidate.status === "Selected" && selectedCandidate.selectionDate && (
-                      <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-full border border-indigo-300 shadow-sm">
-                        Selected: {formatDate(selectedCandidate.selectionDate)}
-                      </span>
-                    )}
-
-                    {/* Expected Joining Date Badge */}
-                    {selectedCandidate.status === "Selected" && selectedCandidate.expectedJoiningDate && (
-                      <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-semibold rounded-full border border-indigo-200 shadow-sm">
-                        Exp. Join: {formatDate(selectedCandidate.expectedJoiningDate)}
-                      </span>
-                    )}
-
-                    {/* Interview Stage Badge */}
-                    {selectedCandidate.status === "Interviewed" &&
-                      selectedCandidate.interviewStage && (
-                        <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full border border-blue-300 shadow-sm">
-                          {selectedCandidate.interviewStage}
-                        </span>
-                      )}
-
-                    {/* Tags */}
-                    {selectedCandidate.tags?.map((tag: string) => (
-                      <span
-                        key={tag}
-                        className="px-3 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full border border-purple-300 shadow-sm"
-                      >
-                        {tag}
-                      </span>
-                    ))}
+                    <span className="text-[10px] font-bold text-slate-400 font-mono">ID: {selectedCandidate._id.substring(18)}</span>
                   </div>
                 </div>
               </div>
-
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="p-2 hover:bg-gray-200 rounded-full transition"
+                className="p-2 hover:bg-slate-100 rounded-xl transition-colors group"
               >
-                <X size={24} className="text-gray-600" />
+                <X size={24} className="text-slate-400 group-hover:text-slate-600" />
               </button>
             </div>
 
-            {/* ---------- BASIC DETAILS GRID ---------- */}
-            <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4 border-b">
-              {Object.entries(selectedCandidate.dynamicFields).map(
-                ([key, value]) => (
-                  <div
-                    key={key}
-                    className="p-4 bg-white shadow-sm rounded-xl border hover:shadow-md transition cursor-default"
-                  >
-                    <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
-                      {key}
-                    </p>
-                    <p className="text-sm font-semibold text-gray-900 break-all">
-                      {String(value) || "--"}
-                    </p>
+            {/* Modal Body Start */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 custom-scrollbar">
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Left Column: Details */}
+                <div className="md:col-span-2 space-y-8">
+                  <section>
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      Candidate Information
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {Object.entries(selectedCandidate.dynamicFields || {}).map(([key, value]) => (
+                        <div key={key} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{key}</p>
+                          <p className="text-sm font-bold text-slate-700 break-words">{String(value) || "--"}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  {/* Activity Log (Combined Status History & Comments) */}
+                  <section>
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                      Activity Log
+                    </h3>
+                    <div className="space-y-4">
+                      {[...(selectedCandidate.statusHistory || []), ...(selectedCandidate.comments || []), ...(selectedCandidate.interviewStageHistory || [])]
+                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                        .map((item: any, idx) => (
+                          <div key={idx} className="relative pl-6 pb-6 last:pb-0">
+                            <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-100" />
+                            <div className="absolute left-[-4px] top-1.5 w-2 h-2 rounded-full border-2 border-white bg-slate-300" />
+
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-bold text-slate-900">
+                                {item.stageName ? `Interview Stage: ${item.stageName}` : item.status ? `Status changed to ${item.status}` : 'Comment added'}
+                              </span>
+                              <span className="text-[10px] font-bold text-slate-400">{formatDate(item.timestamp)}</span>
+                            </div>
+                            <p className="text-xs text-slate-500 italic">
+                              {item.comment || item.text || item.notes}
+                            </p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">
+                              By {item.updatedBy?.name || item.author?.name || "System"}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  </section>
+                </div>
+
+                {/* Right Column: Meta & Links */}
+                <div className="space-y-6">
+                  <div className="bg-blue-50/50 rounded-2xl p-6 border border-blue-100/50">
+                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-4">Meta Info</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Source Job</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedCandidate.jobId?.title || "N/A"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Added By</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedCandidate.createdBy?.name || "System"}</p>
+                      </div>
+                    </div>
                   </div>
-                )
-              )}
-            </div>
 
-            {/* ---------- FIXED DETAILS & LINKS ---------- */}
-            <div className="p-6 space-y-8">
-              {/* Job and Creator */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 shadow-sm">
-                  <p className="text-xs text-gray-500">Job Title</p>
-                  <p className="font-semibold text-gray-900 mt-1">
-                    {selectedCandidate.jobId?.title || "N/A"}
-                  </p>
-                </div>
-
-                <div className="p-4 bg-yellow-50 rounded-xl border border-yellow-200 shadow-sm">
-                  <p className="text-xs text-gray-500">Created By</p>
-                  <p className="font-semibold text-gray-900 mt-1">
-                    {selectedCandidate.createdBy?.name || "Unknown"}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {selectedCandidate.createdBy?.designation}
-                  </p>
-                </div>
-              </div>
-
-              {/* Links */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Links
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {selectedCandidate.resumeUrl && (
-                    ['doc', 'docx'].includes(selectedCandidate.resumeUrl.split('.').pop()?.toLowerCase() || '') ? (
-                      <a
-                        href={getImageUrl(selectedCandidate.resumeUrl)}
-                        download
-                        className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition text-blue-600 font-medium"
-                      >
-                        <Download className="w-4 h-4" /> Download Resume
-                      </a>
-                    ) : (
+                  <div className="space-y-3">
+                    {selectedCandidate.resumeUrl && (
                       <button
-                        onClick={() =>
-                          setPreviewResumeUrl(
-                            getFilePreviewUrl(selectedCandidate.resumeUrl)
-                          )
-                        }
-                        className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition text-blue-600 font-medium"
+                        onClick={() => setPreviewResumeUrl(getFilePreviewUrl(selectedCandidate.resumeUrl))}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                       >
-                        <Eye className="w-4 h-4" /> Preview Resume
+                        <Eye size={16} /> Preview Resume
                       </button>
-                    )
-                  )}
-
-                  {selectedCandidate.linkedinUrl && (
-                    <a
-                      href={selectedCandidate.linkedinUrl}
-                      target="_blank"
-                      className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition"
-                    >
-                      <Link size={16} className="text-blue-600" /> LinkedIn
-                    </a>
-                  )}
-
-                  {selectedCandidate.portfolioUrl && (
-                    <a
-                      href={selectedCandidate.portfolioUrl}
-                      target="_blank"
-                      className="px-4 py-2 bg-white border rounded-xl shadow hover:bg-gray-50 flex items-center gap-2 transition"
-                    >
-                      <Link size={16} className="text-blue-600" /> Portfolio
-                    </a>
-                  )}
-                </div>
-              </div>
-
-              {/* Interview Stage History */}
-              {selectedCandidate.interviewStageHistory &&
-                selectedCandidate.interviewStageHistory.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <span className="text-blue-600">📋</span>
-                      Interview Stage History
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedCandidate.interviewStageHistory.map(
-                        (history: any, index: number) => (
-                          <div
-                            key={index}
-                            className={`p-4 rounded-xl border-l-4 shadow-sm ${history.status === "Selected"
-                              ? "bg-green-50 border-green-500"
-                              : "bg-red-50 border-red-500"
-                              }`}
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="font-semibold text-gray-900">
-                                    {history.stageName}
-                                  </h4>
-                                  <span
-                                    className={`px-2 py-0.5 text-xs font-medium rounded-full ${history.status === "Selected"
-                                      ? "bg-green-100 text-green-700 border border-green-200"
-                                      : "bg-red-100 text-red-700 border border-red-200"
-                                      }`}
-                                  >
-                                    {history.status === "Selected"
-                                      ? "✓ Selected"
-                                      : "✗ Rejected"}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500">
-                                  {history.updatedBy?.name || "Unknown"} •{" "}
-                                  {new Date(history.timestamp).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                            {history.notes && (
-                              <div className="mt-2 p-3 bg-white rounded-lg border border-gray-200">
-                                <p className="text-sm text-gray-700 italic">
-                                  "{history.notes}"
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
+                    )}
+                    {selectedCandidate.linkedinUrl && (
+                      <a
+                        href={selectedCandidate.linkedinUrl}
+                        target="_blank"
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-xs font-bold hover:bg-slate-50 transition-all"
+                      >
+                        <Link size={16} /> LinkedIn Profile
+                      </a>
+                    )}
                   </div>
-                )}
-
-              {/* Status History */}
-              {selectedCandidate.statusHistory &&
-                selectedCandidate.statusHistory.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <span className="text-blue-600">📜</span>
-                      Status History
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedCandidate.statusHistory.slice().reverse().map(
-                        (history: any, index: number) => (
-                          <div
-                            key={index}
-                            className="p-4 rounded-xl border-l-4 shadow-sm bg-gray-50 border-blue-500"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700 border border-blue-200">
-                                    {history.status}
-                                  </span>
-                                  {history.status === "Joined" && history.joiningDate && (
-                                    <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700 border border-green-200">
-                                      Joining: {formatDate(history.joiningDate)}
-                                    </span>
-                                  )}
-                                </div>
-                                <p className="text-xs text-gray-500">
-                                  {history.updatedBy?.name || "Unknown"} •{" "}
-                                  {new Date(history.timestamp).toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                            {history.comment && (
-                              <div className="mt-2 p-3 bg-white rounded-lg border border-gray-200">
-                                <p className="text-sm text-gray-700 italic">
-                                  "{history.comment}"
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              {/* Standalone Comments */}
-              {selectedCandidate.comments &&
-                selectedCandidate.comments.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                      <span className="text-blue-600">💬</span>
-                      Comments
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedCandidate.comments.slice().reverse().map(
-                        (comm: any, index: number) => (
-                          <div
-                            key={index}
-                            className="p-4 rounded-xl border shadow-sm bg-white"
-                          >
-                            <p className="text-sm text-gray-700 mb-2">
-                              {comm.text}
-                            </p>
-                            <p className="text-[10px] text-gray-500 text-right">
-                              {comm.author?.name || "Unknown"} •{" "}
-                              {new Date(comm.timestamp).toLocaleString()}
-                            </p>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              {/* Notes */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                  Notes
-                </h3>
-                <div className="p-4 bg-gray-50 rounded-xl border shadow-sm">
-                  {selectedCandidate.notes ? (
-                    <p className="text-gray-700 leading-relaxed">
-                      {selectedCandidate.notes}
-                    </p>
-                  ) : (
-                    <p className="text-gray-500 text-sm italic">
-                      No notes added
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* ---------- FOOTER ---------- */}
-            <div className="flex items-center justify-between p-6 border-t bg-gray-50 rounded-b-3xl">
+            {/* Modal Footer */}
+            <div className="p-4 sm:p-6 border-t bg-slate-50/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
               <button
                 onClick={() => setSelectedCandidate(null)}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-white shadow-sm"
+                className="px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-xs font-bold hover:bg-slate-100 transition-all order-2 sm:order-1"
               >
                 Close
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 order-1 sm:order-2">
                 <button
                   onClick={() => handleRejectCandidate(selectedCandidate._id)}
-                  className="px-6 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg shadow hover:bg-red-100 transition"
+                  className="px-6 py-3 bg-red-50 text-red-600 rounded-2xl text-xs font-bold hover:bg-red-100 transition-all border border-red-100"
                 >
-                  Reject
+                  Reject Candidate
                 </button>
-                <select
-                  value={selectedCandidate.status}
-                  onChange={(e) => {
-                    const newStatus = e.target.value;
-                    let droppedByVal = undefined;
-                    if (newStatus === "Dropped") {
-                      if (selectedCandidate.status === "Shortlisted") {
-                        droppedByVal = "Mentor";
-                      } else if (selectedCandidate.status === "Interviewed") {
-                        droppedByVal = "Client";
-                      } else {
-                        droppedByVal = "Mentor"; // Fallback
-                      }
-                    }
-
-                    setPendingAction({
-                      type: 'statusChange',
-                      candidateId: selectedCandidate._id,
-                      newStatus: newStatus,
-                      currentJoiningDate: selectedCandidate.joiningDate,
-                      currentSelectionDate: selectedCandidate.selectionDate,
-                      currentExpectedJoiningDate: selectedCandidate.expectedJoiningDate,
-                      droppedBy: droppedByVal
-                    });
-                    setStatusModalOpen(true);
-                  }}
-                  className="px-4 py-2 text-sm rounded-lg border border-gray-300 bg-white
-                                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                                     hover:bg-gray-50 transition-all shadow-sm"
-                >
-                  <option value="New">New</option>
-                  <option value="Shortlisted">Shortlisted</option>
-                  <option value="Interviewed">Interviewed</option>
-                  <option value="Selected">Selected</option>
-                  <option value="Joined">Joined</option>
-                  <option value="Rejected">Rejected</option>
-                  {(selectedCandidate.status === "Shortlisted" || selectedCandidate.status === "Interviewed" || selectedCandidate.status === "Dropped") && (
-                    <option value="Dropped">Dropped</option>
-                  )}
-                  <option value="Hold">Hold</option>
-                </select>
                 <button
                   onClick={onMoveToNextClick}
-                  className="px-6 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
+                  className="px-6 py-3 bg-blue-600 text-white rounded-2xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                 >
                   Move to Next Stage
                 </button>
@@ -2073,6 +1463,36 @@ const CandidatesList = () => {
           </div>
         </div>
       )}
+
+      {/* Resume Preview Modal */}
+      {previewResumeUrl && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-white/20">
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                  <FileText size={20} />
+                </div>
+                <h3 className="text-sm sm:text-lg font-black text-slate-900 uppercase tracking-widest">Resume Preview</h3>
+              </div>
+              <button
+                onClick={() => setPreviewResumeUrl(null)}
+                className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-500"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 bg-slate-100">
+              <iframe
+                src={previewResumeUrl}
+                className="w-full h-full border-none"
+                title="Resume Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <StatusUpdateModal
         isOpen={statusModalOpen}
         onClose={() => {

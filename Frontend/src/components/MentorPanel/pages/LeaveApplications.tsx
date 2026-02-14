@@ -9,13 +9,13 @@ export default function MentorLeaveApplications() {
     useUserContext();
   const { user } = useAuth();
 
-  const [userLeaves, setUserLeaves] = useState([]);
-  const [filteredLeaves, setFilteredLeaves] = useState([]);
+  const [userLeaves, setUserLeaves] = useState<any[]>([]);
+  const [filteredLeaves, setFilteredLeaves] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("team"); // "team" or "mine"
 
   // Apply modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [formData, setFormData] = useState({
     user: user?._id || "",
@@ -62,28 +62,28 @@ export default function MentorLeaveApplications() {
 
     // Step 3: Only user's own leaves
     const userOwnLeaves = leaves.filter(
-      (leave) => leave.user?._id === user._id
+      (leave: any) => leave.user?._id === user._id
     );
 
     // Step 4: If Admin → show ALL leaves
     let reporteesLeaves;
 
-    if (user.designation === "Admin") {
+    if (user?.designation === "Admin") {
       reporteesLeaves = leaves; // ADMIN CAN SEE ALL
     } else {
-      reporteesLeaves = leaves.filter((leave) =>
+      reporteesLeaves = leaves.filter((leave: any) =>
         allReporteeIds.includes(leave.user?._id)
       );
     }
 
     setUserLeaves(userOwnLeaves);
     setFilteredLeaves(reporteesLeaves);
-  }, [leaves, users, user]);
+  }, [leaves, users, user, fetchAllLeaves]);
 
-  const calculateDays = (start, end) => {
+  const calculateDays = (start: string | Date, end: string | Date) => {
     if (!start || !end) return 0;
-    const s = new Date(start);
-    const e = new Date(end);
+    const s = new Date(start).getTime();
+    const e = new Date(end).getTime();
     return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
   };
 
@@ -116,7 +116,7 @@ export default function MentorLeaveApplications() {
       reporter: user?.reporter?._id || "",
     });
 
-  const submitLeave = async (e) => {
+  const submitLeave = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (new Date(formData.toDate) < new Date(formData.fromDate)) {
@@ -143,8 +143,8 @@ export default function MentorLeaveApplications() {
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
       Pending: "bg-amber-100 text-amber-700",
       Approved: "bg-green-100 text-green-700",
       Rejected: "bg-red-100 text-red-700",
@@ -158,43 +158,45 @@ export default function MentorLeaveApplications() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 leading-tight">
             Leave Management
           </h1>
-          <p className="text-slate-600">View and manage leave applications</p>
+          <p className="text-sm sm:text-base text-gray-500 mt-1">View and manage leave applications</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setActiveTab("team")}
-            className={`px-4 py-2 rounded-lg font-medium ${activeTab === "team"
-              ? "bg-blue-600 text-white"
-              : "bg-slate-200 text-slate-700"
-              }`}
-          >
-            Team
-          </button>
-
-          {user.designation !== "Admin" && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex bg-gray-100 p-1 rounded-xl">
             <button
-              onClick={() => setActiveTab("mine")}
-              className={`px-4 py-2 rounded-lg font-medium ${activeTab === "mine"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-200 text-slate-700"
+              onClick={() => setActiveTab("team")}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "team"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
                 }`}
             >
-              My Leaves
+              Team
             </button>
-          )}
 
-          {user.designation !== "Admin" && (
+            {user?.designation !== "Admin" && (
+              <button
+                onClick={() => setActiveTab("mine")}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === "mine"
+                  ? "bg-white text-blue-600 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
+              >
+                My Leaves
+              </button>
+            )}
+          </div>
+
+          {user?.designation !== "Admin" && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white flex items-center gap-2"
+              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-blue-600 text-white flex items-center justify-center gap-2 font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95"
             >
-              <Plus size={16} /> Apply Leave
+              <Plus size={18} /> Apply Leave
             </button>
           )}
         </div>
@@ -202,45 +204,45 @@ export default function MentorLeaveApplications() {
 
       {/* Summary Boxes */}
       {activeTab === "team" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 group hover:shadow-md transition-all">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Clock size={24} className="text-amber-600" />
+              <div className="w-12 h-12 rounded-xl bg-amber-50 flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                <Clock size={24} className="text-amber-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">
+                <p className="text-2xl font-extrabold text-gray-800">
                   {pendingCount}
                 </p>
-                <p className="text-sm text-slate-600">Pending Requests</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">Pending</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 group hover:shadow-md transition-all">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                <CheckCircle size={24} className="text-green-600" />
+              <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                <CheckCircle size={24} className="text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">
+                <p className="text-2xl font-extrabold text-gray-800">
                   {approvedCount}
                 </p>
-                <p className="text-sm text-slate-600">Approved</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">Approved</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-6 border border-slate-200">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 group hover:shadow-md transition-all">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
-                <XCircle size={24} className="text-red-600" />
+              <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center group-hover:bg-red-100 transition-colors">
+                <XCircle size={24} className="text-red-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-800">
+                <p className="text-2xl font-extrabold text-gray-800">
                   {rejectedCount}
                 </p>
-                <p className="text-sm text-slate-600">Rejected</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">Rejected</p>
               </div>
             </div>
           </div>
@@ -248,23 +250,31 @@ export default function MentorLeaveApplications() {
       )}
 
       {/* Applications list */}
-      <div className="bg-white rounded-xl shadow-md border border-slate-200">
-        <div className="p-6 border-b border-slate-200">
-          <h2 className="text-xl font-semibold text-slate-800">
-            {user.designation === "Admin"
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
+        <div className="p-4 sm:p-6 border-b border-gray-50 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-800">
+            {user?.designation === "Admin"
               ? "All Leave Applications"
               : activeTab === "mine"
                 ? "My Leave Requests"
                 : "Team Leave Applications"}
           </h2>
+          <span className="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+            {displayList.length} Total
+          </span>
         </div>
 
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-gray-50">
           {displayList.length === 0 && (
-            <p className="text-center text-slate-600 py-6">No leaves found.</p>
+            <div className="text-center py-16 px-4">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-gray-300" />
+              </div>
+              <p className="text-gray-400 font-medium">No leave applications found.</p>
+            </div>
           )}
 
-          {displayList.map((application, index) => {
+          {displayList.map((application: any, index: number) => {
             const days = calculateDays(
               application.fromDate,
               application.toDate
@@ -276,71 +286,74 @@ export default function MentorLeaveApplications() {
                 key={application._id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                className="p-6 hover:bg-slate-50 transition-colors"
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+                className="p-4 sm:p-6 hover:bg-gray-50/50 transition-colors"
               >
-                <div className="flex items-start justify-between gap-6">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+                <div className="flex flex-col sm:grid sm:grid-cols-12 gap-4 items-start sm:items-center">
+                  <div className="col-span-12 sm:col-span-5 flex items-start gap-4">
+                    <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-inner">
                       {application.user?.name?.charAt(0)}
                     </div>
 
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-slate-800 mb-1">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-gray-900 truncate">
                         {application.user?.name}
                       </h3>
-                      <p className="text-sm text-slate-500 mb-2">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">
                         {application.user?.designation || "No Designation"}
                       </p>
-
-                      <div className="flex items-center gap-4 text-sm text-slate-600 mb-3">
-                        <span className="font-medium">
-                          {application.leaveType}
-                        </span>
-
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} /> {days} days
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-slate-600">
-                        <span>{application.fromDate?.split("T")[0]}</span>
-                        <span>→</span>
-                        <span>{application.toDate?.split("T")[0]}</span>
-                      </div>
                     </div>
                   </div>
-                  {activeTab === "mine" && (
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}
-                    >
-                      {application.status}
-                    </span>
-                  )}
 
-                  {/* Approve/Reject only for Team Leaves */}
-                  {activeTab === "team" && (
-                    <div className="flex items-center gap-3">
+                  <div className="col-span-12 sm:col-span-4 flex flex-wrap items-center gap-3 sm:gap-6">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 font-mono">Leave Type</span>
+                      <span className="text-sm font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded-lg">
+                        {application.leaveType}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 font-mono">Duration</span>
+                      <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
+                        <Calendar size={14} className="text-blue-500" /> {days} {days === 1 ? 'day' : 'days'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="col-span-12 sm:col-span-3 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 w-full">
+                    <div className="text-sm font-bold text-gray-600 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100 sm:w-fit">
+                      {application.fromDate?.split("T")[0]}
+                      <span className="mx-2 text-blue-300">→</span>
+                      {application.toDate?.split("T")[0]}
+                    </div>
+
+                    <div className="flex items-center gap-2">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor}`}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${statusColor.includes('amber') ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                          statusColor.includes('green') ? 'bg-green-50 text-green-600 border-green-100' :
+                            'bg-red-50 text-red-600 border-red-100'
+                          }`}
                       >
                         {application.status}
                       </span>
 
-                      {application.status === "Pending" && (
-                        <div className="flex items-center gap-2">
+                      {/* Action buttons stack below on mobile if needed, but here they stay next to status */}
+                      {activeTab === "team" && application.status === "Pending" && (
+                        <div className="flex items-center gap-1.5">
                           <button
                             onClick={async () => {
                               await updateLeaveStatus(
                                 application._id,
                                 "Approved",
-                                user._id
+                                user?._id || ""
                               );
                               await fetchAllLeaves();
                             }}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                            className="p-1.5 bg-green-50 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-all border border-green-100"
+                            title="Approve"
                           >
-                            Approve
+                            <CheckCircle size={18} />
                           </button>
 
                           <button
@@ -348,16 +361,25 @@ export default function MentorLeaveApplications() {
                               await updateLeaveStatus(
                                 application._id,
                                 "Rejected",
-                                user._id
+                                user?._id || ""
                               );
                               await fetchAllLeaves();
                             }}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                            className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-600 hover:text-white transition-all border border-red-100"
+                            title="Reject"
                           >
-                            Reject
+                            <XCircle size={18} />
                           </button>
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  {/* Reason section for mobile-first visibility */}
+                  {application.reason && (
+                    <div className="col-span-12 mt-2 bg-gray-50/50 p-3 rounded-xl border border-dashed border-gray-200">
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1 font-mono">Reason</p>
+                      <p className="text-sm text-gray-600 italic leading-relaxed">"{application.reason}"</p>
                     </div>
                   )}
                 </div>

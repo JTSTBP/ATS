@@ -6,6 +6,7 @@ import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
 import { useJobContext } from '../../../context/DataProvider';
 import ActivityLogs from '../../AdminPanel/activitylogs';
+import { useScreenSize } from '../../../hooks/useScreenSize';
 import {
   BarChart,
   Bar,
@@ -31,6 +32,7 @@ type Stats = {
 };
 
 export const Dashboard = () => {
+  const screenSize = useScreenSize();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { users } = useUserContext();
@@ -218,9 +220,11 @@ export const Dashboard = () => {
       }
     });
 
+    const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
     return Object.values(recruiterStats)
-      .sort((a, b) => b.uploaded - a.uploaded);
-  }, [filteredCandidates, users, teamMemberIds, selectedMonth, selectedYear]);
+      .sort((a, b) => b.uploaded - a.uploaded)
+      .slice(0, maxRecruiters);
+  }, [filteredCandidates, users, teamMemberIds, selectedMonth, selectedYear, screenSize]);
 
   const statCards: Array<{ label: string; value: number; subValue?: string; icon: any; color: string; bgColor: string; path: string }> = [
     {
@@ -304,24 +308,24 @@ export const Dashboard = () => {
   );
 
   return (
-    <div className="space-y-8 font-sans">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 sm:space-y-8 font-sans p-4 sm:p-0">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6">
         <div>
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 leading-tight">
             Mentor Dashboard
           </h1>
-          <p className="text-gray-500 mt-2 text-lg">
+          <p className="text-gray-500 mt-1 sm:mt-2 text-base sm:text-lg">
             Overview of your recruitment activities and pipeline.
           </p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex flex-col">
-            <label className="text-xs font-bold text-gray-400 uppercase mb-1">Year</label>
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex flex-col flex-1 min-w-[80px]">
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Year</label>
             <select
               value={selectedYear === null ? "" : selectedYear}
               onChange={(e) => setSelectedYear(e.target.value === "" ? null : Number(e.target.value))}
-              className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+              className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
             >
               <option value="">All</option>
               {years.map(year => (
@@ -329,12 +333,12 @@ export const Dashboard = () => {
               ))}
             </select>
           </div>
-          <div className="flex flex-col">
-            <label className="text-xs font-bold text-gray-400 uppercase mb-1">Month</label>
+          <div className="flex flex-col flex-1 min-w-[100px]">
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Month</label>
             <select
               value={selectedMonth === null ? "" : selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value === "" ? null : Number(e.target.value))}
-              className="bg-gray-50 border-none text-gray-700 text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+              className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
             >
               <option value="">All</option>
               {months.map((month, index) => (
@@ -356,25 +360,25 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 xs:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <div
               key={index}
               onClick={() => navigate(stat.path)}
-              className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 cursor-pointer group transform hover:-translate-y-1"
+              className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 cursor-pointer group transform hover:-translate-y-1"
             >
               <div className="flex items-center justify-between mb-4">
-                <div className={`p-4 rounded-xl ${stat.color} bg-opacity-10 group-hover:bg-opacity-20 transition-all`}>
-                  <Icon className={`w-7 h-7 ${stat.color.replace('bg-', 'text-').replace('500', '600')}`} />
+                <div className={`p-3 sm:p-4 rounded-xl ${stat.color} bg-opacity-10 group-hover:bg-opacity-20 transition-all`}>
+                  <Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${stat.color.replace('bg-', 'text-').replace('500', '600')}`} />
                 </div>
-                <span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-50 text-gray-500 uppercase tracking-wide">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-50 text-gray-400 uppercase tracking-widest">
                   {stat.label}
                 </span>
               </div>
-              <div className="text-3xl font-bold text-gray-800 mb-1">{stat.value}</div>
-              <div className="text-sm font-medium text-gray-500">{stat.label}</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-800 mb-0.5">{stat.value}</div>
+              <div className="text-xs sm:text-sm font-semibold text-gray-500/80 uppercase tracking-wider">{stat.label}</div>
             </div>
           );
         })}
@@ -383,49 +387,59 @@ export const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
           {/* Recruiter Performance Chart */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-8">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 sm:mb-8 gap-4 sm:gap-6">
               <div>
-                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
                   <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
-                  Recruiter Performance
+                  Performance
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">Candidates uploaded, shortlisted, and joined by your team</p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">Candidates uploaded, shortlisted, and joined by team members</p>
               </div>
-              <div className="flex flex-wrap items-center gap-4 text-xs font-bold uppercase tracking-wider">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
-                  <span className="text-gray-600">Uploaded</span>
+                  <span>Uploaded</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm bg-orange-500"></div>
-                  <span className="text-gray-600">Shortlisted</span>
+                  <span>Shortlisted</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-sm bg-emerald-500"></div>
-                  <span className="text-gray-600">Joined</span>
+                  <span>Joined</span>
                 </div>
               </div>
             </div>
-            <div className="h-72">
+            <div className="h-64 sm:h-80">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={recruiterPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart
+                  data={recruiterPerformanceData}
+                  margin={{
+                    top: 10,
+                    right: 10,
+                    left: -20,
+                    bottom: screenSize === 'mobile' ? 50 : 20
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis
                     dataKey="name"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
+                    tick={{ fill: '#64748b', fontSize: screenSize === 'mobile' ? 9 : 11, fontWeight: 600 }}
                     interval={0}
+                    angle={screenSize === 'mobile' ? -45 : 0}
+                    textAnchor={screenSize === 'mobile' ? 'end' : 'middle'}
                   />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
                   <Tooltip
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
                     cursor={{ fill: '#f8fafc' }}
                   />
-                  <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={24} />
-                  <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={24} />
-                  <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 24} />
+                  <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 24} />
+                  <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 16 : 24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -444,47 +458,47 @@ export const Dashboard = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
               <div className="w-1 h-6 bg-blue-500 rounded-full"></div>
               Quick Actions
             </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               <button
                 onClick={() => navigate('/Mentor/jobs/create')}
-                className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group border border-blue-200/50"
+                className="flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl hover:from-blue-100 hover:to-blue-200 transition-all duration-300 group border border-blue-200/50"
               >
-                <div className="p-3 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                  <Plus className="w-6 h-6 text-blue-600" />
+                <div className="p-2 sm:p-3 bg-white rounded-full shadow-sm mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
+                  <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
-                <span className="text-sm font-bold text-blue-900">Post Job</span>
+                <span className="text-xs sm:text-sm font-bold text-blue-900">Post Job</span>
               </button>
               <button
                 onClick={() => navigate('/Mentor/candidates/add')}
-                className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group border border-purple-200/50"
+                className="flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl hover:from-purple-100 hover:to-purple-200 transition-all duration-300 group border border-purple-200/50"
               >
-                <div className="p-3 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                  <UserPlus className="w-6 h-6 text-purple-600" />
+                <div className="p-2 sm:p-3 bg-white rounded-full shadow-sm mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
+                  <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-purple-600" />
                 </div>
-                <span className="text-sm font-bold text-purple-900">Add Candidate</span>
+                <span className="text-xs sm:text-sm font-bold text-purple-900">Add Candidate</span>
               </button>
               <button
                 onClick={() => navigate('/Mentor/candidates?status=Interviewed')}
-                className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl hover:from-green-100 hover:to-green-200 transition-all duration-300 group border border-green-200/50"
+                className="flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl hover:from-green-100 hover:to-green-200 transition-all duration-300 group border border-green-200/50"
               >
-                <div className="p-3 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                  <Calendar className="w-6 h-6 text-green-600" />
+                <div className="p-2 sm:p-3 bg-white rounded-full shadow-sm mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 </div>
-                <span className="text-sm font-bold text-green-900">Interviews</span>
+                <span className="text-xs sm:text-sm font-bold text-green-900">Interviews</span>
               </button>
               <button
                 onClick={() => navigate('/Mentor/applications')}
-                className="flex flex-col items-center justify-center p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl hover:from-orange-100 hover:to-orange-200 transition-all duration-300 group border border-orange-200/50"
+                className="flex flex-col items-center justify-center p-4 sm:p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl hover:from-orange-100 hover:to-orange-200 transition-all duration-300 group border border-orange-200/50"
               >
-                <div className="p-3 bg-white rounded-full shadow-sm mb-3 group-hover:scale-110 transition-transform">
-                  <FileText className="w-6 h-6 text-orange-600" />
+                <div className="p-2 sm:p-3 bg-white rounded-full shadow-sm mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
+                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                 </div>
-                <span className="text-sm font-bold text-orange-900">Applications</span>
+                <span className="text-xs sm:text-sm font-bold text-orange-900">Applications</span>
               </button>
             </div>
           </div>

@@ -212,46 +212,58 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-                <div className="flex justify-between items-center p-6 border-b">
-                    <h2 className="text-xl font-bold text-gray-800">
-                        {initialData ? 'Edit Client' : 'Add New Client'}
-                    </h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-                        <X className="w-6 h-6" />
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-4xl max-h-[95vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-200">
+                <div className="flex justify-between items-center p-6 sm:p-10 border-b bg-gradient-to-r from-slate-50/50 to-blue-50/50">
+                    <div>
+                        <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                            {initialData ? 'Update Partner Profile' : 'Register New Partner'}
+                        </h2>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Partner onboarding portal</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm sm:shadow-none border border-transparent hover:border-slate-100 group"
+                    >
+                        <X size={24} className="text-slate-400 group-hover:text-slate-600" />
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+                <form onSubmit={handleSubmit} className="p-6 sm:p-10 overflow-y-auto flex-1 custom-scrollbar space-y-12">
                     {/* Logo Upload Section */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-700">Company Logo <span className="text-red-500">*</span></h3>
-                        <div className="flex items-center gap-4">
+                    <div className="space-y-6">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            Brand Identity
+                        </h3>
+                        <div className="flex flex-col sm:flex-row items-center gap-8 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
                             {logoPreview ? (
-                                <div className="relative">
-                                    <img
-                                        src={logoPreview.startsWith('http') || logoPreview.startsWith('data:') ? logoPreview : getImageUrl(logoPreview)}
-                                        alt="Company Logo"
-                                        className="w-24 h-24 object-cover rounded-lg border-2 border-gray-300"
-                                    />
+                                <div className="relative group">
+                                    <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-3xl border-4 border-white shadow-xl overflow-hidden bg-white">
+                                        <img
+                                            src={logoPreview.startsWith('http') || logoPreview.startsWith('data:') ? logoPreview : getImageUrl(logoPreview)}
+                                            alt="Company Logo"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={removeLogo}
-                                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                                        className="absolute -top-3 -right-3 bg-red-500 text-white rounded-2xl p-2 hover:bg-red-600 shadow-lg shadow-red-500/20 transition-all opacity-0 group-hover:opacity-100"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>
                                 </div>
                             ) : (
-                                <div className="w-24 h-24 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                                    <ImageIcon className="w-8 h-8 text-gray-400" />
+                                <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-2 text-slate-400">
+                                    <ImageIcon className="w-8 h-8" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Logo</span>
                                 </div>
                             )}
-                            <div>
-                                <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            <div className="text-center sm:text-left space-y-3">
+                                <label className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all shadow-sm">
                                     <Upload className="w-4 h-4" />
-                                    {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                                    {logoPreview ? 'Update Logo' : 'Choose Logo'}
                                     <input
                                         type="file"
                                         accept="image/*"
@@ -259,66 +271,74 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                                         className="hidden"
                                     />
                                 </label>
-                                <p className="text-xs text-gray-500 mt-1">Max 5MB (JPG, PNG, GIF)</p>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Format: JPG, PNG, GIF • Max: 5MB</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-semibold text-gray-700">Company Details</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-6">
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                            General Information
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 bg-slate-50/30 p-6 sm:p-8 rounded-[2rem] border border-slate-100">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Company Name *</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.companyName}
                                     onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                    placeholder="e.g. Acme Corp"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Industry</label>
                                 <input
                                     type="text"
                                     value={formData.industry}
                                     onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                    placeholder="e.g. Fintech"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Website URL *</label>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Website URL *</label>
                                 <input
                                     type="url"
                                     required
                                     value={formData.websiteUrl}
                                     onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                    placeholder="https://..."
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">LinkedIn URL</label>
                                 <input
                                     type="url"
                                     value={formData.linkedinUrl}
                                     onChange={(e) => setFormData({ ...formData, linkedinUrl: e.target.value })}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                    placeholder="https://linkedin.com/company/..."
                                 />
                             </div>
-                            <div className="md:col-span-2">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Company Info</label>
+                            <div className="sm:col-span-2">
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Company Overview</label>
                                 <textarea
                                     value={formData.companyInfo}
                                     onChange={(e) => setFormData({ ...formData, companyInfo: e.target.value })}
-                                    rows={3}
-                                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                    rows={4}
+                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700 resize-none"
+                                    placeholder="Tell us about the partner..."
                                 />
                             </div>
 
                             {(user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Manager' || user?.designation === 'Mentor') && (
                                 <>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">BD Executive</label>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Lead Executive</label>
                                         <select
                                             value={formData.bdExecutive}
                                             onChange={(e) => {
@@ -331,86 +351,71 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                                                     bdExecutivePhone: selectedBD?.phone || ''
                                                 });
                                             }}
-                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
                                         >
-                                            <option value="">Select BD Executive</option>
+                                            <option value="">Choose Executive</option>
                                             {bdExecutives.map((bd) => (
-                                                <option key={bd._id} value={bd.name}>
-                                                    {bd.name}
-                                                </option>
+                                                <option key={bd._id} value={bd.name}>{bd.name}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">No of Requirements</label>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Requirement volume</label>
                                         <input
                                             type="number"
                                             value={formData.noOfRequirements}
                                             onChange={(e) => setFormData({ ...formData, noOfRequirements: e.target.value })}
-                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            placeholder="e.g. 5"
+                                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                            placeholder="e.g. 10"
                                         />
                                     </div>
-                                    {/* Created At Edit for Admin */}
-                                    {(user?.isAdmin || user?.designation === 'Admin') && (
-                                        <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
-                                            <input
-                                                type="datetime-local"
-                                                value={formData.createdAt ? new Date(formData.createdAt).toISOString().slice(0, 16) : ''}
-                                                onChange={(e) => setFormData({ ...formData, createdAt: e.target.value })}
-                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                            />
-                                        </div>
-                                    )}
                                 </>
                             )}
 
-                            <div className="md:col-span-2 border-t pt-4">
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">Payout Options</label>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="sm:col-span-2 border-t border-slate-100 pt-8 mt-4">
+                                <label className="block text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-6 px-1">Contract details</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Payout Method</label>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Payout structure</label>
                                         <select
                                             value={formData.payoutOption}
                                             onChange={(e) => setFormData({
                                                 ...formData,
                                                 payoutOption: e.target.value as any,
-                                                // Reset values if not selected
                                                 agreementPercentage: e.target.value === 'Flat Pay' ? '' : formData.agreementPercentage,
                                                 flatPayAmount: e.target.value === 'Agreement Percentage' ? '' : formData.flatPayAmount
                                             })}
-                                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white font-medium text-gray-700"
+                                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
                                         >
-                                            <option value="Agreement Percentage">Agreement Percentage</option>
-                                            <option value="Flat Pay">Flat Pay</option>
-                                            <option value="Both">Both</option>
+                                            <option value="Agreement Percentage">Commission %</option>
+                                            <option value="Flat Pay">Fixed Fee</option>
+                                            <option value="Both">Hybrid</option>
                                         </select>
                                     </div>
 
                                     {(formData.payoutOption === 'Agreement Percentage' || formData.payoutOption === 'Both') && (
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Agreement Percentage (%)</label>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Fee %</label>
                                             <input
                                                 type="number"
                                                 step="0.01"
                                                 value={formData.agreementPercentage}
                                                 onChange={(e) => setFormData({ ...formData, agreementPercentage: e.target.value })}
-                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                                placeholder="e.g. 8.33"
+                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                                placeholder="8.33"
                                             />
                                         </div>
                                     )}
 
                                     {(formData.payoutOption === 'Flat Pay' || formData.payoutOption === 'Both') && (
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Flat Pay Amount (₹)</label>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Fixed Amount (₹)</label>
                                             <input
                                                 type="number"
                                                 value={formData.flatPayAmount}
                                                 onChange={(e) => setFormData({ ...formData, flatPayAmount: e.target.value })}
-                                                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                                placeholder="e.g. 50000"
+                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                                placeholder="50,000"
                                             />
                                         </div>
                                     )}
@@ -420,225 +425,187 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                     </div>
 
                     {(user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Finance') && (
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-gray-700">Billing Details</h3>
-                                    <p className="text-xs text-gray-500 mt-1">Add one or more billing locations/contract details</p>
-                                </div>
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center px-1">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                    Billing & Logistics
+                                </h3>
                                 <button
                                     type="button"
                                     onClick={() => setFormData({
                                         ...formData,
                                         billingDetails: [...(formData.billingDetails || []), { address: '', state: '', gstNumber: '' }]
                                     })}
-                                    className="flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
+                                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:text-blue-700 transition-colors bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-100"
                                 >
-                                    <Plus className="w-4 h-4 mr-1" /> Add Billing Set
+                                    + Add Site
                                 </button>
                             </div>
 
-                            {(formData.billingDetails || []).map((detail, index) => (
-                                <div key={index} className="bg-slate-50 p-4 rounded-lg border relative border-slate-200">
-                                    {(formData.billingDetails || []).length > 1 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {(formData.billingDetails || []).map((detail, index) => (
+                                    <div key={index} className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 relative group">
+                                        {(formData.billingDetails || []).length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({
+                                                    ...formData,
+                                                    billingDetails: (formData.billingDetails || []).filter((_, i) => i !== index)
+                                                })}
+                                                className="absolute top-4 right-4 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">Site Address</label>
+                                                <textarea
+                                                    value={detail.address}
+                                                    onChange={(e) => {
+                                                        const newDetails = [...(formData.billingDetails || [])];
+                                                        newDetails[index] = { ...newDetails[index], address: e.target.value };
+                                                        setFormData({ ...formData, billingDetails: newDetails });
+                                                    }}
+                                                    rows={2}
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700 resize-none"
+                                                    placeholder="Physical address"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">GST Number</label>
+                                                    <input
+                                                        type="text"
+                                                        value={detail.gstNumber}
+                                                        onChange={(e) => {
+                                                            const newDetails = [...(formData.billingDetails || [])];
+                                                            newDetails[index] = { ...newDetails[index], gstNumber: e.target.value };
+                                                            setFormData({ ...formData, billingDetails: newDetails });
+                                                        }}
+                                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700"
+                                                        placeholder="GSTIN"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">State</label>
+                                                    <input
+                                                        type="text"
+                                                        value={detail.state}
+                                                        onChange={(e) => {
+                                                            const newDetails = [...(formData.billingDetails || [])];
+                                                            newDetails[index] = { ...newDetails[index], state: e.target.value };
+                                                            setFormData({ ...formData, billingDetails: newDetails });
+                                                        }}
+                                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700"
+                                                        placeholder="Region"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* POC Section */}
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center px-1">
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                Stakeholder Directory
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={addPOC}
+                                className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700 transition-colors bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100"
+                            >
+                                + Add Contact
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {(formData.pocs || []).map((poc, index) => (
+                                <div key={index} className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 relative group">
+                                    {(formData.pocs || []).length > 1 && (
                                         <button
                                             type="button"
-                                            onClick={() => setFormData({
-                                                ...formData,
-                                                billingDetails: (formData.billingDetails || []).filter((_, i) => i !== index)
-                                            })}
-                                            className="absolute top-2 right-2 text-red-500 hover:text-red-700"
+                                            onClick={() => removePOC(index)}
+                                            className="absolute top-4 right-4 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all font-bold"
                                         >
-                                            <Trash2 className="w-4 h-4" />
+                                            <Trash2 size={16} />
                                         </button>
                                     )}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="md:col-span-2">
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">Address</label>
-                                            <textarea
-                                                value={detail.address}
-                                                onChange={(e) => {
-                                                    const newDetails = [...(formData.billingDetails || [])];
-                                                    newDetails[index] = { ...newDetails[index], address: e.target.value };
-                                                    setFormData({ ...formData, billingDetails: newDetails });
-                                                }}
-                                                rows={2}
-                                                className="w-full px-3 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="Billing Address"
-                                            />
-                                        </div>
+                                    <div className="space-y-4">
                                         <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">State</label>
-                                            <select
-                                                value={detail.state}
-                                                onChange={(e) => {
-                                                    const newDetails = [...(formData.billingDetails || [])];
-                                                    newDetails[index] = { ...newDetails[index], state: e.target.value };
-                                                    setFormData({ ...formData, billingDetails: newDetails });
-                                                }}
-                                                className="w-full px-3 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"
-                                            >
-                                                <option value="">Select State</option>
-                                                <option value="Andhra Pradesh">Andhra Pradesh</option>
-                                                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                                                <option value="Assam">Assam</option>
-                                                <option value="Bihar">Bihar</option>
-                                                <option value="Chhattisgarh">Chhattisgarh</option>
-                                                <option value="Goa">Goa</option>
-                                                <option value="Gujarat">Gujarat</option>
-                                                <option value="Haryana">Haryana</option>
-                                                <option value="Himachal Pradesh">Himachal Pradesh</option>
-                                                <option value="Jharkhand">Jharkhand</option>
-                                                <option value="Karnataka">Karnataka</option>
-                                                <option value="Kerala">Kerala</option>
-                                                <option value="Madhya Pradesh">Madhya Pradesh</option>
-                                                <option value="Maharashtra">Maharashtra</option>
-                                                <option value="Manipur">Manipur</option>
-                                                <option value="Meghalaya">Meghalaya</option>
-                                                <option value="Mizoram">Mizoram</option>
-                                                <option value="Nagaland">Nagaland</option>
-                                                <option value="Odisha">Odisha</option>
-                                                <option value="Punjab">Punjab</option>
-                                                <option value="Rajasthan">Rajasthan</option>
-                                                <option value="Sikkim">Sikkim</option>
-                                                <option value="Tamil Nadu">Tamil Nadu</option>
-                                                <option value="Telangana">Telangana</option>
-                                                <option value="Tripura">Tripura</option>
-                                                <option value="Uttar Pradesh">Uttar Pradesh</option>
-                                                <option value="Uttarakhand">Uttarakhand</option>
-                                                <option value="West Bengal">West Bengal</option>
-                                                <option value="Andaman and Nicobar Islands">Andaman and Nicobar Islands</option>
-                                                <option value="Chandigarh">Chandigarh</option>
-                                                <option value="Dadra and Nagar Haveli and Daman and Diu">Dadra and Nagar Haveli and Daman and Diu</option>
-                                                <option value="Delhi">Delhi</option>
-                                                <option value="Jammu and Kashmir">Jammu and Kashmir</option>
-                                                <option value="Ladakh">Ladakh</option>
-                                                <option value="Lakshadweep">Lakshadweep</option>
-                                                <option value="Puducherry">Puducherry</option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-500 mb-1">GST Number</label>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">Full Name *</label>
                                             <input
                                                 type="text"
-                                                value={detail.gstNumber}
-                                                onChange={(e) => {
-                                                    const newDetails = [...(formData.billingDetails || [])];
-                                                    newDetails[index] = { ...newDetails[index], gstNumber: e.target.value };
-                                                    setFormData({ ...formData, billingDetails: newDetails });
-                                                }}
-                                                className="w-full px-3 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500"
-                                                placeholder="GST Number"
+                                                value={poc.name}
+                                                onChange={(e) => handlePOCChange(index, 'name', e.target.value)}
+                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700"
+                                                placeholder="Stakeholder Name"
                                             />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">Work Email *</label>
+                                            <input
+                                                type="email"
+                                                value={poc.email}
+                                                onChange={(e) => handlePOCChange(index, 'email', e.target.value)}
+                                                className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700"
+                                                placeholder="name@company.com"
+                                            />
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">Phone</label>
+                                                <input
+                                                    type="tel"
+                                                    value={poc.phone}
+                                                    onChange={(e) => handlePOCChange(index, 'phone', e.target.value)}
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700"
+                                                    placeholder="Primary contact"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">LinkedIn</label>
+                                                <input
+                                                    type="url"
+                                                    value={poc.linkedinUrl}
+                                                    onChange={(e) => handlePOCChange(index, 'linkedinUrl', e.target.value)}
+                                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700"
+                                                    placeholder="Profile URL"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    )}
-
-                    {/* POC Section */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <div>
-                                <h3 className="text-lg font-semibold text-gray-700">Points of Contact</h3>
-                                <p className="text-xs text-gray-500 mt-1">At least one POC with Name and Email is required</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={addPOC}
-                                className="flex items-center text-sm text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                                <Plus className="w-4 h-4 mr-1" /> Add POC
-                            </button>
-                        </div>
-
-                        {(formData.pocs || []).map((poc, index) => (
-                            <div key={index} className="bg-gray-50 p-4 rounded-lg border relative border-gray-200">
-                                {(formData.pocs || []).length > 1 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => removePOC(index)}
-                                        className="absolute top-2 right-2 text-red-500 hover:text-red-700"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                )}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                                            Name <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={poc.name}
-                                            onChange={(e) => handlePOCChange(index, 'name', e.target.value)}
-                                            className="w-full px-3 py-2 border rounded-lg bg-white"
-                                            placeholder="Name"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                                            Email <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="email"
-                                            value={poc.email}
-                                            onChange={(e) => handlePOCChange(index, 'email', e.target.value)}
-                                            className="w-full px-3 py-2 border rounded-lg bg-white"
-                                            placeholder="Email"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Phone</label>
-                                        <input
-                                            type="tel"
-                                            value={poc.phone}
-                                            onChange={(e) => handlePOCChange(index, 'phone', e.target.value)}
-                                            className="w-full px-3 py-2 border rounded-lg bg-white"
-                                            placeholder="Phone"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Alt Phone</label>
-                                        <input
-                                            type="tel"
-                                            value={poc.altPhone}
-                                            onChange={(e) => handlePOCChange(index, 'altPhone', e.target.value)}
-                                            className="w-full px-3 py-2 border rounded-lg bg-white"
-                                            placeholder="Alt Phone"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">LinkedIn URL</label>
-                                        <input
-                                            type="url"
-                                            value={poc.linkedinUrl}
-                                            onChange={(e) => handlePOCChange(index, 'linkedinUrl', e.target.value)}
-                                            className="w-full px-3 py-2 border rounded-lg bg-white"
-                                            placeholder="LinkedIn Profile"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t">
+                    <div className="flex flex-col sm:flex-row justify-end gap-3 pt-8 border-t bg-slate-50/30 -mx-6 sm:-mx-10 px-6 sm:px-10 pb-0">
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
+                            className="w-full sm:w-auto px-8 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 transition-all text-center"
                         >
-                            Cancel
+                            Discard
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                            className="w-full sm:w-auto px-10 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 active:scale-95 text-center"
                         >
-                            {loading ? 'Saving...' : (initialData ? 'Save Changes' : 'Create Client')}
+                            {loading ? (
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                    Processing...
+                                </div>
+                            ) : (initialData ? 'Update Profile' : 'Authorize Partner')}
                         </button>
                     </div>
                 </form>

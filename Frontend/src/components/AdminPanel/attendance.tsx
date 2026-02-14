@@ -199,7 +199,7 @@ export default function Attendance() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Attendance Management</h1>
                     <p className="text-gray-600 mt-1">
@@ -208,7 +208,7 @@ export default function Attendance() {
                 </div>
                 <button
                     onClick={exportToCSV}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                     <Download className="w-4 h-4" />
                     Export CSV
@@ -216,15 +216,15 @@ export default function Attendance() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
                     <Filter className="w-5 h-5 text-gray-600" />
                     <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     {/* Search */}
-                    <div className="relative">
+                    <div className="relative col-span-1 sm:col-span-2 lg:col-span-1">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
@@ -279,16 +279,16 @@ export default function Attendance() {
                     </select>
                 </div>
 
-                <div className="flex gap-2 mt-4">
+                <div className="flex flex-col sm:flex-row gap-2 mt-4">
                     <button
                         onClick={handleApplyFilters}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                     >
                         Apply Filters
                     </button>
                     <button
                         onClick={handleClearFilters}
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                        className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                     >
                         Clear Filters
                     </button>
@@ -296,7 +296,7 @@ export default function Attendance() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <div className="flex items-center justify-between">
                         <div>
@@ -347,7 +347,7 @@ export default function Attendance() {
             {/* Attendance Table */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full min-w-[1000px]">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -466,9 +466,9 @@ export default function Attendance() {
                                         {/* Expanded Session Details */}
                                         {expandedRows.has(record._id) && (
                                             <tr>
-                                                <td colSpan={8} className="px-6 py-4 bg-gray-50">
+                                                <td colSpan={8} className="px-0 sm:px-6 py-4 bg-gray-50">
                                                     <div className="space-y-2">
-                                                        <h4 className="font-semibold text-gray-900 mb-3">
+                                                        <h4 className="font-semibold text-gray-900 mb-3 px-4 sm:px-0">
                                                             Session Details
                                                         </h4>
                                                         <div className="overflow-x-auto">

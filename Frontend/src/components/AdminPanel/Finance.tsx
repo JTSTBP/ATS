@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Plus, X, Trash2, Mail, RotateCcw, RefreshCw, Download, DownloadCloud } from "lucide-react";
+import { Plus, X, Trash2, Mail, RotateCcw, RefreshCw, Download, DownloadCloud, DollarSign, BarChart3, FileText, PieChart, ArrowUpRight, ArrowDownRight, Calendar } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../utils/dateUtils";
@@ -718,14 +718,17 @@ const Finance = () => {
 
     return (
         <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Finance Dashboard</h1>
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Summary:</span>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <div>
+                    <h1 className="text-2xl font-black text-slate-800 tracking-tight">Finance Dashboard</h1>
+                    <p className="text-sm font-bold text-slate-400">Track earnings, expenses and payouts</p>
+                </div>
+                <div className="flex items-center gap-2 bg-white p-1 pr-2 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-2">Period:</span>
                     <select
                         value={summaryFilter}
                         onChange={(e) => setSummaryFilter(e.target.value)}
-                        className="p-2 border border-gray-300 rounded-lg text-sm bg-white"
+                        className="p-1.5 border-none text-sm font-bold text-slate-700 bg-transparent focus:ring-0 cursor-pointer flex-1 sm:flex-none"
                     >
                         <option value="weekly">This Week</option>
                         <option value="monthly">This Month</option>
@@ -736,66 +739,87 @@ const Finance = () => {
             </div>
 
             {/* Profit & Loss Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <p className="text-sm text-gray-500 mb-1">Total Income</p>
-                    <p className="text-2xl font-bold text-green-600">₹{summaryData.totalIncome.toLocaleString()}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Income</p>
+                        <div className="p-2 bg-green-50 text-green-600 rounded-lg group-hover:scale-110 transition-transform">
+                            <Download className="w-4 h-4" />
+                        </div>
+                    </div>
+                    <p className="text-2xl font-black text-slate-800">₹{summaryData.totalIncome.toLocaleString()}</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <p className="text-sm text-gray-500 mb-1">Total Expenses</p>
-                    <p className="text-2xl font-bold text-red-600">₹{summaryData.totalExpenses.toLocaleString()}</p>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Expenses</p>
+                        <div className="p-2 bg-red-50 text-red-600 rounded-lg group-hover:scale-110 transition-transform">
+                            <Download className="w-4 h-4 rotate-180" />
+                        </div>
+                    </div>
+                    <p className="text-2xl font-black text-slate-800">₹{summaryData.totalExpenses.toLocaleString()}</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <p className="text-sm text-gray-500 mb-1">Net Profit</p>
-                    <p className={`text-2xl font-bold ${summaryData.netProfit >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Net Profit</p>
+                        <div className={`p-2 rounded-lg group-hover:scale-110 transition-transform ${summaryData.netProfit >= 0 ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
+                            <DollarSign className="w-4 h-4" />
+                        </div>
+                    </div>
+                    <p className={`text-2xl font-black ${summaryData.netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
                         ₹{summaryData.netProfit.toLocaleString()}
                     </p>
                 </div>
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <p className="text-sm text-gray-500 mb-1">Profit Margin</p>
-                    <p className={`text-2xl font-bold ${summaryData.profitMargin >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Margin</p>
+                        <div className={`p-2 rounded-lg group-hover:scale-110 transition-transform ${summaryData.profitMargin >= 0 ? 'bg-purple-50 text-purple-600' : 'bg-red-50 text-red-600'}`}>
+                            <BarChart3 className="w-4 h-4" />
+                        </div>
+                    </div>
+                    <p className={`text-2xl font-black ${summaryData.profitMargin >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
                         {summaryData.profitMargin}%
                     </p>
                 </div>
             </div>
 
-            <div className="flex justify-between items-center mb-6">
-                <div className="flex gap-4">
-                    <div className="bg-gray-100 p-1 rounded-lg flex">
-                        <button
-                            onClick={() => setActiveTab('invoices')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'invoices' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                        >
-                            Invoices
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('payments')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'payments' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                        >
-                            Payment History
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('expenses')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'expenses' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                        >
-                            Daily Expenses
-                        </button>
-                    </div>
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+                <div className="flex p-1 bg-slate-100/80 rounded-xl w-full lg:w-auto overflow-x-auto no-scrollbar">
+                    <button
+                        onClick={() => setActiveTab('invoices')}
+                        className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'invoices' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                    >
+                        Invoices
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('payments')}
+                        className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'payments' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                    >
+                        Payment History
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('expenses')}
+                        className={`flex-1 lg:flex-none whitespace-nowrap px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${activeTab === 'expenses' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                    >
+                        Daily Expenses
+                    </button>
+                </div>
+
+                <div className="w-full lg:w-auto">
                     {activeTab === 'expenses' ? (
                         <button
                             onClick={() => setIsExpenseModalOpen(true)}
-                            className="bg-red-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-red-700 transition-colors"
+                            className="w-full lg:w-auto bg-slate-800 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-900 transition-all shadow-lg shadow-slate-200 active:scale-95"
                         >
-                            <Plus size={20} />
-                            Add Expense
+                            <Plus className="w-5 h-5" />
+                            <span>Add Expense</span>
                         </button>
                     ) : (
                         <button
                             onClick={() => setIsCreatingInvoice(true)}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                            className="w-full lg:w-auto bg-blue-600 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-95"
                         >
-                            <Plus size={20} />
-                            Create Invoice
+                            <Plus className="w-5 h-5" />
+                            <span>Create Invoice</span>
                         </button>
                     )}
                 </div>
@@ -803,365 +827,432 @@ const Finance = () => {
 
             {activeTab === 'invoices' && (
                 <>
-                    <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
-                        <h3 className="text-lg font-semibold text-gray-700 mr-2">Filters:</h3>
-                        <SearchableSelect
-                            options={clients.map(c => ({ value: c._id, label: c.companyName }))}
-                            value={filterInvoiceClient}
-                            onChange={(val) => setFilterInvoiceClient(val)}
-                            placeholder="All Clients"
-                            className="w-48"
-                        />
-                        <SearchableSelect
-                            options={candidates.map(c => ({
-                                value: c._id,
-                                label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
-                            }))}
-                            value={filterInvoiceCandidate}
-                            onChange={(val) => setFilterInvoiceCandidate(val)}
-                            placeholder="All Candidates"
-                            className="w-48"
-                        />
-                        <SearchableSelect
-                            options={[
-                                { value: "Pending", label: "Pending" },
-                                { value: "Paid", label: "Paid" },
-                                { value: "Overdue", label: "Overdue" }
-                            ]}
-                            value={filterInvoiceStatus}
-                            onChange={(val) => setFilterInvoiceStatus(val)}
-                            placeholder="All Statuses"
-                            className="w-40"
-                        />
-                        <input
-                            type="date"
-                            value={filterInvoiceStartDate}
-                            onChange={(e) => setFilterInvoiceStartDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                            title="Start Date"
-                        />
-                        <input
-                            type="date"
-                            value={filterInvoiceEndDate}
-                            onChange={(e) => setFilterInvoiceEndDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                            title="End Date"
-                        />
-                        <button
-                            onClick={() => {
-                                setFilterInvoiceClient('');
-                                setFilterInvoiceCandidate('');
-                                setFilterInvoiceStatus('');
-                                setFilterInvoiceStartDate('');
-                                setFilterInvoiceEndDate('');
-                            }}
-                            className="ml-auto px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors"
-                        >
-                            Reset Filters
-                        </button>
+                    <div className="mb-6 p-5 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                <RotateCcw className="w-4 h-4" />
+                            </div>
+                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Filter Invoices</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <SearchableSelect
+                                options={clients.map(c => ({ value: c._id, label: c.companyName }))}
+                                value={filterInvoiceClient}
+                                onChange={(val) => setFilterInvoiceClient(val)}
+                                placeholder="All Clients"
+                                className="w-full"
+                            />
+                            <SearchableSelect
+                                options={candidates.map(c => ({
+                                    value: c._id,
+                                    label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
+                                }))}
+                                value={filterInvoiceCandidate}
+                                onChange={(val) => setFilterInvoiceCandidate(val)}
+                                placeholder="All Candidates"
+                                className="w-full"
+                            />
+                            <SearchableSelect
+                                options={[
+                                    { value: "Pending", label: "Pending" },
+                                    { value: "Paid", label: "Paid" },
+                                    { value: "Overdue", label: "Overdue" }
+                                ]}
+                                value={filterInvoiceStatus}
+                                onChange={(val) => setFilterInvoiceStatus(val)}
+                                placeholder="All Statuses"
+                                className="w-full"
+                            />
+                            <input
+                                type="date"
+                                value={filterInvoiceStartDate}
+                                onChange={(e) => setFilterInvoiceStartDate(e.target.value)}
+                                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                title="Start Date"
+                            />
+                            <input
+                                type="date"
+                                value={filterInvoiceEndDate}
+                                onChange={(e) => setFilterInvoiceEndDate(e.target.value)}
+                                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                title="End Date"
+                            />
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setFilterInvoiceClient('');
+                                    setFilterInvoiceCandidate('');
+                                    setFilterInvoiceStatus('');
+                                    setFilterInvoiceStartDate('');
+                                    setFilterInvoiceEndDate('');
+                                }}
+                                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors flex items-center gap-2"
+                            >
+                                <RotateCcw className="w-3 h-3" />
+                                Reset Filters
+                            </button>
+                        </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b border-gray-100">
-                                <tr>
-                                    <th className="p-4 font-semibold text-gray-600">Client</th>
-                                    <th className="p-4 font-semibold text-gray-600">Candidate</th>
-                                    <th className="p-4 font-semibold text-gray-600">Amount</th>
-                                    <th className="p-4 font-semibold text-gray-600 truncate">Payout Terms</th>
-                                    <th className="p-4 font-semibold text-gray-600">Status</th>
-                                    <th className="p-4 font-semibold text-gray-600">Date</th>
-                                    <th className="p-4 font-semibold text-gray-600">Time Left</th>
-                                    <th className="p-4 font-semibold text-gray-600">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {invoices.map((invoice) => (
-                                    <tr key={invoice._id} className="hover:bg-gray-50">
-                                        <td className="p-4">{invoice.client?.companyName || "N/A"}</td>
-                                        <td className="p-4 font-medium text-gray-800">{invoice.invoiceNumber || "-"}</td>
-                                        <td className="p-4">
-                                            {invoice.candidates?.[0]?.candidateId?.dynamicFields?.candidateName ||
-                                                invoice.candidates?.[0]?.candidateId?.dynamicFields?.Name ||
-                                                "N/A"}
-                                            {invoice.candidates?.length > 1 && ` (+${invoice.candidates.length - 1} more)`}
-                                        </td>
-                                        <td className="p-4">₹{(invoice.candidates?.reduce((sum, c) => sum + (c.amount || 0), 0) || 0).toLocaleString()}</td>
-                                        <td className="p-4">
-                                            <div className="flex flex-col gap-1">
-                                                {(invoice.payoutOption === 'Agreement Percentage' || invoice.payoutOption === 'Both' || !invoice.payoutOption) && (
-                                                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded w-fit">
-                                                        {invoice.agreementPercentage}%
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left min-w-[1200px] border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Invoice No.</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Candidate(s)</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Payout Terms</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Time Left</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {invoices.map((invoice) => (
+                                        <tr key={invoice._id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-6 py-4 text-sm font-bold text-slate-700">{invoice.client?.companyName || "N/A"}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-slate-600">{invoice.invoiceNumber || "-"}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="text-sm font-bold text-slate-800">
+                                                    {invoice.candidates?.[0]?.candidateId?.dynamicFields?.candidateName ||
+                                                        invoice.candidates?.[0]?.candidateId?.dynamicFields?.Name ||
+                                                        "N/A"}
+                                                </div>
+                                                {invoice.candidates?.length > 1 && (
+                                                    <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mt-1 inline-block">
+                                                        +{invoice.candidates.length - 1} more
                                                     </span>
                                                 )}
-                                                {(invoice.payoutOption === 'Flat Pay' || invoice.payoutOption === 'Both') && (
-                                                    <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded w-fit">
-                                                        ₹{Number(invoice.flatPayAmount).toLocaleString()}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="p-4">
-                                            <span
-                                                className={`px-3 py-1 rounded-full text-xs font-medium ${invoice.status === "Paid"
-                                                    ? "bg-green-100 text-green-700"
-                                                    : invoice.status === "Overdue"
-                                                        ? "bg-red-100 text-red-700"
-                                                        : "bg-yellow-100 text-yellow-700"
-                                                    }`}
-                                            >
-                                                {invoice.status}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            {invoice.invoiceDate ? formatDate(invoice.invoiceDate) : formatDate(invoice.createdAt)}
-                                        </td>
-                                        <td className={`p-4 ${calculateTimeLeft(invoice.createdAt).color}`}>
-                                            {calculateTimeLeft(invoice.createdAt).text}
-                                        </td>
-                                        <td className="p-4 flex gap-2">
-                                            {invoice.status !== "Paid" ? (
-                                                <button
-                                                    onClick={() => openPaymentModal(invoice)}
-                                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-black text-slate-800">₹{(invoice.candidates?.reduce((sum, c) => sum + (c.amount || 0), 0) || 0).toLocaleString()}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col gap-1">
+                                                    {(invoice.payoutOption === 'Agreement Percentage' || invoice.payoutOption === 'Both' || !invoice.payoutOption) && (
+                                                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded w-fit">
+                                                            {invoice.agreementPercentage}%
+                                                        </span>
+                                                    )}
+                                                    {(invoice.payoutOption === 'Flat Pay' || invoice.payoutOption === 'Both') && (
+                                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded w-fit">
+                                                            Flat: ₹{Number(invoice.flatPayAmount).toLocaleString()}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span
+                                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${invoice.status === "Paid"
+                                                        ? "bg-emerald-100 text-emerald-700 border border-emerald-200"
+                                                        : invoice.status === "Overdue"
+                                                            ? "bg-red-100 text-red-700 border border-red-200"
+                                                            : "bg-amber-100 text-amber-700 border border-amber-200"
+                                                        }`}
                                                 >
-                                                    Mark as Paid
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleResetStatus(invoice._id)}
-                                                    className="text-orange-600 hover:text-orange-800 text-sm font-medium"
-                                                    title="Reset to Pending"
-                                                >
-                                                    <RotateCcw size={18} />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => handleDownloadInvoice(invoice._id, invoice.invoiceNumber || "")}
-                                                className="text-emerald-600 hover:text-emerald-800 text-sm font-medium"
-                                                title="Download PDF"
-                                            >
-                                                <Download size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleSendEmail(invoice._id)}
-                                                className="text-gray-600 hover:text-blue-600 text-sm font-medium"
-                                                title="Send Email"
-                                            >
-                                                <Mail size={18} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteInvoice(invoice._id)}
-                                                className="text-red-600 hover:text-red-800 text-sm font-medium"
-                                                title="Delete Invoice"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {invoices.length === 0 && (
-                                    <tr>
-                                        <td colSpan={8} className="p-8 text-center text-gray-500">
-                                            No invoices found. Create one to get started.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                                    {invoice.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-medium text-slate-500">
+                                                {invoice.invoiceDate ? formatDate(invoice.invoiceDate) : formatDate(invoice.createdAt)}
+                                            </td>
+                                            <td className={`px-6 py-4 text-sm font-bold ${calculateTimeLeft(invoice.createdAt).color}`}>
+                                                {calculateTimeLeft(invoice.createdAt).text}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {invoice.status !== "Paid" ? (
+                                                        <button
+                                                            onClick={() => openPaymentModal(invoice)}
+                                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-100"
+                                                            title="Mark as Paid"
+                                                        >
+                                                            <DollarSign size={16} />
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleResetStatus(invoice._id)}
+                                                            className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors border border-transparent hover:border-orange-100"
+                                                            title="Reset to Pending"
+                                                        >
+                                                            <RotateCcw size={16} />
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleDownloadInvoice(invoice._id, invoice.invoiceNumber || "")}
+                                                        className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors border border-transparent hover:border-emerald-100"
+                                                        title="Download PDF"
+                                                    >
+                                                        <Download size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSendEmail(invoice._id)}
+                                                        className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                                                        title="Send Email"
+                                                    >
+                                                        <Mail size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteInvoice(invoice._id)}
+                                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                        title="Delete Invoice"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {invoices.length === 0 && (
+                                        <tr>
+                                            <td colSpan={9} className="px-6 py-20 text-center text-slate-400">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                                                        <DownloadCloud className="w-8 h-8 text-slate-300" />
+                                                    </div>
+                                                    <p className="font-bold text-lg text-slate-600">No invoices found</p>
+                                                    <p className="text-sm">Create a new invoice to get started</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </>
             )}
 
             {activeTab === 'payments' && (
                 <>
-                    <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
-                        <h3 className="text-lg font-semibold text-gray-700 mr-2">Filters:</h3>
-                        <SearchableSelect
-                            options={clients.map(c => ({ value: c._id, label: c.companyName }))}
-                            value={filterPaymentClient}
-                            onChange={(val) => setFilterPaymentClient(val)}
-                            placeholder="All Clients"
-                            className="w-48"
-                        />
-                        <SearchableSelect
-                            options={candidates.map(c => ({
-                                value: c._id,
-                                label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
-                            }))}
-                            value={filterPaymentCandidate}
-                            onChange={(val) => setFilterPaymentCandidate(val)}
-                            placeholder="All Candidates"
-                            className="w-48"
-                        />
-                        <input
-                            type="date"
-                            value={filterPaymentStartDate}
-                            onChange={(e) => setFilterPaymentStartDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                            title="Start Date"
-                        />
-                        <input
-                            type="date"
-                            value={filterPaymentEndDate}
-                            onChange={(e) => setFilterPaymentEndDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                            title="End Date"
-                        />
-                        <button
-                            onClick={() => {
-                                setFilterPaymentClient('');
-                                setFilterPaymentCandidate('');
-                                setFilterPaymentStartDate('');
-                                setFilterPaymentEndDate('');
-                            }}
-                            className="ml-auto px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors"
-                        >
-                            Reset Filters
-                        </button>
+                    <div className="mb-6 p-5 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 bg-green-50 text-green-600 rounded-lg">
+                                <DollarSign className="w-4 h-4" />
+                            </div>
+                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Filter Payments</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <SearchableSelect
+                                options={clients.map(c => ({ value: c._id, label: c.companyName }))}
+                                value={filterPaymentClient}
+                                onChange={(val) => setFilterPaymentClient(val)}
+                                placeholder="All Clients"
+                                className="w-full"
+                            />
+                            <SearchableSelect
+                                options={candidates.map(c => ({
+                                    value: c._id,
+                                    label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
+                                }))}
+                                value={filterPaymentCandidate}
+                                onChange={(val) => setFilterPaymentCandidate(val)}
+                                placeholder="All Candidates"
+                                className="w-full"
+                            />
+                            <div className="hidden lg:block lg:col-span-1"></div> {/* Spacer */}
+                            <input
+                                type="date"
+                                value={filterPaymentStartDate}
+                                onChange={(e) => setFilterPaymentStartDate(e.target.value)}
+                                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                title="Start Date"
+                            />
+                            <input
+                                type="date"
+                                value={filterPaymentEndDate}
+                                onChange={(e) => setFilterPaymentEndDate(e.target.value)}
+                                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                title="End Date"
+                            />
+                        </div>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => {
+                                    setFilterPaymentClient('');
+                                    setFilterPaymentCandidate('');
+                                    setFilterPaymentStartDate('');
+                                    setFilterPaymentEndDate('');
+                                }}
+                                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-200 transition-colors flex items-center gap-2"
+                            >
+                                <RotateCcw className="w-3 h-3" />
+                                Reset Filters
+                            </button>
+                        </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b border-gray-100">
-                                <tr>
-                                    <th className="p-4 font-semibold text-gray-600">Client</th>
-                                    <th className="p-4 font-semibold text-gray-600">Candidate</th>
-                                    <th className="p-4 font-semibold text-gray-600">Amount Received</th>
-                                    <th className="p-4 font-semibold text-gray-600">Received Date</th>
-                                    <th className="p-4 font-semibold text-gray-600">Recorded By</th>
-                                    <th className="p-4 font-semibold text-gray-600">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {payments.map((payment) => (
-                                    <tr key={payment._id} className="hover:bg-gray-50">
-                                        <td className="p-4">{payment.clientId?.companyName || "N/A"}</td>
-                                        <td className="p-4">
-                                            {payment.candidateId?.dynamicFields?.candidateName ||
-                                                payment.candidateId?.dynamicFields?.Name ||
-                                                "N/A"}
-                                        </td>
-                                        <td className="p-4 text-green-600 font-medium">₹{payment.amountReceived}</td>
-                                        <td className="p-4">
-                                            {formatDate(payment.receivedDate)}
-                                        </td>
-                                        <td className="p-4 text-gray-500">
-                                            {payment.recordedBy?.name || "Unknown"}
-                                        </td>
-                                        <td className="p-4">
-                                            <button
-                                                onClick={() => handleDeletePayment(payment._id)}
-                                                className="text-red-600 hover:text-red-800 text-sm font-medium"
-                                                title="Delete Payment & Reset to Pending"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </td>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left min-w-[1000px] border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Client</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Candidate</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount Received</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Received Date</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Recorded By</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                     </tr>
-                                ))}
-                                {payments.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="p-8 text-center text-gray-500">
-                                            No payment history found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {payments.map((payment) => (
+                                        <tr key={payment._id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-6 py-4 text-sm font-bold text-slate-700">{payment.clientId?.companyName || "N/A"}</td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm font-bold text-slate-800">
+                                                    {payment.candidateId?.dynamicFields?.candidateName ||
+                                                        payment.candidateId?.dynamicFields?.Name ||
+                                                        "N/A"}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-black text-emerald-600">₹{payment.amountReceived.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-slate-500">
+                                                {formatDate(payment.receivedDate)}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-500">
+                                                {payment.recordedBy?.name || "Unknown"}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => handleDeletePayment(payment._id)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                    title="Delete Payment & Reset to Pending"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {payments.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="px-6 py-20 text-center text-slate-400">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                                                        <DollarSign className="w-8 h-8 text-slate-300" />
+                                                    </div>
+                                                    <p className="font-bold text-lg text-slate-600">No payment history found</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </>
             )}
 
             {activeTab === 'expenses' && (
                 <>
-                    <div className="mb-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center">
-                        <h3 className="text-lg font-semibold text-gray-700 mr-2">Filters:</h3>
-                        <select
-                            value={filterExpenseCategory}
-                            onChange={(e) => setFilterExpenseCategory(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                        >
-                            <option value="">All Categories</option>
-                            <option value="Food">Food</option>
-                            <option value="Transport">Transport</option>
-                            <option value="Office Supplies">Office Supplies</option>
-                            <option value="Utilities">Utilities</option>
-                            <option value="Rent">Rent</option>
-                            <option value="Salaries">Salaries</option>
-                            <option value="Marketing">Marketing</option>
-                            <option value="Software">Software</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <input
-                            type="date"
-                            value={filterExpenseStartDate}
-                            onChange={(e) => setFilterExpenseStartDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                            title="Start Date"
-                        />
-                        <input
-                            type="date"
-                            value={filterExpenseEndDate}
-                            onChange={(e) => setFilterExpenseEndDate(e.target.value)}
-                            className="p-2 border border-gray-300 rounded-lg text-sm"
-                            title="End Date"
-                        />
-                        <button
-                            onClick={() => {
-                                setFilterExpenseCategory('');
-                                setFilterExpenseStartDate('');
-                                setFilterExpenseEndDate('');
-                            }}
-                            className="ml-auto px-3 py-1 bg-gray-200 text-gray-700 rounded-lg text-sm hover:bg-gray-300 transition-colors"
-                        >
-                            Reset Filters
-                        </button>
+                    <div className="mb-6 p-5 bg-white rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                                <FileText className="w-4 h-4" />
+                            </div>
+                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Filter Expenses</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <select
+                                value={filterExpenseCategory}
+                                onChange={(e) => setFilterExpenseCategory(e.target.value)}
+                                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none bg-no-repeat bg-[right_1rem_center]"
+                                style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")` }}
+                            >
+                                <option value="">All Categories</option>
+                                <option value="Food">Food</option>
+                                <option value="Transport">Transport</option>
+                                <option value="Office Supplies">Office Supplies</option>
+                                <option value="Utilities">Utilities</option>
+                                <option value="Rent">Rent</option>
+                                <option value="Salaries">Salaries</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Software">Software</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <input
+                                type="date"
+                                value={filterExpenseStartDate}
+                                onChange={(e) => setFilterExpenseStartDate(e.target.value)}
+                                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                title="Start Date"
+                            />
+                            <input
+                                type="date"
+                                value={filterExpenseEndDate}
+                                onChange={(e) => setFilterExpenseEndDate(e.target.value)}
+                                className="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                title="End Date"
+                            />
+                            <button
+                                onClick={() => {
+                                    setFilterExpenseCategory('');
+                                    setFilterExpenseStartDate('');
+                                    setFilterExpenseEndDate('');
+                                }}
+                                className="w-full p-2.5 bg-slate-100 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                                Reset Filters
+                            </button>
+                        </div>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b border-gray-100">
-                                <tr>
-                                    <th className="p-4 font-semibold text-gray-600">Title</th>
-                                    <th className="p-4 font-semibold text-gray-600">Category</th>
-                                    <th className="p-4 font-semibold text-gray-600">Amount</th>
-                                    <th className="p-4 font-semibold text-gray-600">Date</th>
-                                    <th className="p-4 font-semibold text-gray-600">Description</th>
-                                    <th className="p-4 font-semibold text-gray-600">Recorded By</th>
-                                    <th className="p-4 font-semibold text-gray-600">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {expenses.map((expense) => (
-                                    <tr key={expense._id} className="hover:bg-gray-50">
-                                        <td className="p-4 font-medium text-gray-800">{expense.title}</td>
-                                        <td className="p-4">
-                                            <span className="px-2 py-1 bg-gray-100 rounded text-xs font-medium text-gray-600">
-                                                {expense.category}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-red-600 font-medium">₹{expense.amount}</td>
-                                        <td className="p-4">{formatDate(expense.date)}</td>
-                                        <td className="p-4 text-gray-500 text-sm max-w-xs truncate">{expense.description || "-"}</td>
-                                        <td className="p-4 text-gray-500 text-sm">{expense.createdBy?.name || "Unknown"}</td>
-                                        <td className="p-4">
-                                            <button
-                                                onClick={() => handleDeleteExpense(expense._id)}
-                                                className="text-red-600 hover:text-red-800 text-sm font-medium"
-                                                title="Delete Expense"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </td>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left min-w-[1000px] border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50/50 border-b border-slate-100">
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Title</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Date</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Description</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Recorded By</th>
+                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                     </tr>
-                                ))}
-                                {expenses.length === 0 && (
-                                    <tr>
-                                        <td colSpan={7} className="p-8 text-center text-gray-500">
-                                            No expenses recorded.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {expenses.map((expense) => (
+                                        <tr key={expense._id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-6 py-4 text-sm font-bold text-slate-800">{expense.title}</td>
+                                            <td className="px-6 py-4">
+                                                <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600">
+                                                    {expense.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-black text-red-500">₹{expense.amount.toLocaleString()}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-slate-500">{formatDate(expense.date)}</td>
+                                            <td className="px-6 py-4 text-slate-500 text-sm max-w-xs truncate">{expense.description || "-"}</td>
+                                            <td className="px-6 py-4 text-slate-500 text-sm font-medium">{expense.createdBy?.name || "Unknown"}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => handleDeleteExpense(expense._id)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-100"
+                                                    title="Delete Expense"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {expenses.length === 0 && (
+                                        <tr>
+                                            <td colSpan={7} className="px-6 py-20 text-center text-slate-400">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4">
+                                                        <FileText className="w-8 h-8 text-slate-300" />
+                                                    </div>
+                                                    <p className="font-bold text-lg text-slate-600">No expenses recorded</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </>
             )}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Building2, Globe, Linkedin, Phone, Mail, Pencil, Trash2, MapPin, Eye, X, CreditCard, User, Check, Calendar } from 'lucide-react';
+import { Building2, Search, Plus, X, Globe, Linkedin, Mail, Phone, Calendar, Eye, Pencil, Trash2 } from 'lucide-react';
 
 // import { toast } from 'react-toastify'; // Not used in this component directly anymore if deleteClient handles toast
 import { useAuth } from '../../../../context/AuthProvider';
@@ -7,257 +7,186 @@ import { useClientsContext, Client } from '../../../../context/ClientsProvider';
 import { ClientForm } from './ClientForm';
 import { getImageUrl } from '../../../../utils/imageUtils';
 
-const ClientDetailsModal = ({ client, onClose, user, onUpdate }: { client: Client, onClose: () => void, user: any, onUpdate: (updatedClient: Client) => Promise<void> }) => {
-
+const ClientDetailsModal = ({ client, onClose, user }: { client: Client, onClose: () => void, user: any }) => {
     if (!client) return null;
 
     const isAdminOrMentor = user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Manager' || user?.designation === 'Mentor';
-    const isAdmin = user?.isAdmin || user?.designation === 'Admin';
-    const [isEditingDate, setIsEditingDate] = useState(false);
-    const [newDate, setNewDate] = useState(client.createdAt ? new Date(client.createdAt).toISOString().slice(0, 16) : '');
-
-    const handleSaveDate = async () => {
-        if (!newDate) return;
-        const updatedClient = { ...client, createdAt: new Date(newDate).toISOString() };
-        await onUpdate(updatedClient);
-        setIsEditingDate(false);
-    };
 
     return (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/20 animate-in zoom-in-95 duration-200">
                 {/* Modal Header */}
-                <div className="p-6 border-b flex justify-between items-center bg-gray-50/50">
-                    <div className="flex items-center gap-4">
-                        {client.logo ? (
-                            <img
-                                src={getImageUrl(client.logo)}
-                                alt={client.companyName}
-                                className="w-12 h-12 object-cover rounded-xl border-2 border-white shadow-sm"
-                            />
-                        ) : (
-                            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-sm">
-                                <Building2 className="w-6 h-6" />
-                            </div>
-                        )}
+                <div className="flex items-center justify-between p-4 sm:p-8 border-b bg-gradient-to-r from-slate-50/50 to-blue-50/50">
+                    <div className="flex items-center gap-4 sm:gap-6">
+                        <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-3xl bg-white shadow-sm flex items-center justify-center border border-slate-100 overflow-hidden">
+                            {client.logo ? (
+                                <img
+                                    src={getImageUrl(client.logo)}
+                                    alt={client.companyName}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <Building2 className="w-8 h-8 text-blue-600" />
+                            )}
+                        </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900 leading-tight">{client.companyName}</h2>
-                            <p className="text-sm text-gray-500 font-medium">{client.industry}</p>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900 leading-tight">
+                                {client.companyName}
+                            </h2>
+                            <div className="flex items-center gap-2 mt-1.5">
+                                <span className="px-2.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] font-black rounded-lg border border-blue-100 uppercase tracking-widest">
+                                    {client.industry}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 font-mono">ID: {client._id?.substring(18)}</span>
+                            </div>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                        className="p-2 hover:bg-white rounded-2xl transition-all group shadow-sm sm:shadow-none border border-transparent hover:border-slate-100"
                     >
-                        <X className="w-6 h-6" />
+                        <X size={24} className="text-slate-400 group-hover:text-slate-600" />
                     </button>
                 </div>
 
-                {/* Modal Content */}
-                <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Basic Info */}
-                        <div className="space-y-6">
+                {/* Modal Body */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-10 custom-scrollbar">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-12">
+                        {/* Left Column: Main Info */}
+                        <div className="lg:col-span-2 space-y-10">
                             <section>
-                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">About Company</h3>
-                                <p className="text-gray-700 leading-relaxed text-sm bg-gray-50 p-4 rounded-xl border border-gray-100 italic">
-                                    "{client.companyInfo || 'No company info available.'}"
-                                </p>
-                                {/* Created Date Display */}
-                                <div className="mt-4 flex items-start gap-2 text-xs text-gray-500">
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="font-semibold whitespace-nowrap">Client Since:</span>
-                                    </div>
-                                    {isEditingDate ? (
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                    Company Profile
+                                </h3>
+                                <div className="bg-slate-50/50 rounded-3xl p-6 border border-slate-100">
+                                    <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
+                                        "{client.companyInfo || 'No detailed company overview provided.'}"
+                                    </p>
+
+                                    <div className="mt-6 flex flex-wrap gap-4 pt-6 border-t border-slate-100">
                                         <div className="flex items-center gap-2">
-                                            <input
-                                                type="datetime-local"
-                                                value={newDate}
-                                                onChange={(e) => setNewDate(e.target.value)}
-                                                className="px-2 py-1 border border-gray-300 rounded-md text-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                                            />
-                                            <button
-                                                onClick={handleSaveDate}
-                                                className="p-1 bg-green-50 text-green-600 rounded hover:bg-green-100 transition-colors"
-                                                title="Save Date"
-                                            >
-                                                <Check className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => setIsEditingDate(false)}
-                                                className="p-1 bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
-                                                title="Cancel"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2">
-                                            <span className="mt-1">
-                                                {client.createdAt
-                                                    ? new Date(client.createdAt).toLocaleString('en-IN', {
-                                                        day: 'numeric',
-                                                        month: 'short',
-                                                        year: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })
-                                                    : 'N/A'
-                                                }
+                                            <Calendar className="w-4 h-4 text-slate-400" />
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Partner Since</span>
+                                            <span className="text-xs font-bold text-slate-700">
+                                                {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : 'N/A'}
                                             </span>
-                                            {isAdmin && (
-                                                <button
-                                                    onClick={() => {
-                                                        setNewDate(client.createdAt ? new Date(client.createdAt).toISOString().slice(0, 16) : '');
-                                                        setIsEditingDate(true);
-                                                    }}
-                                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                                    title="Edit Date"
-                                                >
-                                                    <Pencil className="w-3 h-3" />
-                                                </button>
-                                            )}
                                         </div>
-                                    )}
+                                        {client.websiteUrl && (
+                                            <a href={client.websiteUrl} target="_blank" rel="noopener" className="flex items-center gap-2 text-blue-600 hover:text-blue-700 transition-colors">
+                                                <Globe size={14} />
+                                                <span className="text-xs font-bold">Website</span>
+                                            </a>
+                                        )}
+                                        {client.linkedinUrl && (
+                                            <a href={client.linkedinUrl} target="_blank" rel="noopener" className="flex items-center gap-2 text-[#0077b5] hover:opacity-80 transition-opacity">
+                                                <Linkedin size={14} />
+                                                <span className="text-xs font-bold">LinkedIn</span>
+                                            </a>
+                                        )}
+                                    </div>
                                 </div>
                             </section>
-
-                            <section className="grid grid-cols-2 gap-4">
-                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Website</p>
-                                    <a href={client.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm font-medium flex items-center gap-2 truncate">
-                                        <Globe className="w-3.5 h-3.5" /> {client.websiteUrl?.replace(/^https?:\/\//, '')}
-                                    </a>
-                                </div>
-                                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">LinkedIn</p>
-                                    <a href={client.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 hover:underline text-sm font-medium flex items-center gap-2 truncate">
-                                        <Linkedin className="w-3.5 h-3.5" /> Company Profile
-                                    </a>
-                                </div>
-                            </section>
-
-                            {isAdminOrMentor && (
-                                <section className="p-5 bg-blue-50/50 rounded-2xl border border-blue-100">
-                                    <h3 className="text-xs font-bold text-blue-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <CreditCard className="w-4 h-4" /> Commercial Details
-                                    </h3>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between items-center py-2 border-b border-blue-100/50">
-                                            <span className="text-sm text-gray-600">Payout Option</span>
-                                            <span className="text-sm font-bold text-blue-900">{client.payoutOption}</span>
-                                        </div>
-                                        {(client.payoutOption === 'Agreement Percentage' || client.payoutOption === 'Both') && (
-                                            <div className="flex justify-between items-center py-2 border-b border-blue-100/50">
-                                                <span className="text-sm text-gray-600">Agreement %</span>
-                                                <span className="text-sm font-bold text-blue-900">{client.agreementPercentage}%</span>
-                                            </div>
-                                        )}
-                                        {(client.payoutOption === 'Flat Pay' || client.payoutOption === 'Both') && (
-                                            <div className="flex justify-between items-center py-2 border-b border-blue-100/50">
-                                                <span className="text-sm text-gray-600">Flat Pay Amount</span>
-                                                <span className="text-sm font-bold text-green-700">₹{Number(client.flatPayAmount).toLocaleString()}</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </section>
-                            )}
-                        </div>
-
-                        {/* Contacts & BD Info */}
-                        <div className="space-y-6">
-                            {isAdminOrMentor && client.bdExecutive && (
-                                <section className="p-5 bg-emerald-50/30 rounded-2xl border border-emerald-100">
-                                    <h3 className="text-xs font-bold text-emerald-800 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                        <User className="w-4 h-4" /> Business Development
-                                    </h3>
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm">
-                                            {client.bdExecutive.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-gray-900 text-sm">{client.bdExecutive}</p>
-                                            <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">Executive Lead</p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2.5 ml-1">
-                                        {client.bdExecutiveEmail && (
-                                            <div className="flex items-center gap-3 text-sm text-gray-700 bg-white/50 p-2.5 rounded-lg border border-emerald-50">
-                                                <Mail className="w-4 h-4 text-emerald-500" />
-                                                <a href={`mailto:${client.bdExecutiveEmail}`} className="hover:text-emerald-700 transition-colors truncate">{client.bdExecutiveEmail}</a>
-                                            </div>
-                                        )}
-                                        {client.bdExecutivePhone && (
-                                            <div className="flex items-center gap-3 text-sm text-gray-700 bg-white/50 p-2.5 rounded-lg border border-emerald-50">
-                                                <Phone className="w-4 h-4 text-emerald-500" />
-                                                <a href={`tel:${client.bdExecutivePhone}`} className="hover:text-emerald-700 transition-colors">{client.bdExecutivePhone}</a>
-                                            </div>
-                                        )}
-                                        {client.noOfRequirements && (
-                                            <div className="mt-4 pt-4 border-t border-emerald-100 flex items-center gap-3">
-                                                <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-bold">
-                                                    {client.noOfRequirements} Total Requirements
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </section>
-                            )}
 
                             <section>
-                                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Points of Contact</h3>
-                                <div className="space-y-3">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                    Points of Contact ({client.pocs?.length || 0})
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {client.pocs?.map((poc, idx) => (
-                                        <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-blue-200 transition-colors group">
-                                            <div className="flex items-center gap-3 mb-3">
-                                                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700 font-bold text-xs group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <div key={idx} className="group bg-white p-5 rounded-3xl border border-slate-100 hover:border-indigo-200 transition-all hover:shadow-xl hover:shadow-indigo-500/5">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-sm group-hover:bg-indigo-600 group-hover:text-white transition-all">
                                                     {poc.name.charAt(0)}
                                                 </div>
-                                                <span className="font-bold text-gray-900 text-sm">{poc.name}</span>
+                                                <span className="font-black text-slate-800 text-sm tracking-tight">{poc.name}</span>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2 text-xs">
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Mail className="w-3 h-3 text-gray-400" />
-                                                    <span className="truncate">{poc.email}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-gray-600">
-                                                    <Phone className="w-3 h-3 text-gray-400" />
-                                                    <span>{poc.phone}</span>
-                                                </div>
+                                            <div className="space-y-2">
+                                                <a href={`mailto:${poc.email}`} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors truncate">
+                                                    <Mail size={12} /> {poc.email}
+                                                </a>
+                                                <a href={`tel:${poc.phone}`} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+                                                    <Phone size={12} /> {poc.phone}
+                                                </a>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </section>
                         </div>
-                    </div>
 
-                    {/* Billing Section (Full Width) */}
-                    {isAdminOrMentor && client.billingDetails && client.billingDetails.length > 0 && (
-                        <section className="mt-8 pt-8 border-t">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-6">Billing Locations</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {client.billingDetails.map((detail, idx) => (
-                                    <div key={idx} className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col gap-4 hover:shadow-sm transition-shadow">
-                                        <div className="flex items-start gap-3">
-                                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0" />
-                                            <div>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Office Address</p>
-                                                <p className="text-sm text-gray-700 font-medium leading-relaxed">{detail.address}</p>
-                                                <p className="text-xs text-slate-500 mt-1 font-semibold">{detail.state}</p>
-                                            </div>
+                        {/* Right Column: Meta & Logistics */}
+                        <div className="space-y-10">
+                            {isAdminOrMentor && (
+                                <section>
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                        Commercials
+                                    </h3>
+                                    <div className="bg-emerald-50/30 rounded-3xl p-6 border border-emerald-100/50 space-y-4">
+                                        <div>
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">Payout model</p>
+                                            <p className="text-sm font-black text-slate-800">{client.payoutOption}</p>
                                         </div>
-                                        {detail.gstNumber && (
-                                            <div className="mt-auto pt-3 border-t border-slate-200 flex items-center justify-between">
-                                                <span className="text-[10px] text-slate-400 font-bold uppercase">GST Number</span>
-                                                <span className="text-xs font-mono font-bold text-slate-700">{detail.gstNumber}</span>
+                                        {client.agreementPercentage && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">Agreement</p>
+                                                <p className="text-sm font-black text-slate-800">{client.agreementPercentage}% Commission</p>
+                                            </div>
+                                        )}
+                                        {client.flatPayAmount && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1.5">Flat Fee</p>
+                                                <p className="text-sm font-black text-slate-800">₹{Number(client.flatPayAmount).toLocaleString()}</p>
                                             </div>
                                         )}
                                     </div>
-                                ))}
-                            </div>
-                        </section>
-                    )}
+                                </section>
+                            )}
+
+                            <section>
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    Lead Ownership
+                                </h3>
+                                <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-slate-100 shadow-sm font-black text-slate-400">
+                                        {client.bdExecutive?.charAt(0) || 'S'}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-900 tracking-tight">{client.bdExecutive || 'System Assigned'}</p>
+                                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mt-0.5">BD Executive</p>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section>
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                    Billing Sites ({client.billingDetails?.length || 0})
+                                </h3>
+                                <div className="space-y-3">
+                                    {client.billingDetails?.map((detail, idx) => (
+                                        <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100">
+                                            <p className="text-xs font-bold text-slate-700 mb-1 leading-snug">{detail.address}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{detail.state}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="p-6 sm:p-8 border-t bg-slate-50/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-4">
+                    <button
+                        onClick={onClose}
+                        className="px-8 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-100 transition-all text-center"
+                    >
+                        Close Portal
+                    </button>
                 </div>
             </div>
         </div>
@@ -344,56 +273,55 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Clients</h2>
-                    <p className="text-gray-600">Manage your client companies and contacts</p>
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Partners directory</h2>
+                    <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">Manage your client companies and contacts</p>
                 </div>
                 <button
                     onClick={() => {
                         setSelectedClient(null);
                         setShowForm(true);
                     }}
-                    className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition shadow-md"
+                    className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
                 >
                     <Plus className="w-5 h-5" />
-                    <span>Add Client</span>
+                    <span className="text-sm">Add New Client</span>
                 </button>
             </div>
 
             {/* Search and Filters */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full flex flex-col md:flex-row gap-2">
-                    <div className="relative flex-1">
-                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-100 flex flex-col gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+                    <div className="relative col-span-1 sm:col-span-2 lg:col-span-1">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                         <input
                             type="text"
                             placeholder="Quick search..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
                         />
                     </div>
-                    <div className="flex gap-2">
-                        <input
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="px-3 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-gray-600"
-                            placeholder="From Date"
-                        />
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="px-3 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-gray-600"
-                            placeholder="To Date"
-                        />
-                    </div>
+
+                    <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-600"
+                    />
+
+                    <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-600"
+                    />
+
                     <select
                         value={selectedBDExecutive}
                         onChange={(e) => setSelectedBDExecutive(e.target.value)}
-                        className="px-3 py-2.5 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm text-gray-600 min-w-[150px]"
+                        className="w-full px-4 py-3 bg-slate-50/50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-600 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_0.75rem_center] bg-no-repeat"
                     >
                         <option value="">All BD Executives</option>
                         {bdExecutives.map((exec) => (
@@ -403,35 +331,35 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                         ))}
                     </select>
                 </div>
-                <div className="flex items-center gap-2 text-xs font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap">
+
+                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest pl-1">
                     <Building2 className="w-3.5 h-3.5" />
-                    <span>{pagination?.totalClients || 0} Total Partners</span>
+                    <span>{pagination?.totalClients || 0} Total Partners found</span>
                 </div>
             </div>
 
             {/* Client List - Table View */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                 {paginatedClients.length === 0 && !loading ? (
-                    <div className="p-20 text-center">
-                        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Building2 className="w-10 h-10 text-gray-300" />
+                    <div className="p-12 sm:p-20 text-center">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                            <Building2 className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300" />
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-2">No matching clients</h3>
-                        <p className="text-gray-500 max-w-sm mx-auto">
+                        <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">No matching partners</h3>
+                        <p className="text-xs sm:text-sm font-bold text-slate-400 max-w-sm mx-auto">
                             {searchTerm ? "We couldn't find any results for your search. Try different keywords." : "Your database is empty. Start building your client network today!"}
                         </p>
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead>
-                                <tr className="bg-gray-50/50 border-b border-gray-100">
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Company</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden md:table-cell">Industry</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden md:table-cell">Agreement %</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest hidden md:table-cell">BD Executive</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Actions</th>
+                                <tr className="bg-slate-50/50 border-b border-slate-100">
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Company</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Agreement</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">BD Lead</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50 text-sm">

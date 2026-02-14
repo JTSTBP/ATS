@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthProvider';
 import { formatDate } from '../../utils/dateUtils';
 import { getImageUrl } from '../../utils/imageUtils';
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+// Removed unused constant
 
 export default function Profile() {
     const { user, updateProfile } = useAuth();
@@ -134,53 +134,61 @@ export default function Profile() {
             className="max-w-4xl mx-auto"
         >
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-8 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-800 mb-2">MY PROFILE</h1>
-                    <p className="text-slate-600">Manage Your Personal Information</p>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 leading-tight">
+                        My Profile
+                    </h1>
+                    <p className="text-sm sm:text-base text-gray-500 mt-1">
+                        Manage your personal information and account settings
+                    </p>
                 </div>
                 {!isEditing ? (
                     <button
                         onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-bold text-xs uppercase tracking-widest shadow-lg shadow-blue-200 active:scale-95"
                     >
-                        <Edit2 size={18} />
-                        EDIT PROFILE
+                        <Edit2 size={16} />
+                        Edit Profile
                     </button>
                 ) : (
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 w-full sm:w-auto">
                         <button
                             onClick={handleCancel}
-                            className="flex items-center gap-2 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors font-medium"
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-all font-bold text-xs uppercase tracking-widest active:scale-95"
                         >
-                            <X size={18} />
-                            CANCEL
+                            <X size={16} />
+                            Cancel
                         </button>
                         <button
                             onClick={handleSave}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold text-xs uppercase tracking-widest shadow-lg shadow-green-200 active:scale-95"
                         >
-                            <Save size={18} />
-                            SAVE CHANGES
+                            <Save size={16} />
+                            Save Changes
                         </button>
                     </div>
                 )}
             </div>
 
             {/* Profile Card */}
-            <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                 {/* Profile Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white">
-                    <div className="flex items-center gap-6">
+                <div className="bg-gray-900 p-6 sm:p-10 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/20 blur-3xl -mr-32 -mt-32 rounded-full" />
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-600/10 blur-3xl -ml-24 -mb-24 rounded-full" />
+
+                    <div className="relative flex flex-col sm:flex-row items-center gap-8 text-center sm:text-left">
                         <div className="relative group">
+                            <div className="absolute inset-0 bg-blue-500 blur-xl opacity-20 group-hover:opacity-40 transition-opacity rounded-full" />
                             {profilePhoto ? (
                                 <img
                                     src={profilePhoto}
                                     alt="Profile"
-                                    className="w-24 h-24 rounded-full border-4 border-white/30 object-cover"
+                                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white/20 object-cover relative z-10 shadow-2xl"
                                 />
                             ) : (
-                                <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-md border-4 border-white/30 flex items-center justify-center text-4xl font-bold">
+                                <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-white/10 backdrop-blur-md border-4 border-white/20 flex items-center justify-center text-4xl sm:text-5xl font-extrabold text-white relative z-10 shadow-2xl">
                                     {user?.name?.charAt(0).toUpperCase() || 'U'}
                                 </div>
                             )}
@@ -188,9 +196,9 @@ export default function Profile() {
                                 <>
                                     <label
                                         htmlFor="photo-upload"
-                                        className="absolute bottom-0 right-0 w-8 h-8 bg-white rounded-full flex items-center justify-center cursor-pointer hover:bg-blue-50 transition-colors shadow-lg"
+                                        className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 w-10 h-10 bg-white rounded-xl flex items-center justify-center cursor-pointer hover:bg-blue-50 transition-all shadow-xl z-20 group-hover:scale-110 active:scale-95 border-2 border-white"
                                     >
-                                        <Camera size={16} className="text-blue-600" />
+                                        <Camera size={20} className="text-blue-600" />
                                     </label>
                                     <input
                                         id="photo-upload"
@@ -202,18 +210,20 @@ export default function Profile() {
                                 </>
                             )}
                         </div>
-                        <div className="flex-1">
-                            <h2 className="text-2xl font-bold mb-1">{user?.name || 'User Name'}</h2>
-                            <p className="text-blue-100 flex items-center gap-2">
-                                <Briefcase size={16} />
-                                {user?.designation || 'Recruiter'}
-                            </p>
+                        <div className="flex-1 relative z-10 space-y-3">
+                            <div>
+                                <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">{user?.name || 'User Name'}</h2>
+                                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/20 rounded-lg border border-blue-500/30 text-blue-200 text-xs font-bold uppercase tracking-widest mt-2 backdrop-blur-sm">
+                                    <Briefcase size={14} />
+                                    {user?.designation || 'Recruiter'}
+                                </div>
+                            </div>
                             {isEditing && (profilePhoto || user?.profilePhoto) && (
                                 <button
                                     onClick={handleRemovePhoto}
-                                    className="mt-3 text-sm text-red-200 hover:text-white underline transition-colors"
+                                    className="block text-xs font-bold text-red-300 hover:text-red-200 uppercase tracking-widest transition-colors py-1"
                                 >
-                                    Remove Profile Picture
+                                    Remove Photo
                                 </button>
                             )}
                         </div>
@@ -221,193 +231,53 @@ export default function Profile() {
                 </div>
 
                 {/* Profile Details */}
-                <div className="p-8">
-                    <h3 className="text-lg font-semibold text-slate-800 mb-6">PERSONAL INFORMATION</h3>
+                <div className="p-6 sm:p-10">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest font-mono mb-8 flex items-center gap-2">
+                        <div className="w-6 h-px bg-gray-200" />
+                        Personal Information
+                    </h3>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Full Name */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <User size={16} className="text-slate-400" />
-                                    FULL NAME
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {user?.name || 'Not provided'}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Mail size={16} className="text-slate-400" />
-                                    EMAIL ADDRESS
-                                </div>
-                            </label>
-                            <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                {user?.email || 'Not provided'}
-                            </p>
-                        </div>
-
-                        {/* Phone */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Phone size={16} className="text-slate-400" />
-                                    PHONE NUMBER
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="tel"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="Enter Phone Number"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {formData.phone || 'Not provided'}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Designation */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Briefcase size={16} className="text-slate-400" />
-                                    DESIGNATION
-                                </div>
-                            </label>
-                            <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                {user?.designation || 'Not provided'}
-                            </p>
-                        </div>
-
-                        {/* Department */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <MapPin size={16} className="text-slate-400" />
-                                    DEPARTMENT
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="text"
-                                    value={formData.department}
-                                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="Enter Department"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {formData.department || 'Not provided'}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Joining Date */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Calendar size={16} className="text-slate-400" />
-                                    JOINING DATE
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="date"
-                                    value={formData.joinDate ? formData.joinDate.split('T')[0] : ''}
-                                    onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {formData.joinDate ? formatDate(formData.joinDate) : 'Not provided'}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Date of Birth */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Calendar size={16} className="text-slate-400" />
-                                    DATE OF BIRTH
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="date"
-                                    value={formData.dateOfBirth ? formData.dateOfBirth.split('T')[0] : ''}
-                                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {formData.dateOfBirth ? formatDate(formData.dateOfBirth) : 'Not provided'}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* Personal Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Mail size={16} className="text-slate-400" />
-                                    PERSONAL EMAIL
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="email"
-                                    value={formData.personalEmail}
-                                    onChange={(e) => setFormData({ ...formData, personalEmail: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="Enter Personal Email"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {formData.personalEmail || 'Not provided'}
-                                </p>
-                            )}
-                        </div>
-
-                        {/* App Password */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Shield size={16} className="text-slate-400" />
-                                    APP PASSWORD
-                                </div>
-                            </label>
-                            {isEditing ? (
-                                <input
-                                    type="text"
-                                    value={formData.appPassword}
-                                    onChange={(e) => setFormData({ ...formData, appPassword: e.target.value })}
-                                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-                                    placeholder="Enter App Password"
-                                />
-                            ) : (
-                                <p className="text-slate-800 font-medium px-4 py-2.5 bg-slate-50 rounded-lg">
-                                    {user?.appPassword || 'Not provided'}
-                                </p>
-                            )}
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {[
+                            { label: 'Full Name', value: formData.name, key: 'name', icon: User, editable: true },
+                            { label: 'Email Address', value: user?.email, key: 'email', icon: Mail, editable: false },
+                            { label: 'Phone Number', value: formData.phone, key: 'phone', icon: Phone, editable: true, placeholder: 'Enter Phone Number' },
+                            { label: 'Designation', value: user?.designation, key: 'designation', icon: Briefcase, editable: false },
+                            { label: 'Department', value: formData.department, key: 'department', icon: MapPin, editable: true, placeholder: 'Enter Department' },
+                            { label: 'Joining Date', value: formData.joinDate, key: 'joinDate', icon: Calendar, editable: true, type: 'date' },
+                            { label: 'Date of Birth', value: formData.dateOfBirth, key: 'dateOfBirth', icon: Calendar, editable: true, type: 'date' },
+                            { label: 'Personal Email', value: formData.personalEmail, key: 'personalEmail', icon: Mail, editable: true, placeholder: 'Enter Personal Email' },
+                            { label: 'App Password', value: user?.appPassword, key: 'appPassword', icon: Shield, editable: true, placeholder: 'Enter App Password' }
+                        ].map((field, idx) => (
+                            <div key={idx} className="space-y-2">
+                                <label className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono ml-1">
+                                    <field.icon size={14} className="text-gray-300" />
+                                    {field.label}
+                                </label>
+                                {isEditing && field.editable ? (
+                                    field.type === 'date' ? (
+                                        <input
+                                            type="date"
+                                            value={field.value ? field.value.split('T')[0] : ''}
+                                            onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                                            className="w-full px-5 py-3 border border-gray-200 rounded-2xl bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-sm transition-all text-sm font-bold text-gray-700 outline-none"
+                                        />
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            value={field.value}
+                                            onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                                            placeholder={field.placeholder}
+                                            className="w-full px-5 py-3 border border-gray-200 rounded-2xl bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 shadow-sm transition-all text-sm font-bold text-gray-700 outline-none"
+                                        />
+                                    )
+                                ) : (
+                                    <div className="w-full px-5 py-3.5 bg-gray-50/50 rounded-2xl border border-gray-100 text-sm font-bold text-gray-700 shadow-inner">
+                                        {field.type === 'date' ? (field.value ? formatDate(field.value) : 'Not provided') : (field.value || 'Not provided')}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

@@ -281,27 +281,27 @@ export default function UserManagement() {
   return (
     <div className="bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden">
       {/* Top Bar with Gradient */}
-      <div className="p-6 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 bg-gradient-to-r from-slate-50 to-white border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Team Members</h1>
-          <p className="text-slate-500 mt-1 text-sm">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Team Members</h1>
+          <p className="text-slate-500 mt-1 text-xs sm:text-sm">
             Manage your team's access and permissions
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="relative group">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative group flex-1 md:w-64">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
             <input
               type="text"
               placeholder="Search users..."
-              className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-48 transition-all shadow-sm"
+              className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 w-full transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          <div className="w-48">
+          <div className="w-full sm:w-56">
             <SearchableSelect
               options={[
                 { value: "", label: "All Reporters" },
@@ -329,7 +329,7 @@ export default function UserManagement() {
               resetForm();
               setShowModal(true);
             }}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all transform hover:-translate-y-0.5 flex items-center gap-2 text-sm font-semibold whitespace-nowrap"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap order-first sm:order-last"
           >
             <Plus size={18} />
             <span>Add Member</span>
@@ -339,14 +339,14 @@ export default function UserManagement() {
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse min-w-[800px]">
           <thead>
             <tr className="bg-slate-50/80 border-b border-slate-200 text-xs uppercase text-slate-500 font-bold tracking-wider">
-              <th className="px-6 py-4 w-[35%]">User</th>
-              <th className="px-6 py-4 w-[25%]">Role</th>
-              <th className="px-6 py-4 w-[25%]">Reporter</th>
-              <th className="px-6 py-4 text-center w-[20%]">Status</th>
-              <th className="px-6 py-4 text-right w-[20%]">Actions</th>
+              <th className="px-4 sm:px-6 py-4 w-[35%] whitespace-nowrap">User</th>
+              <th className="px-4 sm:px-6 py-4 w-[25%] whitespace-nowrap">Role</th>
+              <th className="px-4 sm:px-6 py-4 w-[25%] whitespace-nowrap">Reporter</th>
+              <th className="px-4 sm:px-6 py-4 text-center w-[20%] whitespace-nowrap">Status</th>
+              <th className="px-4 sm:px-6 py-4 text-right w-[20%] whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -360,28 +360,28 @@ export default function UserManagement() {
                     transition={{ delay: index * 0.05 }}
                     className="hover:bg-blue-50/30 transition-colors group"
                   >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="flex items-center gap-3 sm:gap-4">
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md transform group-hover:scale-105 transition-transform ${user.isAdmin
                           ? "bg-gradient-to-br from-violet-500 to-purple-600"
                           : "bg-gradient-to-br from-blue-500 to-indigo-600"
                           }`}>
                           {user.name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div
-                            className="font-semibold text-slate-800 text-sm group-hover:text-blue-700 transition-colors cursor-pointer hover:underline"
+                            className="font-semibold text-slate-800 text-sm group-hover:text-blue-700 transition-colors cursor-pointer hover:underline truncate"
                             onClick={() => handleViewDetails(user)}
                           >
                             {user.name}
                           </div>
-                          <div className="text-xs text-slate-500">{user.email}</div>
+                          <div className="text-xs text-slate-500 truncate">{user.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 sm:px-6 py-4">
                       <div className="flex flex-col gap-1">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border w-fit ${getRoleStyle(user.designation)}`}>
+                        <span className={`inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-semibold border w-fit ${getRoleStyle(user.designation)}`}>
                           {getRoleIcon(user.designation)}
                           {user.designation}
                         </span>
@@ -392,22 +392,24 @@ export default function UserManagement() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-4 sm:px-6 py-4 text-center">
                       {user.reporter ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <span className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-100">
                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          {user.reporter.name}
+                          <span className="hidden sm:inline">{user.reporter.name}</span>
+                          <span className="sm:hidden">Yes</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200">
+                        <span className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200">
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                          No Reporter
+                          <span className="hidden sm:inline">No Reporter</span>
+                          <span className="sm:hidden">No</span>
                         </span>
                       )}
                     </td>
 
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${user.isDisabled
+                    <td className="px-4 sm:px-6 py-4 text-center">
+                      <span className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs font-medium border ${user.isDisabled
                         ? "bg-rose-50 text-rose-700 border-rose-100"
                         : "bg-emerald-50 text-emerald-700 border-emerald-100"
                         }`}>
@@ -416,8 +418,8 @@ export default function UserManagement() {
                       </span>
                     </td>
 
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                    <td className="px-4 sm:px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1 sm:gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-all transform sm:translate-x-2 sm:group-hover:translate-x-0">
                         <button
                           onClick={() => handleViewDetails(user)}
                           className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -460,22 +462,22 @@ export default function UserManagement() {
       </div>
 
       {/* Pagination Controls */}
-      <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-white">
-        <div className="text-sm text-slate-500">
+      <div className="p-3 sm:p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-white">
+        <div className="text-xs sm:text-sm text-slate-500 text-center sm:text-left">
           Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, pagination.totalUsers)} of {pagination.totalUsers} users
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-center">
           <button
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Previous
           </button>
 
           <div className="flex items-center gap-1">
 
-            <span className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium">
+            <span className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap">
               Page {pagination.currentPage} of {pagination.totalPages}
             </span>
           </div>
@@ -483,7 +485,7 @@ export default function UserManagement() {
           <button
             onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
             disabled={currentPage === pagination.totalPages}
-            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             Next
           </button>

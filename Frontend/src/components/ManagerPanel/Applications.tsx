@@ -91,65 +91,65 @@ export default function ManagerApplication() {
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Applications</h1>
-        <p className="text-gray-600 mt-1">
+    <div className="p-4 sm:p-8 bg-slate-50 min-h-screen">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">Applications</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1">
           Track and manage all job applications
         </p>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+              <div className="relative flex-1 sm:w-80">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   placeholder="Search applications..."
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-80"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50">
+              <button className="flex items-center justify-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 font-semibold hover:bg-gray-50 transition-colors">
                 <Filter className="w-4 h-4" />
                 Filter
               </button>
             </div>
 
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+            <button className="flex items-center justify-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all shadow-md hover:shadow-blue-200 w-full lg:w-auto">
               <Download className="w-4 h-4" />
-              Export Applications
+              <span>Export Applications</span>
             </button>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-sm text-left min-w-[1000px]">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <tr className="bg-gray-50/50 border-b border-gray-200">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Candidate
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Job Title
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Experience
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Location
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Expected Salary
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Applied Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-right text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Actions
                 </th>
               </tr>
@@ -204,8 +204,8 @@ export default function ManagerApplication() {
                       {application.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <button className="text-blue-600 hover:text-blue-700 font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Details">
                       <Eye className="w-4 h-4" />
                     </button>
                   </td>
@@ -215,20 +215,20 @@ export default function ManagerApplication() {
           </table>
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Showing <span className="font-medium">1</span> to{" "}
-            <span className="font-medium">5</span> of{" "}
-            <span className="font-medium">5</span> applications
+        <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/30">
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+            Showing <span className="text-gray-600 font-extrabold">1</span> -{" "}
+            <span className="text-gray-600 font-extrabold">5</span> of{" "}
+            <span className="text-gray-600 font-extrabold">5</span> Applications
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+            <button className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-white transition-all">
               Previous
             </button>
-            <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700">
+            <button className="w-9 h-9 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-100 transition-all">
               1
             </button>
-            <button className="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50">
+            <button className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-white transition-all">
               Next
             </button>
           </div>
