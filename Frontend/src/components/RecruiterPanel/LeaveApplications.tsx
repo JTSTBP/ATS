@@ -118,35 +118,36 @@ export default function LeaveApplications() {
       className="pb-8"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 sm:mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1 sm:mb-2">
             My Leave Applications
           </h1>
-          <p className="text-slate-600">
+          <p className="text-sm sm:text-base text-slate-600">
             Apply for leave and track your applications
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <button
             onClick={handleRefresh}
-            className="p-3 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+            className="p-2 sm:p-3 bg-white text-slate-600 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
             title="Refresh Data"
           >
-            <RefreshCw size={20} />
+            <RefreshCw size={18} className="sm:w-5 sm:h-5" />
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 shadow-md hover:shadow-lg"
+            className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 shadow-md hover:shadow-lg text-sm sm:text-base"
           >
-            <Plus size={20} />
-            Apply for Leave
+            <Plus size={18} className="sm:w-5 sm:h-5" />
+            <span className="hidden xs:inline">Apply for Leave</span>
+            <span className="xs:hidden">Apply</span>
           </button>
         </div>
       </div>
 
       {/* Stats - Now CLICKABLE */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
         {[
           { label: "Pending", color: "yellow", count: stats.pending, status: "Pending" },
           { label: "Approved", color: "green", count: stats.approved, status: "Approved" },
@@ -158,20 +159,20 @@ export default function LeaveApplications() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 * (i + 1) }}
             onClick={() => setStatusFilter(statusFilter === s.status ? null : s.status)}
-            className={`bg-white rounded-xl shadow-sm border-2 p-6 cursor-pointer hover:shadow-lg transition-all ${statusFilter === s.status ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-blue-300'
+            className={`bg-white rounded-xl shadow-sm border-2 p-4 sm:p-6 cursor-pointer hover:shadow-lg transition-all ${statusFilter === s.status ? 'border-blue-500 ring-2 ring-blue-200' : 'border-slate-200 hover:border-blue-300'
               }`}
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-3xl font-bold text-${s.color}-600`}>
+                <p className={`text-2xl sm:text-3xl font-bold text-${s.color}-600`}>
                   {s.count}
                 </p>
-                <p className="text-sm text-slate-600 mt-1">{s.label}</p>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">{s.label}</p>
               </div>
               <div
-                className={`w-12 h-12 rounded-full bg-${s.color}-100 flex items-center justify-center`}
+                className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-${s.color}-100 flex items-center justify-center`}
               >
-                <Calendar size={24} className={`text-${s.color}-600`} />
+                <Calendar size={20} className={`sm:w-6 sm:h-6 text-${s.color}-600`} />
               </div>
             </div>
           </motion.div>
@@ -181,11 +182,11 @@ export default function LeaveApplications() {
       {/* Leave History */}
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
-          <h2 className="text-xl font-semibold text-slate-800">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-800">
             My Applications
           </h2>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 mt-1">
             {statusFilter ? `Showing ${filteredLeaves.length} ${statusFilter.toLowerCase()} ` : `Total: ${filteredLeaves.length} `}
             {filteredLeaves.length === 1 ? "application" : "applications"}
             {statusFilter && <button onClick={() => setStatusFilter(null)} className="ml-2 text-blue-600 hover:text-blue-700 text-xs font-medium">Clear filter</button>}
@@ -193,10 +194,10 @@ export default function LeaveApplications() {
         </div>
 
         {filteredLeaves.length === 0 ? (
-          <div className="p-12 text-center">
-            <Calendar size={48} className="mx-auto text-slate-300 mb-4" />
-            <p className="text-slate-500 text-lg">No leave applications found</p>
-            <p className="text-slate-400 text-sm mt-2">
+          <div className="p-8 sm:p-12 text-center">
+            <Calendar size={40} className="sm:w-12 sm:h-12 mx-auto text-slate-300 mb-3 sm:mb-4" />
+            <p className="text-slate-500 text-base sm:text-lg">No leave applications found</p>
+            <p className="text-slate-400 text-xs sm:text-sm mt-2">
               Click "Refresh" to check for new data
             </p>
           </div>
@@ -287,7 +288,7 @@ export default function LeaveApplications() {
             </div>
 
             <div className="lg:hidden divide-y divide-slate-200">
-              {leaves.map((application, index) => (
+              {filteredLeaves.map((application, index) => (
                 <motion.div
                   key={application._id}
                   initial={{ opacity: 0 }}
@@ -360,21 +361,21 @@ export default function LeaveApplications() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+              className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
             >
-              <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-slate-50">
-                <h2 className="text-2xl font-bold text-slate-800">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-blue-50 to-slate-50">
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-800">
                   Apply for Leave
                 </h2>
                 <button
                   onClick={() => setIsModalOpen(false)}
                   className="text-slate-400 hover:text-slate-600 transition-colors"
                 >
-                  <X size={24} />
+                  <X size={20} className="sm:w-6 sm:h-6" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Leave Type
@@ -384,7 +385,7 @@ export default function LeaveApplications() {
                     onChange={(e) =>
                       setFormData({ ...formData, leaveType: e.target.value })
                     }
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg text-sm sm:text-base"
                   >
                     {leaveTypes.map((type) => (
                       <option key={type} value={type}>
@@ -394,7 +395,7 @@ export default function LeaveApplications() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
                       From Date
@@ -405,7 +406,7 @@ export default function LeaveApplications() {
                       onChange={(e) =>
                         setFormData({ ...formData, fromDate: e.target.value })
                       }
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg text-sm sm:text-base"
                       required
                     />
                   </div>
@@ -420,7 +421,7 @@ export default function LeaveApplications() {
                       onChange={(e) =>
                         setFormData({ ...formData, toDate: e.target.value })
                       }
-                      className="w-full px-4 py-2.5 border border-slate-300 rounded-lg"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg text-sm sm:text-base"
                       required
                     />
                   </div>
@@ -457,7 +458,7 @@ export default function LeaveApplications() {
                       setFormData({ ...formData, reason: e.target.value })
                     }
                     rows={4}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg resize-none"
+                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-slate-300 rounded-lg resize-none text-sm sm:text-base"
                     placeholder="Enter reason for leave"
                     required
                   />
@@ -467,13 +468,13 @@ export default function LeaveApplications() {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 text-sm sm:text-base font-medium"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base font-medium"
                   >
                     Submit Application
                   </button>
