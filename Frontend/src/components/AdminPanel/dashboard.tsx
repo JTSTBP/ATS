@@ -25,7 +25,7 @@ function useScreenSize() {
     const handleResize = () => {
       const width = window.innerWidth;
       if (width < 640) setScreenSize('mobile');
-      else if (width < 1024) setScreenSize('tablet');
+      else if (width < 768) setScreenSize('tablet');
       else setScreenSize('desktop');
     };
 
@@ -196,7 +196,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-10">
         {/* Total Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}

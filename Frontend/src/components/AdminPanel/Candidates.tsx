@@ -601,12 +601,12 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                 paginatedCandidates.map((candidate: any) => (
                                     <tr key={candidate._id} className="hover:bg-gray-50 transition">
                                         {/* NAME */}
-                                        <td className="px-6 py-4 font-semibold text-gray-800">
+                                        <td className="px-6 py-4 font-semibold text-gray-800 whitespace-nowrap">
                                             {candidate.dynamicFields?.candidateName || "-"}
                                         </td>
 
                                         {/* CONTACT */}
-                                        <td className="px-6 py-4 text-sm text-gray-600">
+                                        <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
                                             <div className="flex items-center mb-1">
                                                 <Mail className="w-4 h-4 mr-2" />
                                                 {candidate.dynamicFields?.Email || "No Email"}
@@ -616,11 +616,11 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 {candidate.dynamicFields?.Phone || "No Phone"}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                             {candidate.jobId?.title || "-"}
 
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
 
                                             {candidate.jobId?.clientId?.companyName && (
                                                 <p className="text-xs text-gray-500 mt-1">
@@ -631,7 +631,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
 
                                         {/* RESUME */}
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 whitespace-nowrap">
                                             {candidate.resumeUrl ? (
                                                 <a
                                                     href={getFilePreviewUrl(candidate.resumeUrl)}
@@ -648,14 +648,14 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                             )}
                                         </td>
 
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                             {candidate.createdBy?.name || "-"}-
                                             {candidate.createdBy?.designation}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                             {candidate.createdBy?.reporter?.name}
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700">
+                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                             <select
                                                 value={candidate.status || "New"}
                                                 onChange={(e) => {
@@ -699,7 +699,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         {statusFilter === "Joined" && (
                                             <>
                                                 {/* OFFER LETTER */}
-                                                <td className="px-6 py-4 text-sm text-gray-700">
+                                                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                                     {candidate.offerLetter ? (
                                                         <a
                                                             href={getFilePreviewUrl(candidate.offerLetter)}
@@ -765,7 +765,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         )}
 
                                         {/* REMARKS */}
-                                        <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px] truncate" title={candidate.notes}>
+                                        <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px] truncate whitespace-nowrap" title={candidate.notes}>
                                             {candidate.status === "Rejected" && candidate.rejectionReason && (
                                                 <div className="text-xs text-red-600 font-semibold mb-1">
                                                     Reason: {candidate.rejectionReason}
@@ -775,7 +775,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         </td>
 
                                         {/* ACTIONS */}
-                                        <td className="px-6 py-4 flex space-x-2">
+                                        <td className="px-6 py-4 flex space-x-2 whitespace-nowrap">
                                             <button
                                                 onClick={() => handleEdit(candidate)}
                                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
