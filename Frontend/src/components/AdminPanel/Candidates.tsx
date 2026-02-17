@@ -129,7 +129,6 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     const [statusFilter, setStatusFilter] = useState("all");
     const [filterClient, setFilterClient] = useState("all");
     const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
-    const [filterStage, setFilterStage] = useState("all");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [joinStartDate, setJoinStartDate] = useState("");
@@ -188,15 +187,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 search: searchTerm,
                 status: statusFilter,
                 client: filterClient,
-                jobTitle: filterJobTitle,
-                stage: filterStage
+                jobTitle: filterJobTitle
             });
             fetchPaginatedCandidates(currentPage, limit, {
                 search: searchTerm,
                 status: statusFilter,
                 client: filterClient,
                 jobTitle: filterJobTitle,
-                stage: filterStage,
                 startDate,
                 endDate,
                 joinStartDate,
@@ -207,13 +204,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
         }, 300); // Debounce search
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, fetchPaginatedCandidates]);
+    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, fetchPaginatedCandidates]);
 
 
     // Reset page to 1 on filter change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+    }, [searchTerm, statusFilter, filterClient, filterJobTitle, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
 
 
     // 3️⃣ Get unique job titles from JOBS CONTEXT instead of candidates (since candidates are paginated)
@@ -223,11 +220,6 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         )
     ).sort();
 
-    // 3.5️⃣ Get available stages for the selected job
-    const availableStages =
-        filterJobTitle !== "all" && Array.isArray(jobs)
-            ? jobs.find((j) => j.title === filterJobTitle)?.stages || []
-            : [];
 
 
 
@@ -322,7 +314,6 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             status: statusFilter,
             client: filterClient,
             jobTitle: filterJobTitle,
-            stage: filterStage,
             startDate,
             endDate,
             joinStartDate,
@@ -383,34 +374,21 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Job Title</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Designation</label>
                         <SearchableSelect
                             options={[
-                                { value: 'all', label: 'All Job Titles' },
+                                { value: 'all', label: 'All Designations' },
                                 ...uniqueJobTitles.map(t => ({ value: t, label: t }))
                             ]}
                             value={filterJobTitle}
                             onChange={(val) => setFilterJobTitle(val)}
-                            placeholder="Select Job Title"
+                            placeholder="Select Designation"
                         />
                     </div>
 
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Stage</label>
-                        <SearchableSelect
-                            options={[
-                                { value: 'all', label: 'All Stages' },
-                                ...availableStages.map((s: any) => ({ value: s.name, label: s.name }))
-                            ]}
-                            value={filterStage}
-                            onChange={(val) => setFilterStage(val)}
-                            placeholder="Select Stage"
-                            disabled={filterJobTitle === "all"}
-                        />
-                    </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">From Date</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Upload From</label>
                         <input
                             type="date"
                             value={startDate}
@@ -420,7 +398,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">To Date</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Upload To</label>
                         <input
                             type="date"
                             value={endDate}
@@ -543,10 +521,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                     Contact
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Job
+                                    Client
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Client
+                                    Designation
+                                </th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
+                                    Upload Date
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Resume
@@ -618,16 +599,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                                            {candidate.jobId?.title || "-"}
-
+                                            {candidate.jobId?.clientId?.companyName || "N/A"}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-
-                                            {candidate.jobId?.clientId?.companyName && (
-                                                <p className="text-xs text-gray-500 mt-1">
-                                                    Client: {candidate.jobId?.clientId?.companyName}
-                                                </p>
-                                            )}
+                                            {candidate.jobId?.title || "-"}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                                            {candidate.createdAt ? formatDate(candidate.createdAt) : "-"}
                                         </td>
 
 
