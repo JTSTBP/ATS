@@ -187,8 +187,9 @@ export const FeedbackForm = ({ onClose, onSave }: FeedbackFormProps) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:from-pink-600 hover:to-pink-700 transition disabled:opacity-50"
+              className="px-6 py-2 bg-gradient-to-r from-pink-500 to-pink-600 text-white rounded-lg hover:from-pink-600 hover:to-pink-700 transition disabled:opacity-70 flex items-center justify-center gap-2 font-bold shadow-lg shadow-pink-100"
             >
+              {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               {loading ? "Saving..." : "Add Feedback"}
             </button>
           </div>

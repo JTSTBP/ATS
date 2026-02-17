@@ -106,6 +106,7 @@ export default function UserManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [showAppPassword, setShowAppPassword] = useState(false);
   const [reporterFilter, setReporterFilter] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roleFilter = searchParams.get("role");
   const adminFilter = searchParams.get("isAdmin");
@@ -190,6 +191,7 @@ export default function UserManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
       if (editUserId) {
         const success = await updateUser(editUserId, formData);
@@ -209,6 +211,8 @@ export default function UserManagement() {
       }
     } catch (err) {
       console.error("Error while saving user:", err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -897,9 +901,11 @@ export default function UserManagement() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 transition-all transform active:scale-95"
+                    disabled={isSubmitting}
+                    className={`flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                   >
-                    {editUserId ? "Save Changes" : "Create User"}
+                    {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                    {isSubmitting ? (editUserId ? "Saving..." : "Creating...") : (editUserId ? "Save Changes" : "Create User")}
                   </button>
                 </div>
               </form>

@@ -16,6 +16,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
 
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [resumeFile, setResumeFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     jobId: "",
@@ -251,29 +252,36 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
-    let result;
-    if (candidate?._id) {
-      result = await updateCandidate(candidate._id, formData, resumeFile);
-    } else {
-      result = await createCandidate(formData, resumeFile);
-    }
+    try {
+      let result;
+      if (candidate?._id) {
+        result = await updateCandidate(candidate._id, formData, resumeFile);
+      } else {
+        result = await createCandidate(formData, resumeFile);
+      }
 
-    if (result) {
-      toast.success(candidate ? "Candidate updated!" : "Candidate created!");
-      setSelectedJob(null);
-      setFormData({
-        jobId: "",
-        createdBy: user?._id,
-        dynamicFields: {},
-        linkedinUrl: "",
-        portfolioUrl: "",
-        notes: "",
-        resumeUrl: "",
-      });
-      onClose();
+      if (result) {
+        toast.success(candidate ? "Candidate updated!" : "Candidate created!");
+        setSelectedJob(null);
+        setFormData({
+          jobId: "",
+          createdBy: user?._id,
+          dynamicFields: {},
+          linkedinUrl: "",
+          portfolioUrl: "",
+          notes: "",
+          resumeUrl: "",
+        });
+        onClose();
+      }
+    } catch (error) {
+      console.error("Form submit error:", error);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false);
     }
-    // Error message is already shown by CandidatesProvider
   };
 
   if (!isOpen) return null;
@@ -462,9 +470,11 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2 rounded-lg mt-4 hover:bg-blue-700 transition"
+              disabled={isSubmitting}
+              className={`w-full bg-blue-600 font-bold text-white py-2 rounded-lg mt-4 hover:bg-blue-700 transition flex items-center justify-center gap-2 ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
             >
-              Submit Application
+              {isSubmitting && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {isSubmitting ? "Submitting..." : (candidate ? "Update Candidate" : "Submit Application")}
             </button>
           </form>
         </div>

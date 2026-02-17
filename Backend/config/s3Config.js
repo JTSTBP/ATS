@@ -13,6 +13,14 @@ const hasAWSCredentials = !!(
     process.env.AWS_ACCESS_KEY_ID !== 'your_access_key_here'
 );
 
+console.log('--- S3 Config Debug ---');
+console.log('AWS_ACCESS_KEY_ID exists:', !!process.env.AWS_ACCESS_KEY_ID);
+console.log('AWS_SECRET_ACCESS_KEY exists:', !!process.env.AWS_SECRET_ACCESS_KEY);
+console.log('AWS_REGION:', process.env.AWS_REGION);
+console.log('AWS_S3_BUCKET_NAME:', process.env.AWS_S3_BUCKET_NAME);
+console.log('hasAWSCredentials:', hasAWSCredentials);
+console.log('-----------------------');
+
 let s3 = null;
 let resumeStorage = null;
 let offerLetterStorage = null;

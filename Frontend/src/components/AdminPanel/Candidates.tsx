@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
-import { getImageUrl, getFilePreviewUrl } from "../../utils/imageUtils";
+import { getImageUrl, getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
 
 
 // 🔹 Searchable Select Component
@@ -267,6 +267,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         currentExpectedJoiningDate?: string;
         droppedBy?: string;
     } | null>(null);
+    const [statusLoading, setStatusLoading] = useState(false);
 
     const handleStatusChange = (
         candidateId: string,
@@ -637,10 +638,11 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                     href={getFilePreviewUrl(candidate.resumeUrl)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
+                                                    download={isWordDocument(candidate.resumeUrl)}
                                                     className="flex items-center text-blue-600"
                                                 >
                                                     <Upload className="w-4 h-4 mr-1" />
-                                                    View Resume
+                                                    {isWordDocument(candidate.resumeUrl) ? 'Download Resume' : 'View Resume'}
                                                 </a>
 
                                             ) : (
@@ -705,9 +707,10 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                             href={getFilePreviewUrl(candidate.offerLetter)}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
+                                                            download={isWordDocument(candidate.offerLetter)}
                                                             className="text-blue-600 hover:underline flex items-center"
                                                         >
-                                                            <Upload className="w-4 h-4 mr-1" /> View
+                                                            <Upload className="w-4 h-4 mr-1" /> {isWordDocument(candidate.offerLetter) ? 'Download' : 'View'}
                                                         </a>
                                                     ) : (
                                                         "-"

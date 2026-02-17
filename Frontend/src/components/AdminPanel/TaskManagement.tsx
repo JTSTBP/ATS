@@ -25,6 +25,7 @@ export default function TaskManagement() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedSession, setSelectedSession] = useState<any>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState({
         user: "",
@@ -42,32 +43,42 @@ export default function TaskManagement() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = await createSession(formData);
-        if (success) {
-            setShowAddModal(false);
-            setFormData({
-                user: "",
-                date: new Date().toISOString().split("T")[0],
-                loginTime: "",
-                logoutTime: "",
-                status: "Present",
-                notes: "",
-            });
+        setIsSubmitting(true);
+        try {
+            const success = await createSession(formData);
+            if (success) {
+                setShowAddModal(false);
+                setFormData({
+                    user: "",
+                    date: new Date().toISOString().split("T")[0],
+                    loginTime: "",
+                    logoutTime: "",
+                    status: "Present",
+                    notes: "",
+                });
+            }
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     const handleEdit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (selectedSession) {
-            const success = await updateSession(selectedSession._id, {
-                loginTime: formData.loginTime,
-                logoutTime: formData.logoutTime,
-                status: formData.status,
-                notes: formData.notes,
-            });
-            if (success) {
-                setShowEditModal(false);
-                setSelectedSession(null);
+            setIsSubmitting(true);
+            try {
+                const success = await updateSession(selectedSession._id, {
+                    loginTime: formData.loginTime,
+                    logoutTime: formData.logoutTime,
+                    status: formData.status,
+                    notes: formData.notes,
+                });
+                if (success) {
+                    setShowEditModal(false);
+                    setSelectedSession(null);
+                }
+            } finally {
+                setIsSubmitting(false);
             }
         }
     };
@@ -428,9 +439,11 @@ export default function TaskManagement() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                                        disabled={isSubmitting}
+                                        className={`flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     >
-                                        Add Session
+                                        {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                        {isSubmitting ? "Adding..." : "Add Session"}
                                     </button>
                                 </div>
                             </form>
@@ -536,9 +549,11 @@ export default function TaskManagement() {
                                     </button>
                                     <button
                                         type="submit"
-                                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors"
+                                        disabled={isSubmitting}
+                                        className={`flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors flex items-center justify-center gap-2 ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     >
-                                        Update Session
+                                        {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                        {isSubmitting ? "Updating..." : "Update Session"}
                                     </button>
                                 </div>
                             </form>

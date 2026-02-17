@@ -15,6 +15,7 @@ interface StatusUpdateModalProps {
     currentRejectedBy?: string;
     currentCTC?: string;
     droppedBy?: string; // New prop for auto-determined drop source
+    isLoading?: boolean;
 }
 
 export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
@@ -30,6 +31,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     currentRejectedBy,
     currentCTC,
     droppedBy,
+    isLoading = false,
 }) => {
     const [comment, setComment] = useState("");
     const [joiningDate, setJoiningDate] = useState("");
@@ -257,6 +259,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                 Cancel
                             </button>
                             <button
+                                disabled={isLoading}
                                 onClick={() => {
                                     if (isJoined && !joiningDate) {
                                         alert("Please select a joining date");
@@ -284,9 +287,10 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                     }
                                     onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, isDropped ? droppedBy : rejectedBy, ctc, rejectionReason);
                                 }}
-                                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm"
+                                className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm flex items-center gap-2 ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
                             >
-                                {isDropped ? "Confirm Drop" : "Confirm Update"}
+                                {isLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                                {isLoading ? "Updating..." : (isDropped ? "Confirm Drop" : "Confirm Update")}
                             </button>
                         </div>
                     </div>

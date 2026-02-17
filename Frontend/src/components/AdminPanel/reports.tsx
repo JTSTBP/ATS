@@ -14,7 +14,7 @@ export default function ReportsTab() {
   const { clients, fetchClients } = useClientsContext();
   const { jobs, fetchJobs } = useJobContext();
   const navigate = useNavigate();
-  const [candidatePopupData, setCandidatePopupData] = useState<{ title: string, clientName: string, candidates: any[] } | null>(null);
+  const [candidatePopupData, setCandidatePopupData] = useState<{ title: string, clientName: string, status: string, jobTitle: string, candidates: any[] } | null>(null);
 
   // Default to current month
   const [startDate, setStartDate] = useState(() => {
@@ -371,9 +371,13 @@ export default function ReportsTab() {
     setCandidatePopupData({
       title: `${jobTitle} - ${status} Candidates`,
       clientName: clientName,
+      status: status,
+      jobTitle: jobTitle,
       candidates: jobCandidates
     });
   };
+
+  const closeCandidatePopup = () => setCandidatePopupData(null);
 
   const applyDateShortcut = (shortcut: string) => {
     const today = new Date();
@@ -1447,87 +1451,103 @@ export default function ReportsTab() {
                 </div>
 
                 <div className="flex-1 overflow-auto p-0 md:p-2 custom-scrollbar bg-slate-50/50">
-                  <div className="md:rounded-xl overflow-hidden border-y md:border border-slate-200 bg-white m-0 md:m-4 shadow-sm">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
-                        <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10 shadow-sm">
-                          <tr>
-                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Source Date</th>
-                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Name</th>
-                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Phone</th>
-                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Recruiter</th>
-                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status</th>
-                            {hasStatusDetails && <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status Details</th>}
-                            <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500 min-w-[200px]">Notes</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {candidatePopupData.candidates.map((candidate: any, index: number) => (
-                            <tr key={index} className="hover:bg-slate-50 transition-colors group">
-                              <td className="py-4 px-6 text-slate-600 text-xs font-bold whitespace-nowrap">{candidate.sourceDate || '-'}</td>
-                              <td className="py-4 px-6 font-bold text-slate-700">{candidate.name}</td>
-                              <td className="py-4 px-6 text-slate-600 font-mono text-xs">{candidate.phone}</td>
-                              <td className="py-4 px-6">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                  {candidate.recruiterName || 'Unknown'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-6">
-                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${(() => {
-                                  switch (candidate.status) {
-                                    case 'New': return 'bg-blue-50 text-blue-700 border-blue-200';
-                                    case 'Shortlisted': return 'bg-orange-50 text-orange-700 border-orange-200';
-                                    case 'Interviewed': return 'bg-purple-50 text-purple-700 border-purple-200';
-                                    case 'Selected': return 'bg-green-50 text-green-700 border-green-200';
-                                    case 'Joined': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                                    case 'Rejected': return 'bg-red-50 text-red-700 border-red-200';
-                                    default: return 'bg-slate-100 text-slate-700 border-slate-200';
-                                  }
-                                })()}`}>
-                                  {candidate.status}
-                                </span>
-                              </td>
-                              {hasStatusDetails && (
-                                <td className="py-4 px-6 text-xs space-y-1">
-                                  {candidate.status === 'Interviewed' && (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="font-bold text-slate-700">R{candidate.interviewRound}</span>
-                                      <span className="text-slate-500">{candidate.interviewDate ? new Date(candidate.interviewDate).toLocaleDateString() : '-'}</span>
-                                    </div>
-                                  )}
-                                  {candidate.status === 'Selected' && (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="font-bold text-slate-700">Select: {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : '-'}</span>
-                                    </div>
-                                  )}
-                                  {candidate.status === 'Joined' && (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="font-bold text-slate-700">Join: {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : '-'}</span>
-                                    </div>
-                                  )}
-                                  {candidate.status === 'Rejected' && (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="font-bold text-red-600">By {candidate.rejectedBy}</span>
-                                      <span className="text-slate-500 italic">{candidate.rejectionReason}</span>
-                                    </div>
-                                  )}
-                                  {candidate.status === 'Dropped' && (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="font-bold text-slate-600">By {candidate.droppedBy}</span>
-                                      <span className="text-slate-500 italic">{candidate.droppingReason}</span>
-                                    </div>
-                                  )}
-                                </td>
-                              )}
-                              <td className="py-4 px-6 text-slate-500 text-xs italic max-w-[250px] truncate" title={candidate.remark}>
-                                {candidate.remark || '-'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  {(() => {
+                    const hasStatusDetails = candidatePopupData.candidates.some((c: any) =>
+                      (c.status === "Interviewed" && c.interviewDate) ||
+                      (c.status === "Selected" && c.selectionDate) ||
+                      (c.status === "Joined" && c.joiningDate) ||
+                      (c.status === "Rejected" && c.rejectedBy) ||
+                      (c.status === "Dropped" && c.droppedBy)
+                    );
+
+                    return (
+                      <div className="md:rounded-xl overflow-hidden border-y md:border border-slate-200 bg-white m-0 md:m-4 shadow-sm">
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
+                            <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10 shadow-sm">
+                              <tr>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Source Date</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Name</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Phone</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Recruiter</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status</th>
+                                {hasStatusDetails && <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status Details</th>}
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500 min-w-[200px]">Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {candidatePopupData.candidates.map((candidate: any, index: number) => {
+                                const creatorId = typeof candidate.createdBy === 'object' ? candidate.createdBy?._id : candidate.createdBy;
+                                const creatorName = users.find(u => u._id === creatorId)?.name || 'Unknown';
+                                return (
+                                  <tr key={index} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="py-4 px-6 text-slate-600 text-xs font-bold whitespace-nowrap">{candidate.createdAt ? formatDate(candidate.createdAt) : '-'}</td>
+                                    <td className="py-4 px-6 font-bold text-slate-700">{candidate.name}</td>
+                                    <td className="py-4 px-6 text-slate-600 font-mono text-xs">{candidate.phone}</td>
+                                    <td className="py-4 px-6">
+                                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                        {creatorName}
+                                      </span>
+                                    </td>
+                                    <td className="py-4 px-6">
+                                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${(() => {
+                                        switch (candidate.status) {
+                                          case 'New': return 'bg-blue-50 text-blue-700 border-blue-200';
+                                          case 'Shortlisted': return 'bg-orange-50 text-orange-700 border-orange-200';
+                                          case 'Interviewed': return 'bg-purple-50 text-purple-700 border-purple-200';
+                                          case 'Selected': return 'bg-green-50 text-green-700 border-green-200';
+                                          case 'Joined': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                          case 'Rejected': return 'bg-red-50 text-red-700 border-red-200';
+                                          default: return 'bg-slate-100 text-slate-700 border-slate-200';
+                                        }
+                                      })()}`}>
+                                        {candidate.status}
+                                      </span>
+                                    </td>
+                                    {hasStatusDetails && (
+                                      <td className="py-4 px-6 text-xs space-y-1">
+                                        {candidate.status === 'Interviewed' && (
+                                          <div className="flex flex-col gap-1">
+                                            <span className="font-bold text-slate-700">R{candidate.interviewRound}</span>
+                                            <span className="text-slate-500">{candidate.interviewDate ? new Date(candidate.interviewDate).toLocaleDateString() : '-'}</span>
+                                          </div>
+                                        )}
+                                        {candidate.status === 'Selected' && (
+                                          <div className="flex flex-col gap-1">
+                                            <span className="font-bold text-slate-700">Select: {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : '-'}</span>
+                                          </div>
+                                        )}
+                                        {candidate.status === 'Joined' && (
+                                          <div className="flex flex-col gap-1">
+                                            <span className="font-bold text-slate-700">Join: {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : '-'}</span>
+                                          </div>
+                                        )}
+                                        {candidate.status === 'Rejected' && (
+                                          <div className="flex flex-col gap-1">
+                                            <span className="font-bold text-red-600">By {candidate.rejectedBy}</span>
+                                            <span className="text-slate-500 italic">{candidate.rejectionReason}</span>
+                                          </div>
+                                        )}
+                                        {candidate.status === 'Dropped' && (
+                                          <div className="flex flex-col gap-1">
+                                            <span className="font-bold text-slate-600">By {candidate.droppedBy}</span>
+                                            <span className="text-slate-500 italic">{candidate.droppingReason}</span>
+                                          </div>
+                                        )}
+                                      </td>
+                                    )}
+                                    <td className="py-4 px-6 text-slate-500 text-xs italic max-w-[250px] truncate" title={candidate.remark}>
+                                      {candidate.remark || '-'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div className="p-4 md:p-5 border-t border-slate-100 bg-slate-50 flex justify-end">

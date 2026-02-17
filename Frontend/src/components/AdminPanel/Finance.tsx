@@ -1280,8 +1280,9 @@ const Finance = () => {
                                 <button
                                     onClick={handleInvoiceSubmit}
                                     disabled={loading || !invoiceFormData.client || invoiceFormData.candidates.some(c => !c.candidateId || !c.amount)}
-                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 flex items-center gap-2"
+                                    className={`px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 flex items-center gap-2 ${loading ? 'opacity-70' : ''}`}
                                 >
+                                    {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                     {loading ? "Creating..." : "Save & Generate Invoice"}
                                 </button>
                             </div>
@@ -1860,8 +1861,9 @@ const Finance = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400"
+                                className={`w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-green-400 flex items-center justify-center gap-2 ${loading ? 'opacity-70' : ''}`}
                             >
+                                {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                 {loading ? "Processing..." : "Confirm Payment"}
                             </button>
                         </form>
@@ -1965,8 +1967,9 @@ const Finance = () => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors disabled:bg-red-400"
+                                className={`w-full bg-red-600 text-white py-2.5 rounded-lg hover:bg-red-700 transition-colors font-bold shadow-md flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                             >
+                                {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                 {loading ? "Adding..." : "Add Expense"}
                             </button>
                         </form>
@@ -2052,9 +2055,9 @@ const Finance = () => {
                                 <button
                                     onClick={confirmSendEmail}
                                     disabled={loading || (emailRecipients.length === 0 && !customEmails.trim())}
-                                    className="flex-[2] bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 font-bold text-sm shadow-md flex items-center justify-center gap-2"
+                                    className={`flex-[2] bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-300 font-bold text-sm shadow-md flex items-center justify-center gap-2 ${loading ? 'opacity-70' : ''}`}
                                 >
-                                    <Mail size={18} />
+                                    {loading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Mail size={18} />}
                                     {loading ? "Sending..." : "Send Invoice Email"}
                                 </button>
                             </div>

@@ -42,6 +42,7 @@ export default function CandidateModal({
   const { user } = useAuth();
   const { createCandidate, updateCandidate } = useCandidateContext();
   const [resumeFile, setResumeFile] = useState(null);
+  const [loading, setLoading] = useState(false);
 
 
   const [formData, setFormData] = useState<
@@ -49,7 +50,7 @@ export default function CandidateModal({
   >({
     createdBy: user?._id,
 
-    jobId: candidate?.job_id || job._id,
+    jobId: candidate?.jobId || candidate?.job_id || job._id,
 
     dynamicFields: candidate?.dynamicFields || {},
     linkedinUrl: candidate?.linkedinUrl || "",
@@ -93,28 +94,37 @@ export default function CandidateModal({
       }
     }
 
+    setLoading(true);
     let result;
-    if (candidate?._id) {
-      result = await updateCandidate(candidate._id, formData, resumeFile);
-    } else {
-      result = await createCandidate(formData, resumeFile);
-    }
+    try {
+      if (candidate?._id) {
+        result = await updateCandidate(candidate._id, formData, resumeFile);
+      } else {
+        result = await createCandidate(formData, resumeFile);
+      }
 
-    if (result) {
-      toast.success(candidate ? "Candidate updated!" : "Candidate created!");
+      if (result) {
+        toast.success(candidate ? "Candidate updated!" : "Candidate created!");
 
-      setFormData({
-        jobId: "",
-        createdBy: user?._id,
-        dynamicFields: {},
-        linkedinUrl: "",
-        portfolioUrl: "",
-        notes: "",
-        resumeUrl: "",
-      });
-      onClose();
-    } else {
-      toast.error("Something went wrong!");
+        setFormData({
+          jobId: "",
+          createdBy: user?._id,
+          dynamicFields: {},
+          linkedinUrl: "",
+          portfolioUrl: "",
+          notes: "",
+          resumeUrl: "",
+        });
+        onClose();
+        if (onSave) onSave(result);
+      } else {
+        toast.error("Something went wrong!");
+      }
+    } catch (error) {
+      console.error("Submit error:", error);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -122,16 +132,12 @@ export default function CandidateModal({
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type - only allow PDF
+    // Validate file type - allow PDF and Word Documents
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
-    if (fileExtension === 'docx' || fileExtension === 'doc') {
-      toast.error('DOCX files are not supported. Please upload a PDF file only.');
-      e.target.value = ''; // Clear the input
-      return;
-    }
+    const allowedExtensions = ['pdf', 'doc', 'docx'];
 
-    if (fileExtension !== 'pdf') {
-      toast.error('Only PDF files are allowed for resume uploads.');
+    if (!allowedExtensions.includes(fileExtension || '')) {
+      toast.error('Only PDF and Word documents (.doc, .docx) are allowed for resume uploads.');
       e.target.value = ''; // Clear the input
       return;
     }
@@ -365,7 +371,7 @@ export default function CandidateModal({
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".pdf,application/pdf"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -432,9 +438,12 @@ export default function CandidateModal({
             </button>
             <button
               type="submit"
-              className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              disabled={loading}
+              className={`w-full sm:w-auto px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center justify-center gap-2 ${loading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
             >
-              {candidate ? "Update Candidate" : "Save Candidate"}
+              {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {loading ? (candidate ? "Updating..." : "Saving...") : (candidate ? "Update Candidate" : "Save Candidate")}
             </button>
           </div>
         </form>

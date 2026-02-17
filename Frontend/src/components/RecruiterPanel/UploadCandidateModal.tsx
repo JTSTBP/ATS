@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { X, Upload, FileText, CheckCircle } from "lucide-react";
 import { Job } from "../../context/DataProvider";
+import { useCandidateContext } from "../../context/CandidatesProvider";
+import { useAuth } from "../../context/AuthProvider";
+import { toast } from "react-toastify";
 
 interface UploadCandidateModalProps {
     job: Job;
@@ -13,6 +16,8 @@ export default function UploadCandidateModal({ job, onClose }: UploadCandidateMo
     const [isDragging, setIsDragging] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [uploadStatus, setUploadStatus] = useState<"idle" | "success" | "error">("idle");
+    const { createCandidate } = useCandidateContext();
+    const { user } = useAuth();
 
     // Dynamic candidate details state
     const [formData, setFormData] = useState<Record<string, any>>({});
@@ -37,16 +42,12 @@ export default function UploadCandidateModal({ job, onClose }: UploadCandidateMo
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
 
-            // Validate file type - only allow PDF
+            // Validate file type - allow PDF and Word Documents
             const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
-            if (fileExtension === 'docx' || fileExtension === 'doc') {
-                alert('DOCX files are not supported. Please upload a PDF file only.');
-                e.target.value = ''; // Clear the input
-                return;
-            }
+            const allowedExtensions = ['pdf', 'doc', 'docx'];
 
-            if (fileExtension !== 'pdf') {
-                alert('Only PDF files are allowed for resume uploads.');
+            if (!allowedExtensions.includes(fileExtension || '')) {
+                alert('Only PDF and Word documents (.doc, .docx) are allowed for resume uploads.');
                 e.target.value = ''; // Clear the input
                 return;
             }
@@ -79,15 +80,12 @@ export default function UploadCandidateModal({ job, onClose }: UploadCandidateMo
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             const selectedFile = e.dataTransfer.files[0];
 
-            // Validate file type - only allow PDF
+            // Validate file type - allow PDF and Word Documents
             const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
-            if (fileExtension === 'docx' || fileExtension === 'doc') {
-                alert('DOCX files are not supported. Please upload a PDF file only.');
-                return;
-            }
+            const allowedExtensions = ['pdf', 'doc', 'docx'];
 
-            if (fileExtension !== 'pdf') {
-                alert('Only PDF files are allowed for resume uploads.');
+            if (!allowedExtensions.includes(fileExtension || '')) {
+                alert('Only PDF and Word documents (.doc, .docx) are allowed for resume uploads.');
                 return;
             }
 
@@ -122,16 +120,30 @@ export default function UploadCandidateModal({ job, onClose }: UploadCandidateMo
 
         setUploading(true);
 
-        // Simulate upload delay
-        setTimeout(() => {
+        try {
+            const payload = {
+                jobId: job._id as string,
+                createdBy: user?._id || "",
+                dynamicFields: { ...formData, ...screeningAnswers },
+                linkedinUrl: formData.linkedinUrl || "",
+                portfolioUrl: formData.portfolioUrl || "",
+                notes: formData.notes || "",
+            };
+
+            const result = await createCandidate(payload, file);
+
+            if (result) {
+                setUploadStatus("success");
+            } else {
+                setUploadStatus("error");
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            setUploadStatus("error");
+            toast.error("Failed to upload candidate");
+        } finally {
             setUploading(false);
-            setUploadStatus("success");
-            // Here you would implement the actual upload logic
-            console.log("Uploading file:", file.name);
-            console.log("Candidate details:", formData);
-            console.log("Screening Answers:", screeningAnswers);
-            console.log("For job:", job.title);
-        }, 1500);
+        }
     };
 
     return (
@@ -191,7 +203,7 @@ export default function UploadCandidateModal({ job, onClose }: UploadCandidateMo
                                 <input
                                     type="file"
                                     id="cv-upload"
-                                    accept=".pdf,application/pdf"
+                                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                     onChange={handleFileChange}
                                     className="hidden"
                                 />
@@ -225,7 +237,7 @@ export default function UploadCandidateModal({ job, onClose }: UploadCandidateMo
                                             Click to upload CV or drag and drop
                                         </p>
                                         <p className="text-xs text-slate-500">
-                                            PDF Only (Max 5MB)
+                                            PDF, DOC, DOCX (Max 5MB)
                                         </p>
                                     </label>
                                 )}

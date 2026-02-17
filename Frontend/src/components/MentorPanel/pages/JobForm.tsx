@@ -1408,10 +1408,11 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-70 transition-all font-bold shadow-md shadow-green-100"
               >
+                {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 {loading ? "Saving..." : job ? "Update Job" : "Post Job"}
-                <CheckCircle className="w-4 h-4 ml-1" />
+                {!loading && <CheckCircle className="w-4 h-4" />}
               </button>
             )}
           </div>

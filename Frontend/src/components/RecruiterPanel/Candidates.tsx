@@ -17,7 +17,8 @@ import { useJobContext } from "../../context/DataProvider";
 import CandidateModal from "./CandidateModal";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
-import { getFilePreviewUrl } from "../../utils/imageUtils";
+import { getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
+import { toast } from "react-toastify";
 
 // 🔹 Searchable Select Component
 const SearchableSelect = ({
@@ -148,6 +149,7 @@ export default function Candidates() {
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
   } | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
 
   // Debounce Search
   useEffect(() => {
@@ -215,8 +217,52 @@ export default function Candidates() {
     }
   };
 
-  const confirmStatusChange = async (_comment: string, _joiningDate?: string, _offerLetter?: File, _selectionDate?: string, _expectedJoiningDate?: string, _rejectedBy?: string, _offeredCTC?: string, _rejectionReason?: string) => {
-    // Read only for recruiters
+  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, ctc?: string, rejectionReason?: string) => {
+    if (!pendingStatusChange || !user?._id) return;
+
+    setStatusLoading(true);
+    try {
+      const result = await useCandidateContext().updateStatus(
+        pendingStatusChange.candidateId,
+        pendingStatusChange.newStatus,
+        user.designation || "Recruiter",
+        undefined, // interviewStage
+        undefined, // stageStatus
+        undefined, // stageNotes
+        comment,
+        joiningDate,
+        offerLetter,
+        selectionDate,
+        expectedJoiningDate,
+        rejectedBy,
+        ctc,
+        undefined, // droppedBy
+        rejectionReason
+      );
+
+      if (result) {
+        setStatusModalOpen(false);
+        setPendingStatusChange(null);
+        // Refresh list
+        fetchRoleBasedCandidates(
+          user._id,
+          user.designation || "Recruiter",
+          pagination.currentPage,
+          10,
+          {
+            search: debouncedSearch,
+            status: statusFilter === "All Status" ? undefined : statusFilter,
+            client: clientFilter,
+            jobTitle: jobTitleFilter === "All" ? undefined : jobTitleFilter
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Status update error:", error);
+      toast.error("Failed to update status");
+    } finally {
+      setStatusLoading(false);
+    }
   };
 
   // 📋 Get Unique Job Titles from JOBS Context
@@ -522,11 +568,12 @@ export default function Candidates() {
                               href={getFilePreviewUrl(candidate.resumeUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
+                              download={isWordDocument(candidate.resumeUrl)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors border border-blue-100"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Upload size={14} />
-                              View
+                              {isWordDocument(candidate.resumeUrl) ? 'Download' : 'View'}
                             </a>
                           ) : (
                             <span className="text-slate-300 text-xs font-medium">No Resume</span>
@@ -555,11 +602,12 @@ export default function Candidates() {
                                   href={getFilePreviewUrl((candidate as any).offerLetter)}
                                   target="_blank"
                                   rel="noopener noreferrer"
+                                  download={isWordDocument((candidate as any).offerLetter)}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-lg text-xs font-bold hover:bg-teal-100 transition-colors border border-teal-100"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <Upload size={14} />
-                                  View
+                                  {isWordDocument((candidate as any).offerLetter) ? 'Download' : 'View'}
                                 </a>
                               ) : "--"}
                             </td>
@@ -690,6 +738,7 @@ export default function Candidates() {
         currentJoiningDate={pendingStatusChange?.currentJoiningDate}
         currentSelectionDate={pendingStatusChange?.currentSelectionDate}
         currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
+        isLoading={statusLoading}
       />
     </>
   );

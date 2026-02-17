@@ -15,6 +15,7 @@ export default function MentorLeaveApplications() {
 
   // Apply modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const [formData, setFormData] = useState({
@@ -127,6 +128,7 @@ export default function MentorLeaveApplications() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const success = await applyLeave(formData);
       if (success) {
@@ -140,6 +142,8 @@ export default function MentorLeaveApplications() {
     } catch (err) {
       console.error(err);
       setToast({ message: "Failed to apply leave", type: "error" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -502,9 +506,11 @@ export default function MentorLeaveApplications() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    disabled={isSubmitting}
+                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-70 flex items-center justify-center gap-2 font-bold transition-all"
                   >
-                    Submit Application
+                    {isSubmitting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                    {isSubmitting ? "Submitting..." : "Submit Application"}
                   </button>
                 </div>
               </form>

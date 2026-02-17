@@ -75,16 +75,12 @@ export default function UploadCandidatePage() {
         if (e.target.files && e.target.files[0]) {
             const selectedFile = e.target.files[0];
 
-            // Validate file type - only allow PDF
+            // Validate file type - allow PDF and Word Documents
             const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
-            if (fileExtension === 'docx' || fileExtension === 'doc') {
-                alert('DOCX files are not supported. Please upload a PDF file only.');
-                e.target.value = ''; // Clear the input
-                return;
-            }
+            const allowedExtensions = ['pdf', 'doc', 'docx'];
 
-            if (fileExtension !== 'pdf') {
-                alert('Only PDF files are allowed for resume uploads.');
+            if (!allowedExtensions.includes(fileExtension || '')) {
+                alert('Only PDF and Word documents (.doc, .docx) are allowed for resume uploads.');
                 e.target.value = ''; // Clear the input
                 return;
             }
@@ -117,15 +113,12 @@ export default function UploadCandidatePage() {
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
             const selectedFile = e.dataTransfer.files[0];
 
-            // Validate file type - only allow PDF
+            // Validate file type - allow PDF and Word Documents
             const fileExtension = selectedFile.name.split('.').pop()?.toLowerCase();
-            if (fileExtension === 'docx' || fileExtension === 'doc') {
-                alert('DOCX files are not supported. Please upload a PDF file only.');
-                return;
-            }
+            const allowedExtensions = ['pdf', 'doc', 'docx'];
 
-            if (fileExtension !== 'pdf') {
-                alert('Only PDF files are allowed for resume uploads.');
+            if (!allowedExtensions.includes(fileExtension || '')) {
+                alert('Only PDF and Word documents (.doc, .docx) are allowed for resume uploads.');
                 return;
             }
 
@@ -189,9 +182,9 @@ export default function UploadCandidatePage() {
 
         try {
             const payload = {
-                jobId: job._id,
+                jobId: job._id as string,
                 createdBy: user?._id || "",
-                dynamicFields: formData,
+                dynamicFields: { ...formData, ...screeningAnswers },
                 // Add these if your form collects them, otherwise they might be empty or part of dynamicFields
                 linkedinUrl: formData.linkedinUrl || "",
                 portfolioUrl: formData.portfolioUrl || "",
@@ -279,7 +272,7 @@ export default function UploadCandidatePage() {
                                 <input
                                     type="file"
                                     id="cv-upload"
-                                    accept=".pdf,application/pdf"
+                                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                     onChange={handleFileChange}
                                     className="hidden"
                                 />
@@ -313,7 +306,7 @@ export default function UploadCandidatePage() {
                                             Click to Upload CV or Drag and Drop
                                         </p>
                                         <p className="text-xs text-slate-500">
-                                            PDF Only (Max 5MB)
+                                            PDF, DOC, DOCX (Max 5MB)
                                         </p>
                                     </label>
                                 )}
