@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff, Banknote, ChevronDown } from "lucide-react";
+import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff, Banknote, ChevronDown, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserContext } from "../../context/UserProvider";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
 
 // 🔹 Searchable Select Component
@@ -95,6 +95,7 @@ const SearchableSelect = ({
 
 export default function UserManagement() {
   const { users, addUser, updateUser, deleteUser, paginatedUsers, pagination, fetchPaginatedUsers, toggleUserStatus } = useUserContext();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -327,17 +328,27 @@ export default function UserManagement() {
             />
           </div>
 
-          <button
-            onClick={() => {
-              setEditUserId(null);
-              resetForm();
-              setShowModal(true);
-            }}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap order-first sm:order-last"
-          >
-            <Plus size={18} />
-            <span>Add Member</span>
-          </button>
+          <div className="flex items-center gap-2 order-first sm:order-last">
+            <button
+              onClick={() => navigate("/Admin/orphan-candidates")}
+              className="px-4 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm"
+              title="View candidates with invalid creator IDs"
+            >
+              <UserX size={18} />
+              <span className="hidden xl:inline">Orphans</span>
+            </button>
+            <button
+              onClick={() => {
+                setEditUserId(null);
+                resetForm();
+                setShowModal(true);
+              }}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm font-semibold whitespace-nowrap"
+            >
+              <Plus size={18} />
+              <span>Add Member</span>
+            </button>
+          </div>
         </div>
       </div>
 

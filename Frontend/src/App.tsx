@@ -38,6 +38,7 @@ import ManagerDashboard from "./components/ManagerPanel/Dashboard";
 import ManagerReports from "./components/ManagerPanel/Reports";
 import { MentorReports } from "./components/MentorPanel/pages/Reports";
 import AdminActivityLogs from "./components/AdminPanel/activitylogs";
+import OrphanCandidates from "./components/AdminPanel/OrphanCandidates";
 
 import Finance from "./components/AdminPanel/Finance";
 import { AdminCandidates } from "./components/AdminPanel/Candidates";
@@ -120,6 +121,7 @@ function App() {
             <Route path="/Admin/clients/add" element={<ClientsManager initialFormOpen={true} />} />
             <Route path="/Admin/candidates" element={<AdminCandidates />} />
             <Route path="/Admin/candidates/add" element={<AdminCandidates initialFormOpen={true} />} />
+            <Route path="/Admin/orphan-candidates" element={<OrphanCandidates />} />
           </Route>
           {/* recruiter */}
           <Route
