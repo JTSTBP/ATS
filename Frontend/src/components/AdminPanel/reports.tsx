@@ -1478,12 +1478,14 @@ export default function ReportsTab() {
                             <tbody className="divide-y divide-slate-100">
                               {candidatePopupData.candidates.map((candidate: any, index: number) => {
                                 const creatorId = typeof candidate.createdBy === 'object' ? candidate.createdBy?._id : candidate.createdBy;
-                                const creatorName = users.find(u => u._id === creatorId)?.name || 'Unknown';
+                                const creatorName = (typeof candidate.createdBy === 'object' && candidate.createdBy?.name)
+                                  ? candidate.createdBy.name
+                                  : (users.find(u => u._id === creatorId)?.name || 'Unknown');
                                 return (
                                   <tr key={index} className="hover:bg-slate-50 transition-colors group">
                                     <td className="py-4 px-6 text-slate-600 text-xs font-bold whitespace-nowrap">{candidate.createdAt ? formatDate(candidate.createdAt) : '-'}</td>
-                                    <td className="py-4 px-6 font-bold text-slate-700">{candidate.name}</td>
-                                    <td className="py-4 px-6 text-slate-600 font-mono text-xs">{candidate.phone}</td>
+                                    <td className="py-4 px-6 font-bold text-slate-700">{candidate.dynamicFields?.candidateName || '-'}</td>
+                                    <td className="py-4 px-6 text-slate-600 font-mono text-xs">{candidate.dynamicFields?.Phone || '-'}</td>
                                     <td className="py-4 px-6">
                                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
                                         {creatorName}
@@ -1531,13 +1533,13 @@ export default function ReportsTab() {
                                         {candidate.status === 'Dropped' && (
                                           <div className="flex flex-col gap-1">
                                             <span className="font-bold text-slate-600">By {candidate.droppedBy}</span>
-                                            <span className="text-slate-500 italic">{candidate.droppingReason}</span>
+                                            <span className="text-slate-500 italic">{candidate.notes || '-'}</span>
                                           </div>
                                         )}
                                       </td>
                                     )}
-                                    <td className="py-4 px-6 text-slate-500 text-xs italic max-w-[250px] truncate" title={candidate.remark}>
-                                      {candidate.remark || '-'}
+                                    <td className="py-4 px-6 text-slate-500 text-xs italic max-w-[250px] truncate" title={candidate.notes}>
+                                      {candidate.notes || '-'}
                                     </td>
                                   </tr>
                                 );
