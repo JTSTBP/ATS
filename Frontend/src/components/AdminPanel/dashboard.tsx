@@ -1,6 +1,7 @@
-import { Users, Briefcase, CalendarCheck, UserPlus, ClipboardCheck, Clock, CheckCircle } from "lucide-react";
+import { Users, Briefcase, CalendarCheck, UserPlus, ClipboardCheck, Clock, CheckCircle, Filter, X, Building2 } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
+import { useClientsContext } from "../../context/ClientsProvider";
 import { formatDate } from "../../utils/dateUtils";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -40,6 +41,7 @@ function useScreenSize() {
 export default function AdminDashboard() {
   const { users, leaves, fetchAllLeaves, fetchUsers } = useUserContext();
   const { jobs, fetchJobs } = useJobContext();
+  const { clients, fetchClients } = useClientsContext();
   const { candidates, fetchallCandidates } = useCandidateContext();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -52,10 +54,21 @@ export default function AdminDashboard() {
     fetchAllLeaves();
     fetchJobs();
     fetchallCandidates();
+    fetchClients();
   }, []);
 
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    return new Date().toISOString().slice(0, 7); // Default to current month (YYYY-MM)
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
+  });
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
 
   // If user is Finance, show Finance Dashboard
@@ -64,41 +77,44 @@ export default function AdminDashboard() {
   }
 
   // Filter functions
-  const filterByMonth = (dateString: string | undefined) => {
-    if (!selectedMonth) return true;
+  const filterByRange = (dateString: string | undefined) => {
+    if (!startDate && !endDate) return true;
     if (!dateString) return false;
     const date = new Date(dateString);
-    const month = date.toISOString().slice(0, 7); // YYYY-MM
-    return month === selectedMonth;
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+
+    if (start && end) return date >= start && date <= end;
+    if (start) return date >= start;
+    if (end) return date <= end;
+    return true;
   };
 
   // Calculate statistics
   const stats = useMemo(() => {
-    // Filter data based on selected month
-    const filteredJobs = jobs.filter((j) => filterByMonth(j.createdAt));
+    // 🔹 Global (Overall) Statistics - System status metrics (Unfiltered)
+    const activeJobs = jobs.filter((j) => j.status === "Open").length;
+    const totalPositions = jobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+    const joinedCandidatesEver = candidates.filter(c => c.status === "Joined").length;
+    const remainingPositions = totalPositions - joinedCandidatesEver;
 
-    const totalCandidates = candidates.filter((c) => filterByMonth(c.createdAt)).length;
-    const activeJobs = filteredJobs.filter((j) => j.status === "Open").length;
+    // 🔹 Range-based (Activity) Statistics - Filtered by selected date range
+    const totalCandidates = candidates.filter((c) => filterByRange(c.createdAt)).length;
 
-    // Status-specific counts
-    const newCandidates = candidates.filter((c) => c.status === "New" && filterByMonth(c.createdAt)).length;
-    const shortlistedCandidates = candidates.filter((c) => c.status === "Shortlisted" && filterByMonth(c.createdAt)).length;
-    const interviewedCandidates = candidates.filter((c) => c.status === "Interviewed" && filterByMonth(c.createdAt)).length;
-    const selectedCandidates = candidates.filter((c) => c.status === "Selected" && filterByMonth(c.selectionDate)).length;
+    // Status-specific counts for candidates in range
+    const newCandidates = candidates.filter((c) => c.status === "New" && filterByRange(c.createdAt)).length;
+    const shortlistedCandidates = candidates.filter((c) => c.status === "Shortlisted" && filterByRange(c.createdAt)).length;
+    const interviewedCandidates = candidates.filter((c) => c.status === "Interviewed" && filterByRange(c.createdAt)).length;
 
-    const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+    // Selection and Join counts based on their specific event dates in range
+    const selectedCandidates = candidates.filter((c) => c.status === "Selected" && filterByRange(c.selectionDate)).length;
+    const joinedCandidates = candidates.filter((c) => c.status === "Joined" && filterByRange(c.joiningDate)).length;
 
-    // Calculate joined candidates for these specific jobs, but only those who joined in the selected month
-    const joinedCandidates = candidates.filter(c => {
-      const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-      return (
-        c.status === "Joined" &&
-        filterByMonth(c.joiningDate) &&
-        filteredJobs.some(j => String(j._id) === String(cJobId))
-      );
-    }).length;
-
-    const remainingPositions = totalPositions - joinedCandidates;
+    // Overall Clients (Unfiltered)
+    const totalClients = clients.length;
 
     return {
       totalCandidates,
@@ -110,8 +126,9 @@ export default function AdminDashboard() {
       interviewedCandidates,
       selectedCandidates,
       joinedCandidates,
+      totalClients
     };
-  }, [users, leaves, jobs, candidates, selectedMonth]);
+  }, [users, leaves, jobs, candidates, clients, startDate, endDate]);
 
   // Prepare Recruiter Performance Data
   const recruiterPerformanceData = useMemo(() => {
@@ -140,18 +157,18 @@ export default function AdminDashboard() {
       }
 
       // 1. Uploaded/Shortlisted check (by createdAt)
-      if (filterByMonth(c.createdAt)) {
+      if (filterByRange(c.createdAt)) {
         recruiterStats[creatorId].uploaded += 1;
         if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
       }
 
       // 2. Selected check (by selectionDate)
-      if (c.status === "Selected" && filterByMonth(c.selectionDate)) {
+      if (c.status === "Selected" && filterByRange(c.selectionDate)) {
         recruiterStats[creatorId].joined += 1;
       }
 
       // 3. Joined check (by joiningDate)
-      if (c.status === "Joined" && filterByMonth(c.joiningDate)) {
+      if (c.status === "Joined" && filterByRange(c.joiningDate)) {
         recruiterStats[creatorId].joined += 1;
       }
     });
@@ -162,36 +179,53 @@ export default function AdminDashboard() {
     // Limit based on screen size to prevent label crowding
     const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
     return allRecruiters.slice(0, maxRecruiters);
-  }, [candidates, users, selectedMonth, screenSize]);
+  }, [candidates, users, startDate, endDate, screenSize]);
 
   return (
     <div className="text-slate-800">
       {/* Page Header */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard Overview</h1>
-          <p className="text-sm sm:text-base text-slate-500 mt-1">
+      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Dashboard Overview</h1>
+          <p className="text-sm sm:text-base text-slate-500 font-medium">
             Welcome back, Admin! Here's a quick summary of your portal activity.
           </p>
         </div>
 
-        {/* Month Filter */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <span className="text-xs sm:text-sm font-medium text-slate-600">Filter by Month:</span>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-auto"
-          />
-          {selectedMonth && (
-            <button
-              onClick={() => setSelectedMonth("")}
-              className="text-xs text-red-500 hover:text-red-700 underline py-1"
-            >
-              Clear
-            </button>
-          )}
+        {/* Date Range Filter - Simplified */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex items-center gap-3 px-4 py-2 bg-white/40 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition-all">
+            <CalendarCheck className="w-4 h-4 text-slate-500" />
+
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent border-none text-xs font-bold text-slate-700 focus:ring-0 p-0 w-24 cursor-pointer"
+              />
+              <span className="text-slate-300 font-bold px-1">→</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent border-none text-xs font-bold text-slate-700 focus:ring-0 p-0 w-24 cursor-pointer"
+              />
+            </div>
+
+            {(startDate || endDate) && (
+              <button
+                onClick={() => {
+                  setStartDate("");
+                  setEndDate("");
+                }}
+                className="p-1 text-slate-400 hover:text-red-500 transition-colors ml-1 border-l border-slate-200 pl-2"
+                title="Clear Filter"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -215,23 +249,24 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Total Positions */}
+        {/* Active Clients */}
         <div
-          onClick={() => navigate("/Admin/jobs")}
+          onClick={() => navigate("/Admin/clients")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
-              Total Positions
+            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+              Active Clients
             </p>
             <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.totalPositions}
+              {stats.totalClients}
             </h2>
           </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
-            <Briefcase size={24} />
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+            <Building2 size={24} />
           </div>
         </div>
+
 
         {/* Positions Left */}
         <div

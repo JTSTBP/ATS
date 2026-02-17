@@ -106,7 +106,7 @@ const SearchableSelect = ({
 
 export default function OrphanCandidates() {
     const { users, fetchUsers } = useUserContext();
-    const { candidates, fetchallCandidates, updateCandidate, loading: candidatesLoading } = useCandidateContext();
+    const { candidates, fetchallCandidates, updateCandidate, deleteCandidate, loading: candidatesLoading } = useCandidateContext();
     const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState("");
 
@@ -211,7 +211,53 @@ export default function OrphanCandidates() {
         setIsReassignModalOpen(false);
         setIsSubmitting(false);
         setSelectedIds([]);
-        fetchallCandidates(); // Refresh list
+        fetchallCandidates();
+    };
+
+    const handleDeleteCandidate = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this candidate? This action cannot be undone.")) return;
+
+        try {
+            const success = await deleteCandidate(id, "Admin");
+            if (success) {
+                toast.success("Candidate deleted successfully");
+                fetchallCandidates();
+                setSelectedIds(prev => prev.filter(i => i !== id));
+            }
+        } catch (error) {
+            console.error("Deletion failed:", error);
+            toast.error("Failed to delete candidate");
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} candidate(s)? This action cannot be undone.`)) return;
+
+        setIsSubmitting(true);
+        const total = selectedIds.length;
+        setProgress({ current: 0, total });
+
+        let successCount = 0;
+        for (let i = 0; i < total; i++) {
+            const id = selectedIds[i];
+            try {
+                const success = await deleteCandidate(id, "Admin");
+                if (success) successCount++;
+            } catch (error) {
+                console.error(`Deletion failed for ${id}:`, error);
+            }
+            setProgress(p => ({ ...p, current: i + 1 }));
+        }
+
+        if (successCount === total) {
+            toast.success(`Successfully deleted ${total} candidate(s)`);
+        } else if (successCount > 0) {
+            toast.info(`Successfully deleted ${successCount}/${total} candidate(s)`);
+        }
+
+        setIsSubmitting(false);
+        setSelectedIds([]);
+        fetchallCandidates();
     };
 
     const userOptions = useMemo(() => {
@@ -327,13 +373,22 @@ export default function OrphanCandidates() {
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6 text-center">
-                                                <button
-                                                    onClick={() => handleSingleReassignClick(candidate)}
-                                                    className="p-2.5 bg-white text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-100 rounded-xl transition-all shadow-sm hover:shadow-indigo-200"
-                                                    title="Reassign to valid user"
-                                                >
-                                                    <Edit size={18} />
-                                                </button>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => handleSingleReassignClick(candidate)}
+                                                        className="p-2.5 bg-white text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-100 rounded-xl transition-all shadow-sm hover:shadow-indigo-200"
+                                                        title="Reassign to valid user"
+                                                    >
+                                                        <Edit size={18} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteCandidate(candidate._id || '')}
+                                                        className="p-2.5 bg-white text-red-600 hover:bg-red-600 hover:text-white border border-red-100 rounded-xl transition-all shadow-sm hover:shadow-red-200"
+                                                        title="Delete candidate"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         </motion.tr>
                                     ))
@@ -376,6 +431,13 @@ export default function OrphanCandidates() {
                                     className="px-6 py-3 text-sm font-bold text-slate-400 hover:text-white transition-colors"
                                 >
                                     Cancel
+                                </button>
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black text-sm shadow-lg shadow-red-500/20 transition-all flex items-center gap-2 transform active:scale-95"
+                                >
+                                    <Trash2 size={18} />
+                                    DELETE ALL
                                 </button>
                                 <button
                                     onClick={handleBulkReassignClick}

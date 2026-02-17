@@ -429,8 +429,9 @@ export const Dashboard = () => {
                     tickLine={false}
                     tick={{ fill: '#64748b', fontSize: screenSize === 'mobile' ? 9 : 11, fontWeight: 600 }}
                     interval={0}
-                    angle={screenSize === 'mobile' ? -45 : 0}
-                    textAnchor={screenSize === 'mobile' ? 'end' : 'middle'}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
                   />
                   <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }} />
                   <Tooltip

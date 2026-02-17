@@ -148,7 +148,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const addUser = async (userData: UserFormData) => {
     try {
-      await axios.post(`${API_BASE_URL}/api/users`, userData);
+      // 🔹 FIX: Extract ID if it's a populated object
+      const processedData = {
+        ...userData,
+        reporter: typeof userData.reporter === 'object' && userData.reporter !== null
+          ? (userData.reporter as any)._id
+          : userData.reporter
+      };
+      await axios.post(`${API_BASE_URL}/api/users`, processedData);
       await fetchUsers(); // Fetch fresh list to get populated fields
       toast.success("User added successfully!");
       return true;
@@ -160,7 +167,14 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUser = async (id: string, userData: UserFormData) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/users/${id}`, userData);
+      // 🔹 FIX: Extract ID if it's a populated object
+      const processedData = {
+        ...userData,
+        reporter: typeof userData.reporter === 'object' && userData.reporter !== null
+          ? (userData.reporter as any)._id
+          : userData.reporter
+      };
+      await axios.put(`${API_BASE_URL}/api/users/${id}`, processedData);
 
       await fetchUsers();
       toast.success("User updated successfully!");

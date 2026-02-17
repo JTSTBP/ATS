@@ -45,7 +45,6 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
   const [statusFilter, setStatusFilter] = useState("all");
   const [filterClient, setFilterClient] = useState("all");
   const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
-  const [filterStage, setFilterStage] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [joinStartDate, setJoinStartDate] = useState("");
@@ -127,7 +126,6 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         status: statusFilter,
         client: filterClient,
         jobTitle: filterJobTitle,
-        stage: filterStage,
         startDate,
         endDate,
         joinStartDate,
@@ -175,12 +173,12 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [user?._id, user?.designation, currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, showForm, fetchRoleBasedCandidates]);
+  }, [user?._id, user?.designation, currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, showForm, fetchRoleBasedCandidates]);
 
   // Reset page to 1 on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+  }, [searchTerm, statusFilter, filterClient, filterJobTitle, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
 
   useEffect(() => {
     // Fetch all clients from API
@@ -221,11 +219,6 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     ? Array.from(new Set(jobs.map((j) => j.title).filter(Boolean))).sort()
     : [];
 
-  // Get available stages for the selected job
-  const availableStages =
-    filterJobTitle !== "all" && Array.isArray(jobs)
-      ? jobs.find((j) => j.title === filterJobTitle)?.stages || []
-      : [];
 
 
   const handleEdit = (candidate: any) => {
@@ -254,7 +247,6 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           status: statusFilter,
           client: filterClient,
           jobTitle: filterJobTitle,
-          stage: filterStage,
           startDate,
           endDate,
           joinStartDate,
@@ -324,13 +316,13 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Job Title</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Designation</label>
             <select
               value={filterJobTitle}
               onChange={(e) => setFilterJobTitle(e.target.value)}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-semibold text-gray-700"
             >
-              <option value="all">All Job Titles</option>
+              <option value="all">All Designations</option>
               {uniqueJobTitles.map((title: any) => (
                 <option key={title} value={title}>
                   {title}
@@ -339,26 +331,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
             </select>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Stage</label>
-            <select
-              value={filterStage}
-              onChange={(e) => setFilterStage(e.target.value)}
-              disabled={filterJobTitle === "all"}
-              className={`w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-semibold text-gray-700 ${filterJobTitle === "all" ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-gray-50"
-                }`}
-            >
-              <option value="all">All Stages</option>
-              {availableStages.map((stage: any, index: number) => (
-                <option key={index} value={stage.name}>
-                  {stage.name}
-                </option>
-              ))}
-            </select>
-          </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">From Date</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">Upload From</label>
             <input
               type="date"
               value={startDate}
@@ -368,7 +343,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">To Date</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">Upload To</label>
             <input
               type="date"
               value={endDate}
@@ -515,7 +490,13 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                   Resume
                 </th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Job
+                  Client
+                </th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Designation
+                </th>
+                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                  Upload Date
                 </th>
                 <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   Created By
@@ -638,13 +619,14 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                         <span className="text-gray-400 text-sm">No Resume</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
+                    <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                      {candidate.jobId?.clientId?.companyName || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                       {candidate.jobId?.title || "-"}
-                      {candidate.jobId?.clientId?.companyName && (
-                        <p className="text-xs text-gray-500 mt-1 uppercase tracking-tight">
-                          {candidate.jobId?.clientId?.companyName}
-                        </p>
-                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                      {candidate.createdAt ? formatDate(candidate.createdAt) : "-"}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
                       <div>

@@ -334,15 +334,15 @@ export default function Candidates() {
                 </div>
 
                 <div className="space-y-1.5 lg:col-span-2">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Job Title</label>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Designation</label>
                   <SearchableSelect
                     options={[
-                      { value: 'All', label: 'All Jobs' },
+                      { value: 'All', label: 'All Designations' },
                       ...uniqueJobTitles.map(t => ({ value: t, label: t }))
                     ]}
                     value={jobTitleFilter}
                     onChange={(val) => setJobTitleFilter(val)}
-                    placeholder="All Jobs"
+                    placeholder="All Designations"
                   />
                 </div>
 
@@ -493,8 +493,9 @@ export default function Candidates() {
                   <tr>
                     <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Candidate</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Contact</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Job Title</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Client</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Designation</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Upload Date</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Resume</th>
                     <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Status</th>
                     {statusFilter === "Joined" && (
@@ -557,10 +558,13 @@ export default function Candidates() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
+                          <div className="text-xs text-indigo-500 font-bold uppercase tracking-tight">{clientName}</div>
+                        </td>
+                        <td className="px-6 py-4">
                           <div className="text-sm font-semibold text-slate-800">{job?.title || "N/A"}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-xs text-indigo-500 font-bold uppercase tracking-tight">{clientName}</div>
+                          <div className="text-sm font-medium text-slate-600">{candidate.createdAt ? formatDate(candidate.createdAt) : "-"}</div>
                         </td>
                         <td className="px-6 py-4">
                           {candidate.resumeUrl ? (

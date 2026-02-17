@@ -293,13 +293,17 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const formData = new FormData();
 
+      // 🔹 FIX: Extract ID if they are populated objects
+      const jobId = typeof candidate.jobId === 'object' && candidate.jobId !== null ? candidate.jobId._id : candidate.jobId;
+      const createdBy = typeof candidate.createdBy === 'object' && candidate.createdBy !== null ? candidate.createdBy._id : candidate.createdBy;
+
       // Append all normal fields
-      formData.append("jobId", candidate.jobId);
-      formData.append("createdBy", candidate.createdBy);
-      formData.append("linkedinUrl", candidate.linkedinUrl);
-      formData.append("portfolioUrl", candidate.portfolioUrl);
-      formData.append("notes", candidate.notes);
-      formData.append("dynamicFields", JSON.stringify(candidate.dynamicFields));
+      if (jobId) formData.append("jobId", jobId);
+      if (createdBy) formData.append("createdBy", createdBy);
+      formData.append("linkedinUrl", candidate.linkedinUrl || "");
+      formData.append("portfolioUrl", candidate.portfolioUrl || "");
+      formData.append("notes", candidate.notes || "");
+      formData.append("dynamicFields", JSON.stringify(candidate.dynamicFields || {}));
 
       // Append file
       if (file) {
@@ -349,13 +353,17 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       const formData = new FormData();
 
+      // 🔹 FIX: Extract ID if they are populated objects
+      const jobId = typeof updated.jobId === 'object' && updated.jobId !== null ? updated.jobId._id : updated.jobId;
+      const createdBy = typeof updated.createdBy === 'object' && updated.createdBy !== null ? updated.createdBy._id : updated.createdBy;
+
       // Append all normal fields
-      formData.append("jobId", updated.jobId);
-      formData.append("createdBy", updated.createdBy);
-      formData.append("linkedinUrl", updated.linkedinUrl);
-      formData.append("portfolioUrl", updated.portfolioUrl);
-      formData.append("notes", updated.notes);
-      formData.append("dynamicFields", JSON.stringify(updated.dynamicFields));
+      if (jobId) formData.append("jobId", jobId);
+      if (createdBy) formData.append("createdBy", createdBy);
+      formData.append("linkedinUrl", updated.linkedinUrl || "");
+      formData.append("portfolioUrl", updated.portfolioUrl || "");
+      formData.append("notes", updated.notes || "");
+      formData.append("dynamicFields", JSON.stringify(updated.dynamicFields || {}));
 
       // Append file if provided
       if (file) {

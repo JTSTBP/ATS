@@ -12,6 +12,7 @@ import { useCandidateContext } from "../../../context/CandidatesProvider"; // Ad
 import { JobDetailsModal } from "./JobDetailedView";
 import { useAuth } from "../../../context/AuthProvider";
 import JobCard from "./Job/listjobs";
+import { useClientsContext } from "../../../context/ClientsProvider"; // Added
 
 import { useUserContext } from "../../../context/UserProvider";
 import { formatDate } from "../../../utils/dateUtils";
@@ -59,7 +60,7 @@ export const JobsManager = ({
   } = useJobContext();
 
   const { users, fetchUsers } = useUserContext(); // Added to get reportees for scoping
-  // const { clients } = useClientsContext(); // Unused
+  const { clients, fetchClients } = useClientsContext(); // Added
   const { candidates, fetchallCandidates } = useCandidateContext(); // Get all candidates
 
   const { user } = useAuth();
@@ -68,6 +69,7 @@ export const JobsManager = ({
   useEffect(() => {
     fetchallCandidates();
     fetchUsers();
+    fetchClients();
   }, []);
 
   // Scoping logic for Stats
@@ -105,40 +107,23 @@ export const JobsManager = ({
 
   // Calculate Stats
   const stats = useMemo(() => {
-    // 1. Active Jobs
-    const activeJobsList = scopedJobs.filter(j => j.status === 'Open');
-    const activeJobsCount = activeJobsList.length;
+    // 1. Active Jobs (Global/Overall)
+    const activeJobsCount = jobs.filter(j => j.status === 'Open').length;
 
-    // 2. Active Clients (Clients with at least one Open job)
-    const activeClientIds = new Set();
-    activeJobsList.forEach(job => {
-      if (job.clientId) {
-        const cId = job.clientId?._id || job.clientId;
-        if (cId) activeClientIds.add(cId);
-      }
-    });
-    const activeClientsCount = activeClientIds.size;
+    // 2. Active Clients (Global/Overall)
+    const activeClientsCount = clients.length;
 
-    // 3. Positions Left
-    // Sum of noOfPositions for all Active Jobs
-    const totalPositions = activeJobsList.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
-
-    // Count Joined candidates for these Active Jobs
-    const activeJobIds = new Set(activeJobsList.map(j => j._id));
-    const joinedCandidatesCount = scopedCandidates.filter(c => {
-      if (c.status !== 'Joined') return false;
-      const jId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-      return activeJobIds.has(jId);
-    }).length;
-
-    const positionsLeftCount = Math.max(0, totalPositions - joinedCandidatesCount);
+    // 3. Positions Left (Global/Overall)
+    const totalPositions = jobs.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
+    const joinedCandidatesEver = candidates.filter(c => c.status === 'Joined').length;
+    const positionsLeftCount = Math.max(0, totalPositions - joinedCandidatesEver);
 
     return {
       activeJobs: activeJobsCount,
       activeClients: activeClientsCount,
       positionsLeft: positionsLeftCount
     };
-  }, [scopedJobs, scopedCandidates]); // Recalculate when scoped data changes
+  }, [jobs, clients, candidates]); // Sync with global data
 
 
 

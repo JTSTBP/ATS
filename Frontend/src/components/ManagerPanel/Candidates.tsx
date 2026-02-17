@@ -14,6 +14,7 @@ import {
   Clock,
 } from "lucide-react";
 import { getImageUrl, getFilePreviewUrl } from "../../utils/imageUtils";
+import { formatDate } from "../../utils/dateUtils";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useJobContext } from "../../context/DataProvider";
@@ -412,12 +413,12 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Job Title</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Designation</label>
             <SearchableSelect
               options={jobOptions}
               value={filterJobTitle}
               onChange={(val) => { setFilterJobTitle(val); setFilterStage("all"); setCurrentPage(1); }}
-              placeholder="All Job Titles"
+              placeholder="All Designations"
             />
           </div>
 
@@ -435,7 +436,16 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
 
         <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mt-6 pt-6 border-t border-slate-100">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 block">From Date</label>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 block">Upload From</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 text-sm outline-none"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1 block">Upload To</label>
             <input
               type="date"
               value={endDate}
@@ -541,8 +551,9 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
               <tr>
                 <th className="px-6 py-4">Name</th>
                 <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4">Job Title</th>
                 <th className="px-6 py-4">Client</th>
+                <th className="px-6 py-4">Designation</th>
+                <th className="px-6 py-4">Upload Date</th>
                 <th className="px-6 py-4">Recruiter</th>
                 <th className="px-6 py-4">Reporter</th>
                 <th className="px-6 py-4">Resume</th>
@@ -583,10 +594,13 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                         </div>
                       </td>
                       <td className="px-6 py-4">
+                        <span className="text-xs text-indigo-500 font-medium">{candidate.jobId?.clientId?.companyName || "N/A"}</span>
+                      </td>
+                      <td className="px-6 py-4">
                         <span className="font-semibold text-slate-700">{candidate.jobId?.title || "N/A"}</span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className="text-xs text-indigo-500 font-medium">{candidate.jobId?.clientId?.companyName || "N/A"}</span>
+                        <span className="text-sm text-slate-600">{candidate.createdAt ? formatDate(candidate.createdAt) : "-"}</span>
                       </td>
                       <td className="px-6 py-4 font-medium text-slate-600">
                         {candidate.createdBy?.name || "N/A"}
