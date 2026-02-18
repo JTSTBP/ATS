@@ -32,7 +32,7 @@ export default function MainLayout() {
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const menuItems = [
     { path: "/Recruiter", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/Recruiter/upload-cv", label: "My Job", icon: Briefcase },
+    { path: "/Recruiter/upload-cv", label: "My Requirements", icon: Briefcase },
     { path: "/Recruiter/candidates", label: "My Candidates", icon: Users },
     { path: "/Recruiter/reports", label: "Reports", icon: FileText },
     {
@@ -52,9 +52,8 @@ export default function MainLayout() {
       />
 
       <div
-        className={`transition-all duration-300 ${
-          isSidebarOpen ? "lg:ml-64" : "ml-0"
-        }`}
+        className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "ml-0"
+          }`}
       >
         <Navbar toggleSidebar={toggleSidebar} />
 

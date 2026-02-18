@@ -293,7 +293,7 @@ export default function AdminDashboard() {
         >
           <div>
             <p className="text-slate-500 text-sm font-medium group-hover:text-amber-600 transition-colors">
-              Active Jobs
+              Active Requirements
             </p>
             <h2 className="text-3xl font-bold mt-1 text-slate-800">
               {stats.activeJobs}
@@ -463,7 +463,7 @@ export default function AdminDashboard() {
         <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
             <h3 className="font-bold text-base sm:text-lg text-slate-800">
-              Active Job Postings
+              Active Requirements
             </h3>
             <p className="text-xs sm:text-sm text-slate-500">Currently open positions</p>
           </div>
@@ -526,14 +526,12 @@ export default function AdminDashboard() {
                     </tr>
                   ))
               ) : (
-                <tr>
-                  <td
-                    colSpan={6}
-                    className="px-4 sm:px-6 py-8 text-center text-slate-500"
-                  >
-                    No active jobs found.
-                  </td>
-                </tr>
+                <td
+                  colSpan={6}
+                  className="px-4 sm:px-6 py-8 text-center text-slate-500"
+                >
+                  No active requirements found.
+                </td>
               )}
             </tbody>
           </table>
@@ -544,7 +542,7 @@ export default function AdminDashboard() {
               onClick={() => navigate("/Admin/jobs")}
               className="text-blue-600 hover:text-blue-700 text-sm font-medium"
             >
-              View All Jobs
+              View All Requirements
             </button>
           </div>
         )}

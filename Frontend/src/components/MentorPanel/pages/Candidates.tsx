@@ -45,6 +45,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
   const [statusFilter, setStatusFilter] = useState("all");
   const [filterClient, setFilterClient] = useState("all");
   const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
+  const [filterStage, setFilterStage] = useState("all");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [joinStartDate, setJoinStartDate] = useState("");
@@ -173,12 +174,12 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [user?._id, user?.designation, currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, showForm, fetchRoleBasedCandidates]);
+  }, [user?._id, user?.designation, currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, showForm, fetchRoleBasedCandidates]);
 
   // Reset page to 1 on filter change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, filterClient, filterJobTitle, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+  }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
 
   useEffect(() => {
     // Fetch all clients from API
@@ -247,6 +248,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           status: statusFilter,
           client: filterClient,
           jobTitle: filterJobTitle,
+          stage: filterStage,
           startDate,
           endDate,
           joinStartDate,
@@ -353,7 +355,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           </div>
 
           <div className="flex items-end">
-            {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate) ? (
+            {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate || filterClient !== "all" || filterJobTitle !== "all" || filterStage !== "all" || searchTerm) ? (
               <button
                 onClick={() => {
                   setStartDate("");
@@ -362,6 +364,10 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                   setJoinEndDate("");
                   setSelectStartDate("");
                   setSelectEndDate("");
+                  setFilterClient("all");
+                  setFilterJobTitle("all");
+                  setFilterStage("all");
+                  setSearchTerm("");
                 }}
                 className="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition text-xs font-bold uppercase tracking-wider"
               >

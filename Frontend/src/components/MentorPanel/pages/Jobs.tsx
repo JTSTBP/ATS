@@ -29,6 +29,9 @@ interface JobType {
   candidateCount?: number;
   newResponses?: number;
   shortlisted?: number;
+  interviewed?: number;
+  selected?: number;
+  joined?: number;
   createdAt?: string;
   CreatedBy?: { _id: string; name: string } | string;
   clientId?: { _id: string; companyName: string; logo?: string };
@@ -105,25 +108,6 @@ export const JobsManager = ({
 
   const { scopedJobs, scopedCandidates } = scopedData;
 
-  // Calculate Stats
-  const stats = useMemo(() => {
-    // 1. Active Jobs (Global/Overall)
-    const activeJobsCount = jobs.filter(j => j.status === 'Open').length;
-
-    // 2. Active Clients (Global/Overall)
-    const activeClientsCount = clients.length;
-
-    // 3. Positions Left (Global/Overall)
-    const totalPositions = jobs.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
-    const joinedCandidatesEver = candidates.filter(c => c.status === 'Joined').length;
-    const positionsLeftCount = Math.max(0, totalPositions - joinedCandidatesEver);
-
-    return {
-      activeJobs: activeJobsCount,
-      activeClients: activeClientsCount,
-      positionsLeft: positionsLeftCount
-    };
-  }, [jobs, clients, candidates]); // Sync with global data
 
 
 
@@ -145,6 +129,63 @@ export const JobsManager = ({
 
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [selectedJob, setSelectedJob] = useState<JobType | null>(null);
+
+  // Calculate Stats
+  const stats = useMemo(() => {
+    // Apply filters to scopedJobs for stats calculation
+    const filteredJobsForStats = scopedJobs.filter((job: any) => {
+      // 1. Status Filter (mirroring server logic)
+      if (filterStatus !== "all" && job.status !== filterStatus) return false;
+
+      // 2. Search Filter (Title, Dept, Location, Employment Type)
+      if (searchTerm) {
+        const searchRegex = new RegExp(searchTerm, "i");
+        const locationMatch = Array.isArray(job.location)
+          ? job.location.some((loc: any) => searchRegex.test(loc.name))
+          : searchRegex.test(job.location || "");
+
+        const basicMatch = searchRegex.test(job.title || "") ||
+          searchRegex.test(job.department || "") ||
+          searchRegex.test(job.employmentType || "");
+
+        if (!basicMatch && !locationMatch) return false;
+      }
+
+      // 3. Client Search Filter
+      if (clientSearchTerm) {
+        const clientSearchRegex = new RegExp(clientSearchTerm, "i");
+        if (!clientSearchRegex.test(job.clientId?.companyName || "")) return false;
+      }
+
+      return true;
+    });
+
+    const filteredJobIds = new Set(filteredJobsForStats.map(j => j._id));
+
+    // Filtered candidates for these jobs
+    const filteredCandidatesForStats = scopedCandidates.filter((c: any) => {
+      const jobId = c.jobId?._id || c.jobId;
+      return filteredJobIds.has(jobId);
+    });
+
+    // 1. Active Jobs (Open jobs in the filtered set)
+    const activeJobsCount = filteredJobsForStats.filter(j => j.status === 'Open').length;
+
+    // 2. Active Clients (Unique clients in the filtered set)
+    const uniqueClientIds = new Set(filteredJobsForStats.filter(j => j.clientId).map(j => j.clientId._id || j.clientId));
+    const activeClientsCount = uniqueClientIds.size;
+
+    // 3. Positions Left (Calculated for filtered set)
+    const totalPositions = filteredJobsForStats.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
+    const joinedCandidates = filteredCandidatesForStats.filter(c => c.status === 'Joined').length;
+    const positionsLeftCount = Math.max(0, totalPositions - joinedCandidates);
+
+    return {
+      activeJobs: activeJobsCount,
+      activeClients: activeClientsCount,
+      positionsLeft: positionsLeftCount
+    };
+  }, [scopedJobs, scopedCandidates, searchTerm, clientSearchTerm, filterStatus]);
 
   // Simulated user permissions
   const canManageJobs = true;
@@ -212,9 +253,9 @@ export const JobsManager = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 leading-tight">
-            Job Openings
+            Open Requirements
           </h2>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage job postings and openings</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Manage requirement postings and openings</p>
         </div>
         {canManageJobs && (
           <button
@@ -222,7 +263,7 @@ export const JobsManager = ({
             className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold hover:from-orange-600 hover:to-orange-700 transition shadow-md hover:shadow-orange-200/50 w-full sm:w-auto"
           >
             <Plus className="w-5 h-5" />
-            <span>Post New Job</span>
+            <span>Post New Requirement</span>
           </button>
         )}
       </div>
@@ -243,7 +284,7 @@ export const JobsManager = ({
         {/* Active Jobs */}
         <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all">
           <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-amber-600 transition-colors">Active Jobs</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-amber-600 transition-colors">Active Requirements</p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.activeJobs}</h3>
           </div>
           <div className="bg-amber-50 text-amber-600 p-3 sm:p-4 rounded-2xl group-hover:bg-amber-100 transition-colors">
@@ -302,7 +343,7 @@ export const JobsManager = ({
         </div>
       </div>
 
-      {/* Job Cards */}
+      {/* Requirement Cards */}
       <div className="space-y-4">
         {loading ? (
           <div className="flex items-center justify-center h-64">
@@ -333,6 +374,9 @@ export const JobsManager = ({
               totalResponses={job.candidateCount || 0}
               newResponses={job.newResponses || 0}
               shortlisted={job.shortlisted || 0}
+              interviewed={job.interviewed || 0}
+              selected={job.selected || 0}
+              joined={job.joined || 0}
               postedBy={typeof job.CreatedBy === 'object' && job.CreatedBy ? job.CreatedBy.name : "You"}
               positions={job.noOfPositions}
               status={job.status}
@@ -362,7 +406,7 @@ export const JobsManager = ({
       {/* Pagination Controls */}
       <div className="p-4 sm:p-6 flex flex-col sm:flex-row items-center justify-between bg-white rounded-2xl shadow-sm border border-gray-100 gap-4">
         <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-          Showing <span className="text-gray-700 font-extrabold">{((currentPage - 1) * limit) + 1}</span> to <span className="text-gray-700 font-extrabold">{Math.min(currentPage * limit, pagination?.totalJobs || 0)}</span> of <span className="text-gray-700 font-extrabold">{pagination?.totalJobs || 0}</span> jobs
+          Showing <span className="text-gray-700 font-extrabold">{((currentPage - 1) * limit) + 1}</span> to <span className="text-gray-700 font-extrabold">{Math.min(currentPage * limit, pagination?.totalJobs || 0)}</span> of <span className="text-gray-700 font-extrabold">{pagination?.totalJobs || 0}</span> requirements
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -406,12 +450,12 @@ export const JobsManager = ({
         <div className="bg-white rounded-xl p-12 text-center shadow-md border border-gray-200">
           <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-600 mb-2">
-            No jobs found
+            No requirements found
           </h3>
           <p className="text-gray-500">
             {searchTerm || filterStatus !== "all"
               ? "Try adjusting your filters"
-              : "Get started by posting a new job"}
+              : "Get started by posting a new requirement"}
           </p>
         </div>
       )}

@@ -94,9 +94,9 @@ export default function UploadCV() {
       className="space-y-6"
     >
       <div>
-        <h1 className="text-2xl font-bold text-slate-800 mb-2">My Jobs</h1>
+        <h1 className="text-2xl font-bold text-slate-800 mb-2">My Requirements</h1>
         <p className="text-slate-600">
-          Manage your job openings and upload candidates directly.
+          Manage your requirement openings and upload candidates directly.
         </p>
       </div>
 
@@ -106,7 +106,7 @@ export default function UploadCV() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
           <input
             type="text"
-            placeholder="Search jobs by title or department..."
+            placeholder="Search requirements by title or department..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -134,7 +134,7 @@ export default function UploadCV() {
             <Briefcase size={32} className="text-slate-400" />
           </div>
           <h3 className="text-lg font-medium text-slate-800 mb-1">
-            No jobs found
+            No requirements found
           </h3>
           <p className="text-slate-500">
             Try adjusting your search or filters.
@@ -159,7 +159,7 @@ export default function UploadCV() {
           {pagination.totalJobs > 0 && (
             <div className="flex items-center justify-between p-4 mt-6 border-t border-slate-200 bg-white rounded-xl">
               <div className="text-sm text-slate-500">
-                Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalJobs)} of {pagination.totalJobs} jobs
+                Showing {((pagination.currentPage - 1) * 10) + 1} to {Math.min(pagination.currentPage * 10, pagination.totalJobs)} of {pagination.totalJobs} requirements
               </div>
               <div className="flex gap-2">
                 <button

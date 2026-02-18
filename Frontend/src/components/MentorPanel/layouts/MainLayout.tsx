@@ -40,7 +40,7 @@ export const MainLayout = ({
     },
     {
       id: "jobs",
-      label: "Jobs",
+      label: "Requirements",
       icon: Briefcase,
       color: "from-green-500 to-green-600",
     },

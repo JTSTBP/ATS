@@ -42,7 +42,7 @@ export default function AdminLayout() {
     { path: "/Admin", label: "Dashboard", icon: LayoutDashboard, roles: ["Admin", "Finance"] },
     { path: "/admin/users", label: "Manage Users", icon: Users, roles: ["Admin"] },
     { path: "/Admin/candidates", label: "Candidates", icon: Users, roles: ["Admin", "Finance"] },
-    { path: "/Admin/jobs", label: "Jobs", icon: Briefcase, roles: ["Admin"] },
+    { path: "/Admin/jobs", label: "Requirements", icon: Briefcase, roles: ["Admin"] },
     { path: "/Admin/clients", label: "Clients", icon: Building2, roles: ["Admin", "Finance"] },
     {
       path: "/Admin/leaveApplications",

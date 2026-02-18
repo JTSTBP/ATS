@@ -228,7 +228,7 @@ export const Dashboard = () => {
 
   const statCards: Array<{ label: string; value: number; subValue?: string; icon: any; color: string; bgColor: string; path: string }> = [
     {
-      label: 'Total Jobs',
+      label: 'Total Requirements',
       value: stats.totalJobs,
       subValue: `${stats.openJobs} Open`,
       icon: Briefcase,
@@ -472,7 +472,7 @@ export const Dashboard = () => {
                 <div className="p-2 sm:p-3 bg-white rounded-full shadow-sm mb-2 sm:mb-3 group-hover:scale-110 transition-transform">
                   <Plus className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                 </div>
-                <span className="text-xs sm:text-sm font-bold text-blue-900">Post Job</span>
+                <span className="text-xs sm:text-sm font-bold text-blue-900">Post Requirement</span>
               </button>
               <button
                 onClick={() => navigate('/Mentor/candidates/add')}

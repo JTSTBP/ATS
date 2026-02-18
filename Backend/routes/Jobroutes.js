@@ -159,6 +159,15 @@ router.get("/", async (req, res) => {
           shortlistedCount: {
             $sum: { $cond: [{ $eq: ["$status", "Shortlisted"] }, 1, 0] }
           },
+          interviewedCount: {
+            $sum: { $cond: [{ $eq: ["$status", "Interviewed"] }, 1, 0] }
+          },
+          selectedCount: {
+            $sum: { $cond: [{ $eq: ["$status", "Selected"] }, 1, 0] }
+          },
+          joinedCount: {
+            $sum: { $cond: [{ $eq: ["$status", "Joined"] }, 1, 0] }
+          },
           totalCount: { $sum: 1 }
         }
       }
@@ -171,6 +180,9 @@ router.get("/", async (req, res) => {
         ...job,
         newResponses: stat ? stat.newCount : 0,
         shortlisted: stat ? stat.shortlistedCount : 0,
+        interviewed: stat ? stat.interviewedCount : 0,
+        selected: stat ? stat.selectedCount : 0,
+        joined: stat ? stat.joinedCount : 0,
         candidateCount: stat ? stat.totalCount : (job.candidateCount || 0)
       };
     });

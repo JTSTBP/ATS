@@ -38,7 +38,7 @@ export default function MentorLayout() {
 
   const menuItems = [
     { path: "/Mentor/", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/Mentor/jobs", label: "Jobs", icon: Briefcase },
+    { path: "/Mentor/jobs", label: "Requirements", icon: Briefcase },
     { path: "/Mentor/candidates", label: "Candidates", icon: Users },
     { path: "/Mentor/applications", label: "Applications", icon: FileText },
     {
@@ -61,9 +61,8 @@ export default function MentorLayout() {
       />
 
       <div
-        className={`transition-all duration-300 ${
-          isSidebarOpen ? "lg:ml-64" : "ml-0"
-        }`}
+        className={`transition-all duration-300 ${isSidebarOpen ? "lg:ml-64" : "ml-0"
+          }`}
       >
         <Navbar toggleSidebar={toggleSidebar} />
         <main className="p-6">

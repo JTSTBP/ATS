@@ -37,7 +37,7 @@ export default function JobPreviewDetails() {
   if (!job) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <p className="text-slate-500">Loading job details...</p>
+        <p className="text-slate-500">Loading requirement details...</p>
       </div>
     );
   }
@@ -58,8 +58,8 @@ export default function JobPreviewDetails() {
           <ArrowLeft size={24} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Job Details</h1>
-          <p className="text-slate-500 text-sm">Previewing job posting</p>
+          <h1 className="text-2xl font-bold text-slate-800">Requirement Details</h1>
+          <p className="text-slate-500 text-sm">Previewing requirement posting</p>
         </div>
       </div>
 

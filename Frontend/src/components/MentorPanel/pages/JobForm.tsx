@@ -409,7 +409,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-2">
           <h3 className="text-xl font-semibold text-gray-800">
-            {job ? "Edit Job" : "Post New Job"}
+            {job ? "Edit Requirement" : "Post New Requirement"}
           </h3>
           <button
             onClick={onClose}
@@ -443,7 +443,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Title <span className="text-red-500">*</span>
+                    Requirement Title <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -458,7 +458,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Job Description <span className="text-red-500">*</span>
+                    Requirement Description <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     placeholder="Describe the role..."

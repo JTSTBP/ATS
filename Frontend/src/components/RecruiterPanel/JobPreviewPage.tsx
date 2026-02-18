@@ -44,7 +44,7 @@ export default function JobPreviewPage() {
             <div>
                 <h1 className="text-2xl font-bold text-slate-800 mb-2">Preview</h1>
                 <p className="text-slate-600">
-                    Review job details and requirements.
+                    Review requirement details and requirements.
                 </p>
             </div>
 
@@ -54,7 +54,7 @@ export default function JobPreviewPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
-                        placeholder="Search jobs by title or department..."
+                        placeholder="Search requirements by title or department..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -92,10 +92,10 @@ export default function JobPreviewPage() {
                         <Briefcase size={32} className="text-slate-400" />
                     </div>
                     <h3 className="text-lg font-medium text-slate-800 mb-1">
-                        {jobs.length === 0 ? "Loading jobs..." : "No jobs found"}
+                        {jobs.length === 0 ? "Loading requirements..." : "No requirements found"}
                     </h3>
                     <p className="text-slate-500">
-                        {jobs.length === 0 ? "Please wait while we fetch your jobs" : "Try adjusting your search or filters."}
+                        {jobs.length === 0 ? "Please wait while we fetch your requirements" : "Try adjusting your search or filters."}
                     </p>
                 </div>
             ) : (

@@ -36,7 +36,7 @@ export default function ManagerPanel() {
 
   const menuItems = [
     { path: "/Manager/", label: "Dashboard", icon: LayoutDashboard },
-    { path: "/Manager/jobs", label: "Jobs", icon: Briefcase },
+    { path: "/Manager/jobs", label: "Requirements", icon: Briefcase },
     { path: "/Manager/candidates", label: "Candidates", icon: Users },
     { path: "/Manager/applications", label: "Applications", icon: FileText },
     {

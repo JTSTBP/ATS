@@ -36,6 +36,9 @@ export type Job = {
   candidateCount?: number;
   newResponses?: number;
   shortlisted?: number;
+  interviewed?: number;
+  selected?: number;
+  joined?: number;
 };
 
 type JobContextType = {

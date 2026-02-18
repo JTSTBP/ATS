@@ -10,8 +10,8 @@ const API_URL = `${API_BASE_URL}/api/CandidatesJob`;
 
 type Candidate = {
   _id?: string;
-  jobId: string;
-  createdBy: string;
+  jobId: string | any;
+  createdBy: string | any;
   resumeUrl?: string;
   linkedinUrl?: string;
   portfolioUrl?: string;
@@ -186,6 +186,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     filters: any = {}
   ) => {
     setLoading(true);
+    console.log("🚀 Frontend Fetching Role-Based Candidates:", { userId, designation, page, limit, filters });
     try {
       const params = {
         userId,
@@ -196,6 +197,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       const { data } = await axios.get(`${API_URL}/role-based-candidates`, { params });
+      console.log("✅ API Response for role-based candidates:", data);
 
       if (data.success) {
         setPaginatedCandidates(data.candidates);
@@ -205,11 +207,12 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
           totalCandidates: data.totalCandidates
         });
       } else {
-        throw new Error("Failed to load candidates");
+        throw new Error(data.message || "Failed to load candidates");
       }
     } catch (err: any) {
+      console.error("❌ Error in fetchRoleBasedCandidates:", err);
       setError(err.message);
-      toast.error("Failed to load candidates");
+      toast.error(`Failed to load candidates: ${err.response?.data?.message || err.message || 'Connection Error'}`);
     } finally {
       setLoading(false);
     }

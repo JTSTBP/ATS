@@ -17,6 +17,9 @@ interface JobCardProps {
     totalResponses?: number;
     newResponses?: number;
     shortlisted?: number;
+    interviewed?: number;
+    selected?: number;
+    joined?: number;
     postedBy?: string;
     postedDate?: string;
     // action handlers (optional)
@@ -39,6 +42,9 @@ const JobCard: React.FC<JobCardProps> = ({
     totalResponses = 0,
     newResponses = 0,
     shortlisted = 0,
+    interviewed = 0,
+    selected = 0,
+    joined = 0,
     postedBy = "You",
     postedDate = "N/A",
     onView,
@@ -116,45 +122,65 @@ const JobCard: React.FC<JobCardProps> = ({
                 </div>
             </div>
 
-            {/* MIDDLE SECTION — Stats - Stacks on mobile, centered grid on desktop */}
-            <div className="w-full md:col-span-4 flex flex-wrap justify-between md:justify-center gap-4 md:gap-8 items-center py-4 md:py-0 border-y md:border-none border-gray-50">
+            {/* MIDDLE SECTION — Stats - Grid Layout */}
+            <div className="w-full md:col-span-4 grid grid-cols-2 lg:grid-cols-3 gap-3 py-4 md:py-0 border-y md:border-none border-gray-50">
+
+                {/* Total */}
                 <div
-                    className="flex flex-col items-center cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition"
+                    className="flex flex-col items-center justify-center p-2 rounded-xl bg-blue-50/50 hover:bg-blue-50 cursor-pointer transition border border-blue-100/50"
                     onClick={() => handleTitleClick("all")}
                 >
-                    <p className="text-base md:text-lg font-bold text-gray-900">
-                        {totalResponses}
-                    </p>
-                    <div className="flex flex-col items-center">
-                        <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">
+                    <span className="text-lg font-extrabold text-blue-700">{totalResponses}</span>
+                    <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide">Total</span>
+                    {newResponses > 0 && (
+                        <span className="mt-1 px-1.5 py-0.5 bg-blue-600 text-white text-[9px] font-bold rounded-full shadow-sm shadow-blue-200">
                             {newResponses} New
                         </span>
-                        <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Total</p>
-                    </div>
+                    )}
                 </div>
 
+                {/* Shortlisted */}
                 <div
-                    className="flex flex-col items-center cursor-pointer hover:bg-gray-50 p-1 rounded-lg transition"
+                    className="flex flex-col items-center justify-center p-2 rounded-xl bg-purple-50/50 hover:bg-purple-50 cursor-pointer transition border border-purple-100/50"
                     onClick={() => handleTitleClick("Shortlisted")}
                 >
-                    <p className="text-base md:text-lg font-bold text-gray-900">{shortlisted}</p>
-                    <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Shortlisted</p>
+                    <span className="text-lg font-extrabold text-purple-700">{shortlisted}</span>
+                    <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wide">Shortlisted</span>
                 </div>
 
+                {/* Interviewed */}
+                <div
+                    className="flex flex-col items-center justify-center p-2 rounded-xl bg-amber-50/50 hover:bg-amber-50 cursor-pointer transition border border-amber-100/50"
+                    onClick={() => handleTitleClick("Interviewed")}
+                >
+                    <span className="text-lg font-extrabold text-amber-700">{interviewed}</span>
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wide">Interview</span>
+                </div>
 
-                {positions !== undefined && positions > 0 && (
-                    <div className="flex flex-col items-center">
-                        <p className="text-base md:text-lg font-bold text-gray-900">{positions}</p>
-                        <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Positions</p>
-                    </div>
-                )}
+                {/* Selected */}
+                <div
+                    className="flex flex-col items-center justify-center p-2 rounded-xl bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer transition border border-emerald-100/50"
+                    onClick={() => handleTitleClick("Selected")}
+                >
+                    <span className="text-lg font-extrabold text-emerald-700">{selected}</span>
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Selected</span>
+                </div>
 
-                {/* Status Dropdown */}
-                <div className="flex flex-col items-center">
+                {/* Joined */}
+                <div
+                    className="flex flex-col items-center justify-center p-2 rounded-xl bg-indigo-50/50 hover:bg-indigo-50 cursor-pointer transition border border-indigo-100/50"
+                    onClick={() => handleTitleClick("Joined")}
+                >
+                    <span className="text-lg font-extrabold text-indigo-700">{joined}</span>
+                    <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide">Joined</span>
+                </div>
+
+                {/* Status Dropdown / Positions */}
+                <div className="flex flex-col items-center justify-center p-2">
                     <select
                         value={status}
                         onChange={(e) => onStatusChange?.(id as string, e.target.value)}
-                        className={`text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all cursor-pointer ${status === "Open"
+                        className={`text-[10px] font-bold px-2 py-1 rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1 transition-all cursor-pointer w-full text-center ${status === "Open"
                             ? "bg-green-50 text-green-700 border-green-200 focus:ring-green-500"
                             : status === "Closed"
                                 ? "bg-red-50 text-red-700 border-red-200 focus:ring-red-500"
@@ -163,9 +189,13 @@ const JobCard: React.FC<JobCardProps> = ({
                     >
                         <option value="Open">Open</option>
                         <option value="Closed">Closed</option>
-                        <option value="On Hold">On Hold</option>
+                        <option value="On Hold">Hold</option>
                     </select>
-                    <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider font-semibold">Status</p>
+                    {positions !== undefined && (
+                        <span className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-wide">
+                            {positions} Pos.
+                        </span>
+                    )}
                 </div>
             </div>
 
