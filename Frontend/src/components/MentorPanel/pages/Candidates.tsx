@@ -335,7 +335,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
 
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">Upload From</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">From Date</label>
             <input
               type="date"
               value={startDate}
@@ -345,7 +345,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">Upload To</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center block">To Date</label>
             <input
               type="date"
               value={endDate}
@@ -355,7 +355,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           </div>
 
           <div className="flex items-end">
-            {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate || filterClient !== "all" || filterJobTitle !== "all" || filterStage !== "all" || searchTerm) ? (
+            {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate || filterClient !== "all" || filterJobTitle !== "all" || filterStage !== "all" || searchTerm || statusFilter !== "all") ? (
               <button
                 onClick={() => {
                   setStartDate("");
@@ -368,10 +368,11 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                   setFilterJobTitle("all");
                   setFilterStage("all");
                   setSearchTerm("");
+                  setStatusFilter("all");
                 }}
                 className="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition text-xs font-bold uppercase tracking-wider"
               >
-                Reset
+                Clear All
               </button>
             ) : (
               <div className="w-full h-9 hidden xl:block"></div>

@@ -9,10 +9,13 @@ import { useClientsContext } from "../../context/ClientsProvider";
 import { formatDate } from "../../utils/dateUtils";
 import PerformanceReportTable from "./PerformanceReportTable";
 
-// Add helper function to format YYYY-MM for input type="month"
-const getCurrentMonth = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+// Helper to get defaults
+const getDefaultStartDate = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
+const getDefaultEndDate = () => {
+  return new Date().toISOString().split('T')[0];
 };
 
 export default function Dashboard() {
@@ -22,7 +25,20 @@ export default function Dashboard() {
   const { fetchJobs } = useJobContext();
   const { fetchClients } = useClientsContext();
 
-  const [selectedMonth, setSelectedMonth] = useState(getCurrentMonth());
+  const [startDate, setStartDate] = useState<string>(getDefaultStartDate());
+  const [endDate, setEndDate] = useState<string>(getDefaultEndDate());
+
+  const filterByRange = (dateString: string | null | undefined, start: string, end: string) => {
+    if (!start && !end) return true;
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    date.setHours(0, 0, 0, 0);
+    const s = start ? new Date(start) : new Date(0);
+    s.setHours(0, 0, 0, 0);
+    const e = end ? new Date(end) : new Date(8640000000000000);
+    e.setHours(23, 59, 59, 999);
+    return date >= s && date <= e;
+  };
 
   useEffect(() => {
     fetchJobs();
@@ -34,13 +50,6 @@ export default function Dashboard() {
   }, [user]);
 
   const stats = useMemo(() => {
-    const isSelectedMonth = (dateString?: string) => {
-      if (!dateString) return false;
-      const date = new Date(dateString);
-      const [year, month] = selectedMonth.split('-').map(Number);
-      return date.getMonth() === month - 1 && date.getFullYear() === year;
-    };
-
     if (!candidates) return [];
 
     // Filter candidates relevant to the selected month
@@ -52,25 +61,25 @@ export default function Dashboard() {
     // Let's use isSelectedMonth(c.updatedAt || c.createdAt) as a general "Active/Relevant in Month" check for statuses
     // For "Total", we use creation date.
 
-    const total = candidates.filter(c => isSelectedMonth(c.createdAt)).length;
+    const total = candidates.filter(c => filterByRange(c.createdAt, startDate, endDate)).length;
 
     const shortlisted = candidates.filter((c) =>
-      c.status === "Shortlisted" && isSelectedMonth(c.updatedAt || c.createdAt)
+      c.status === "Shortlisted" && filterByRange(c.updatedAt || c.createdAt, startDate, endDate)
     ).length;
 
     // Interviews includes Interview, Interviewed
     const interviews = candidates.filter((c) =>
-      ["Interview", "Interviewed"].includes(c.status || "") && isSelectedMonth(c.dynamicFields?.interviewDate || c.updatedAt || c.createdAt)
+      ["Interview", "Interviewed"].includes(c.status || "") && filterByRange(c.dynamicFields?.interviewDate || c.updatedAt || c.createdAt, startDate, endDate)
     ).length;
 
     // Selected (Offer/Selected)
     const selectedMonthCount = candidates.filter((c) =>
-      ["Offer", "Selected"].includes(c.status || "") && isSelectedMonth(c.updatedAt || c.createdAt)
+      ["Offer", "Selected"].includes(c.status || "") && filterByRange(c.updatedAt || c.createdAt, startDate, endDate)
     ).length;
 
     // Hired (Joined/Hired)
     const hiredCandidates = candidates.filter((c) =>
-      ["Joined", "Hired"].includes(c.status || "") && isSelectedMonth(c.updatedAt || c.createdAt)
+      ["Joined", "Hired"].includes(c.status || "") && filterByRange(c.updatedAt || c.createdAt, startDate, endDate)
     ).length;
 
     return [
@@ -115,7 +124,7 @@ export default function Dashboard() {
         route: "/Recruiter/candidates?status=Hired",
       },
     ];
-  }, [candidates, selectedMonth]);
+  }, [candidates, startDate, endDate]);
 
   return (
     <motion.div
@@ -129,19 +138,37 @@ export default function Dashboard() {
             Welcome back, {user?.name}
           </h1>
           <p className="text-sm sm:text-base text-gray-500 mt-1">
-            Track your recruitment progress for the month
+            Track your recruitment progress overall or by date
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="flex flex-col w-full sm:w-auto">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1 font-mono">Select Month</label>
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex flex-col min-w-[140px]">
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Upload From</label>
             <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-gray-700 font-bold focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 shadow-sm transition-all"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
             />
           </div>
+          <div className="flex flex-col min-w-[140px]">
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Upload To</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+            />
+          </div>
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+            }}
+            className="mt-5 px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
+          >
+            Clear
+          </button>
         </div>
       </div>
 
@@ -162,7 +189,7 @@ export default function Dashboard() {
                 <div className={`${stat.color} p-2.5 rounded-xl text-white shadow-lg shadow-${stat.color.split('-')[1]}-200 group-hover:scale-110 transition-transform`}>
                   <Icon size={20} />
                 </div>
-                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Current Month</span>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Status</span>
               </div>
               <p className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-1">
                 {stat.value}

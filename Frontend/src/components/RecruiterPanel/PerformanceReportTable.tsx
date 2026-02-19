@@ -15,8 +15,13 @@ export default function PerformanceReportTable() {
 
     // State for Filters and Popups
     const [candidatePopupData, setCandidatePopupData] = useState<{ title: string, clientName: string, candidates: any[] } | null>(null);
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
+    const [startDate, setStartDate] = useState<string>(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    });
+    const [endDate, setEndDate] = useState<string>(() => {
+        return new Date().toISOString().split('T')[0];
+    });
     const [openFilter, setOpenFilter] = useState<string | null>(null);
     const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
         date: [],

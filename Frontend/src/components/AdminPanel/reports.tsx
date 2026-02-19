@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Filter, Check, Users, Briefcase, CalendarCheck, X, UserPlus, ClipboardCheck, Clock, CheckCircle } from "lucide-react";
+import { Search, Filter, Check, Users, Briefcase, CalendarCheck, X, UserPlus, ClipboardCheck, Clock, CheckCircle, Building2 } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatDate } from "../../utils/dateUtils";
+import { getStatusTimestamp } from "../../utils/statusUtils";
 
 export default function ReportsTab() {
   const { users, fetchUsers } = useUserContext();
@@ -19,24 +20,17 @@ export default function ReportsTab() {
   // Default to current month
   const [startDate, setStartDate] = useState(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
   });
   const [endDate, setEndDate] = useState(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
-
-  const joinedPerJob = useMemo(() => {
-    return candidates.reduce((acc, c) => {
-      if (c.status === "Joined") {
-        const jid = typeof c.jobId === 'object' && c.jobId !== null
-          ? String((c.jobId as any)._id)
-          : String(c.jobId);
-        acc[jid] = (acc[jid] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-  }, [candidates]);
 
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
@@ -87,21 +81,35 @@ export default function ReportsTab() {
   // 1. Base Client Job Report Data (Global Date Range Applied, No Column Filters)
   const baseClientJobRows = useMemo(() => {
     const rows: any[] = [];
+    const openJobs = jobs.filter(j => j.status === "Open");
+    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
+
+    const getCandidateJobId = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid ? String(jid) : null;
+    };
+
+    const isOpenJobCandidate = (c: any) => {
+      const jid = getCandidateJobId(c);
+      return jid && openJobIds.has(jid);
+    };
 
     jobs.forEach(job => {
-      // Candidates created in range for this job
+      // Candidates created in range for this job (ONLY if job is open)
+      const isJobOpen = job.status === "Open";
       const jobCandidates = candidates.filter(c => {
-        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-        return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
+        const cJobId = getCandidateJobId(c);
+        return cJobId === job._id && isWithinDateRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isJobOpen;
       });
 
-      // Candidates who joined this job in range
+      // Candidates who joined this job in range (ONLY if job is open)
       const joinedCandidatesInRangeCount = candidates.filter(c => {
-        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+        const cJobId = getCandidateJobId(c);
         return (
           cJobId === job._id &&
           c.status === "Joined" &&
-          (c.joiningDate ? isWithinDateRange(c.joiningDate.toString()) : false)
+          isWithinDateRange(getStatusTimestamp(c, "Joined", c.joiningDate) || "") &&
+          isJobOpen
         );
       }).length;
 
@@ -120,7 +128,7 @@ export default function ReportsTab() {
 
       const matchesGlobalDate = job.createdAt ? isWithinDateRange(job.createdAt) : true;
 
-      if (matchesGlobalDate) {
+      if (matchesGlobalDate && (isJobOpen || jobCandidates.length > 0 || joinedCandidatesInRangeCount > 0)) {
         rows.push({
           job,
           clientName,
@@ -158,10 +166,17 @@ export default function ReportsTab() {
       acc.uploads += row.jobCandidates.length;
       acc.Joined = (acc.Joined || 0) + (row.joinedCandidatesInRangeCount || 0);
 
-      ["New", "Shortlisted", "Interviewed", "Selected", "Hold"].forEach(status => {
+      ["New", "Interviewed", "Selected", "Hold"].forEach(status => {
         const count = row.jobCandidates.filter((c: any) => c.status === status).length;
         acc[status] = (acc[status] || 0) + count;
       });
+
+      // Aggregated Screen status matching dashboard logic
+      const screenCount = row.jobCandidates.filter((c: any) =>
+        ["Screen", "Screened", "Shortlisted"].includes(c.status)
+      ).length;
+      acc.Screen = (acc.Screen || 0) + screenCount;
+
       acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
       acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
       acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
@@ -212,17 +227,30 @@ export default function ReportsTab() {
   // 1. Base Daily Lineup Data (Global Date Range Applied)
   const baseDailyLineupRows = useMemo(() => {
     const rows: any[] = [];
+    const openJobs = jobs.filter(j => j.status === "Open");
+    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
+
+    const getCandidateJobId = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid ? String(jid) : null;
+    };
+
+    const isOpenJobCandidate = (c: any) => {
+      const jid = getCandidateJobId(c);
+      return jid && openJobIds.has(jid);
+    };
+
     const recruiters = users.filter(u => u.designation?.toLowerCase().includes("recruiter") || u.isAdmin);
 
     recruiters.forEach(recruiter => {
       const recruiterCandidates = candidates.filter(c => {
         const cCreatorId = typeof c.createdBy === 'object' ? (c.createdBy as any)?._id : c.createdBy;
-        return cCreatorId === recruiter._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
+        return cCreatorId === recruiter._id && isWithinDateRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isOpenJobCandidate(c);
       });
 
       const lineupKeys = Array.from(new Set(recruiterCandidates.map(c => {
-        const date = c.createdAt ? formatDate(c.createdAt) : "N/A";
-        const jobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+        const date = formatDate(getStatusTimestamp(c, (c.status as string) || "New") || "");
+        const jobId = getCandidateJobId(c);
         return `${jobId}|${date}`;
       })));
 
@@ -237,8 +265,8 @@ export default function ReportsTab() {
         const client = clients.find(c => jClientId === c._id);
         const clientName = client?.companyName || "Unknown";
         const jobCandidates = recruiterCandidates.filter(c => {
-          const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-          const cDate = c.createdAt ? formatDate(c.createdAt) : "N/A";
+          const cJobId = getCandidateJobId(c);
+          const cDate = formatDate(getStatusTimestamp(c, (c.status as string) || "New") || "");
           return cJobId === jobId && cDate === sourceDate;
         });
         const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
@@ -329,26 +357,78 @@ export default function ReportsTab() {
     return options;
   };
 
-  // Calculate statistics (Dashboard Style) derived from table data
+  // Calculate statistics (Dashboard Style) - Mixed Global and Filtered
   const dashboardStats = useMemo(() => {
-    const { totals, reportRows } = clientJobReportData;
+    // 1. Global (System Status) Statistics - Always based on current Open jobs
+    const openJobs = jobs.filter(j => j.status === "Open");
+    const activeJobs = openJobs.length;
+    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
 
-    // We also need activeJobs specifically for the filtered set
-    const activeJobs = reportRows.filter(row => row.job.status === "Open").length;
+    const getCandidateJobId = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid ? String(jid) : null;
+    };
+
+    const isOpenJobCandidate = (c: any) => {
+      const jid = getCandidateJobId(c);
+      return jid && openJobIds.has(jid);
+    };
+
+    // Active Clients: unique clients who have at least one open job
+    const activeClientIds = new Set(
+      openJobs
+        .map(j => {
+          const cid = j.clientId;
+          if (!cid) return null;
+          return typeof cid === "object" && cid._id ? cid._id : String(cid);
+        })
+        .filter(Boolean)
+    );
+    const activeClients = activeClientIds.size;
+
+    // Positions Left: total noOfPositions from Open jobs minus joined count from those jobs
+    const totalPositionsGlobal = openJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+    const totalJoinedInOpenJobs = candidates.filter(c =>
+      c.status === "Joined" && isOpenJobCandidate(c)
+    ).length;
+    const remainingPositions = Math.max(0, totalPositionsGlobal - totalJoinedInOpenJobs);
+
+    // 2. Activity Statistics - Based on filtered table data (date range applied)
+    // To match dashboard perfectly:
+    const openJobCandidatesInRange = candidates.filter(c =>
+      isWithinDateRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isOpenJobCandidate(c)
+    );
+
+    const totalCandidates = openJobCandidatesInRange.length;
+    const newCandidates = openJobCandidatesInRange.filter(c => c.status === "New").length;
+    const shortlistedCandidates = openJobCandidatesInRange.filter(c =>
+      ["Screen", "Screened", "Shortlisted"].includes(c.status)
+    ).length;
+    const interviewedCandidates = openJobCandidatesInRange.filter(c => c.status === "Interviewed").length;
+    const holdCandidates = openJobCandidatesInRange.filter(c => c.status === "Hold").length;
+
+    // Selection/Join counts based on their specific event dates (from GLOBAL candidates)
+    const selectedCandidates = candidates.filter(c =>
+      c.status === "Selected" && isWithinDateRange(getStatusTimestamp(c, "Selected", c.selectionDate) || "") && isOpenJobCandidate(c)
+    ).length;
+
+    const joinedCandidates = candidates.filter(c =>
+      c.status === "Joined" && isWithinDateRange(getStatusTimestamp(c, "Joined", c.joiningDate) || "") && isOpenJobCandidate(c)
+    ).length;
 
     return {
-      totalCandidates: totals.uploads || 0,
+      totalCandidates,
       activeJobs,
-      totalPositions: totals.positions || 0,
-      remainingPositions: (totals.positions || 0) - (totals.Joined || 0),
-      newCandidates: totals.New || 0,
-      shortlistedCandidates: totals.Shortlisted || 0,
-      interviewedCandidates: totals.Interviewed || 0,
-      selectedCandidates: totals.Selected || 0,
-      joinedCandidates: totals.Joined || 0,
-      holdCandidates: totals.Hold || 0,
+      activeClients,
+      remainingPositions,
+      newCandidates,
+      shortlistedCandidates,
+      interviewedCandidates,
+      selectedCandidates,
+      joinedCandidates,
+      holdCandidates,
     };
-  }, [clientJobReportData]);
+  }, [jobs, candidates, clientJobReportData, startDate, endDate]);
 
 
   const getStatusColor = (status: string) => {
@@ -378,40 +458,6 @@ export default function ReportsTab() {
   };
 
   const closeCandidatePopup = () => setCandidatePopupData(null);
-
-  const applyDateShortcut = (shortcut: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    let start = new Date(today);
-    let end = new Date(today);
-
-    if (shortcut === 'T') {
-      // Today is default
-    } else if (shortcut === 'Y') {
-      start.setDate(today.getDate() - 1);
-      end.setDate(today.getDate() - 1);
-    } else if (shortcut === 'W') {
-      const day = today.getDay();
-      const diff = today.getDate() - (day === 0 ? 6 : day - 1);
-      start = new Date(today.getFullYear(), today.getMonth(), diff);
-    } else if (shortcut === 'L') {
-      const day = today.getDay();
-      const diffToLastMon = today.getDate() - (day === 0 ? 6 : day - 1) - 7;
-      start = new Date(today.getFullYear(), today.getMonth(), diffToLastMon);
-      const diffToLastSun = diffToLastMon + 6;
-      end = new Date(today.getFullYear(), today.getMonth(), diffToLastSun);
-    }
-
-    const formatDateLocal = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    setStartDate(formatDateLocal(start));
-    setEndDate(formatDateLocal(end));
-  };
 
   const toggleFilterValue = (column: string, value: string) => {
     setSelectedFilters(prev => {
@@ -546,9 +592,65 @@ export default function ReportsTab() {
         </div>
       </div>
 
-      {/* Summary Cards */}
       {/* Stats Grid (Dashboard Style) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 mb-10">
+        {/* Active Clients */}
+        <div
+          onClick={() => navigate("/Admin/clients")}
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-purple-600 transition-colors">
+              Active Clients
+            </p>
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
+              {dashboardStats.activeClients}
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-1">Clients with open jobs</p>
+          </div>
+          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
+            <Building2 size={24} />
+          </div>
+        </div>
+
+        {/* Positions Left */}
+        <div
+          onClick={() => navigate("/Admin/jobs")}
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-amber-600 transition-colors">
+              Positions Left
+            </p>
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
+              {dashboardStats.remainingPositions}
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-1">Open positions – joined</p>
+          </div>
+          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
+            <Briefcase size={24} />
+          </div>
+        </div>
+
+        {/* Active Requirements (Active Jobs) */}
+        <div
+          onClick={() => navigate("/Admin/jobs")}
+          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
+              Active Requirements
+            </p>
+            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
+              {dashboardStats.activeJobs}
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-1">Jobs with Open status</p>
+          </div>
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
+            <CalendarCheck size={24} />
+          </div>
+        </div>
+
         {/* Total Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
@@ -567,86 +669,32 @@ export default function ReportsTab() {
           </div>
         </div>
 
-        {/* Total Positions */}
-        <div
-          onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-blue-600 transition-colors">
-              Total Positions
-            </p>
-            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
-              {dashboardStats.totalPositions}
-            </h2>
-          </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
-            <Briefcase size={24} />
-          </div>
-        </div>
-
-        {/* Positions Left */}
-        <div
-          onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-emerald-600 transition-colors">
-              Positions Left
-            </p>
-            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
-              {dashboardStats.remainingPositions}
-            </h2>
-          </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
-            <Briefcase size={24} />
-          </div>
-        </div>
-
-        {/* Active Jobs */}
-        <div
-          onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-amber-600 transition-colors">
-              Active Jobs
-            </p>
-            <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
-              {dashboardStats.activeJobs}
-            </h2>
-          </div>
-          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
-            <CalendarCheck size={24} />
-          </div>
-        </div>
-
         {/* New Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
           className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-blue-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-sky-600 transition-colors">
               New
             </p>
             <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.newCandidates}
             </h2>
           </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
+          <div className="bg-sky-50 text-sky-600 p-3 rounded-xl group-hover:bg-sky-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <UserPlus size={24} />
           </div>
         </div>
 
-        {/* Shortlisted Candidates */}
+        {/* Shortlisted Candidates (Screen) */}
         <div
           onClick={() => navigate("/Admin/candidates")}
           className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-orange-600 transition-colors">
-              Screening
+              Screen
             </p>
             <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.shortlistedCandidates}
@@ -663,14 +711,14 @@ export default function ReportsTab() {
           className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-purple-600 transition-colors">
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-indigo-600 transition-colors">
               Interviewed
             </p>
             <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
               {dashboardStats.interviewedCandidates}
             </h2>
           </div>
-          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
+          <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">
             <Clock size={24} />
           </div>
         </div>
@@ -728,8 +776,16 @@ export default function ReportsTab() {
                 placeholder="Search Client..."
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
+                className="pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
               />
+              {clientSearch && (
+                <button
+                  onClick={() => setClientSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <div className="relative group w-full sm:w-auto md:min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -738,8 +794,16 @@ export default function ReportsTab() {
                 placeholder="Search Recruiter..."
                 value={recruiterSearch}
                 onChange={(e) => setRecruiterSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
+                className="pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
               />
+              {recruiterSearch && (
+                <button
+                  onClick={() => setRecruiterSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <div className="relative group w-full sm:w-auto md:min-w-[200px]">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -748,8 +812,16 @@ export default function ReportsTab() {
                 placeholder="Search Job Title..."
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
+                className="pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
               />
+              {jobSearch && (
+                <button
+                  onClick={() => setJobSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
         </div>

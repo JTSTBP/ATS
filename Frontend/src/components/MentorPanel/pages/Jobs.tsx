@@ -168,17 +168,40 @@ export const JobsManager = ({
       return filteredJobIds.has(jobId);
     });
 
-    // 1. Active Jobs (Open jobs in the filtered set)
-    const activeJobsCount = filteredJobsForStats.filter(j => j.status === 'Open').length;
+    const openJobsInFiltered = filteredJobsForStats.filter(j => j.status === 'Open');
+    const openJobIdsInFiltered = new Set(openJobsInFiltered.map(j => (j._id || "").toString()));
 
-    // 2. Active Clients (Unique clients in the filtered set)
-    const uniqueClientIds = new Set(filteredJobsForStats.filter(j => j.clientId).map(j => j.clientId._id || j.clientId));
+    const getCandidateJobId = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid ? String(jid) : null;
+    };
+
+    const isOpenJobCandidate = (c: any) => {
+      const jid = getCandidateJobId(c);
+      return jid && openJobIdsInFiltered.has(jid);
+    };
+
+    // 1. Active Jobs (Open jobs in the filtered set)
+    const activeJobsCount = openJobsInFiltered.length;
+
+    // 2. Active Clients (Unique clients linked to Open jobs in the filtered set)
+    const uniqueClientIds = new Set(
+      openJobsInFiltered
+        .map(j => {
+          const cid = j.clientId;
+          if (!cid) return null;
+          return typeof cid === "object" && cid._id ? cid._id : String(cid);
+        })
+        .filter(Boolean)
+    );
     const activeClientsCount = uniqueClientIds.size;
 
-    // 3. Positions Left (Calculated for filtered set)
-    const totalPositions = filteredJobsForStats.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
-    const joinedCandidates = filteredCandidatesForStats.filter(c => c.status === 'Joined').length;
-    const positionsLeftCount = Math.max(0, totalPositions - joinedCandidates);
+    // 3. Positions Left (Calculated for Open jobs in the filtered set: sum(positions) - sum(joined))
+    const totalPositions = openJobsInFiltered.reduce((sum, job) => sum + (Number(job.noOfPositions) || 0), 0);
+    const joinedCount = scopedCandidates.filter(c =>
+      c.status === "Joined" && isOpenJobCandidate(c)
+    ).length;
+    const positionsLeftCount = Math.max(0, totalPositions - joinedCount);
 
     return {
       activeJobs: activeJobsCount,
@@ -281,25 +304,25 @@ export const JobsManager = ({
           </div>
         </div>
 
-        {/* Active Jobs */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all">
-          <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-amber-600 transition-colors">Active Requirements</p>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.activeJobs}</h3>
-          </div>
-          <div className="bg-amber-50 text-amber-600 p-3 sm:p-4 rounded-2xl group-hover:bg-amber-100 transition-colors">
-            <Briefcase size={24} />
-          </div>
-        </div>
-
         {/* Positions Left */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all sm:col-span-2 lg:col-span-1">
+        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all">
           <div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-emerald-600 transition-colors">Positions Left</p>
             <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.positionsLeft}</h3>
           </div>
           <div className="bg-emerald-50 text-emerald-600 p-3 sm:p-4 rounded-2xl group-hover:bg-emerald-100 transition-colors">
             <CalendarCheck size={24} />
+          </div>
+        </div>
+
+        {/* Active Requirements (Jobs) */}
+        <div className="bg-white rounded-2xl shadow-sm p-5 sm:p-6 border border-gray-100 flex justify-between items-center group hover:shadow-md transition-all sm:col-span-2 lg:col-span-1">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1 group-hover:text-amber-600 transition-colors">Active Requirements</p>
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.activeJobs}</h3>
+          </div>
+          <div className="bg-amber-50 text-amber-600 p-3 sm:p-4 rounded-2xl group-hover:bg-amber-100 transition-colors">
+            <Briefcase size={24} />
           </div>
         </div>
       </div>

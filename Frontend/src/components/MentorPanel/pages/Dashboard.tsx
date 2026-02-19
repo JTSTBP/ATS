@@ -1,12 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Users, FileText, TrendingUp, Clock, CheckCircle, Plus, UserPlus, Calendar, ClipboardCheck } from 'lucide-react';
+import { Briefcase, Users, FileText, TrendingUp, Clock, CheckCircle, Plus, UserPlus, Calendar, ClipboardCheck, Building2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthProvider';
 import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
 import { useJobContext } from '../../../context/DataProvider';
 import ActivityLogs from '../../AdminPanel/activitylogs';
 import { useScreenSize } from '../../../hooks/useScreenSize';
+import { getStatusTimestamp } from '../../../utils/statusUtils';
 import {
   BarChart,
   Bar,
@@ -20,6 +21,7 @@ import {
 type Stats = {
   totalJobs: number;
   openJobs: number;
+  activeClients: number;
   totalCandidates: number;
   totalApplications: number;
   new: number;
@@ -42,6 +44,7 @@ export const Dashboard = () => {
   const [stats, setStats] = useState<Stats>({
     totalJobs: 0,
     openJobs: 0,
+    activeClients: 0,
     totalCandidates: 0,
     totalApplications: 0,
     new: 0,
@@ -53,31 +56,25 @@ export const Dashboard = () => {
     positionsLeft: 0,
   });
 
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
-  const [selectedYear, setSelectedYear] = useState<number | null>(new Date().getFullYear());
+  // --- 1. Date Range Filter Setup ---
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
-  const years = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const result = [];
-    for (let i = 0; i < 5; i++) {
-      result.push(currentYear - i);
-    }
-    return result;
-  }, []);
-
-  const [filteredCandidates, setFilteredCandidates] = useState<any[]>([]);
-
-  // --- 1. Filter by Date Range (Selected Month/Year) ---
-  const isWithinSelectedMonth = (dateString: string | null | undefined) => {
-    if (selectedMonth === null || selectedYear === null) return true;
+  const filterByRange = (dateString: string | null | undefined, start: string, end: string) => {
+    if (!start && !end) return true; // Show overall data if no range
     if (!dateString) return false;
     const date = new Date(dateString);
-    return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
+    date.setHours(0, 0, 0, 0);
+    const s = start ? new Date(start) : new Date(0);
+    s.setHours(0, 0, 0, 0);
+    const e = end ? new Date(end) : new Date(8640000000000000);
+    e.setHours(23, 59, 59, 999);
+    return date >= s && date <= e;
   };
 
   useEffect(() => {
@@ -85,137 +82,141 @@ export const Dashboard = () => {
     fetchallCandidates();
   }, []);
 
-  useEffect(() => {
-    if (!user || !jobs || !candidates || !users) return;
+  // --- 2. Calculate Scoped Data & Statistics ---
+  const scopedData = useMemo(() => {
+    if (!user || !users || !jobs || !candidates) return { scopedJobs: [], scopedCandidates: [] };
 
-    // --- 2. Filter Jobs ---
-    const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
+    // Designation-agnostic recursive reporting
+    const directReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === user._id);
     let allReporteeIds = directReportees.map((u: any) => u._id);
 
-    if (user.designation === "Manager") {
-      directReportees.forEach((mentor: any) => {
-        const mentorReportees = users.filter(
-          (u: any) => u?.reporter?._id === mentor._id
-        );
-        allReporteeIds = [
-          ...allReporteeIds,
-          ...mentorReportees.map((u: any) => u._id),
-        ];
-      });
-    }
+    // Get 2nd level reportees (e.g., Recruiters reporting to Mentors reporting to Manager)
+    directReportees.forEach((reportee: any) => {
+      const childReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === reportee._id);
+      allReporteeIds = [...allReporteeIds, ...childReportees.map((u: any) => u._id)];
+    });
 
-    const mentorOnlyJobs = jobs.filter((job: any) => {
+    const scopedJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 
-    const filteredJobs = mentorOnlyJobs.filter((job: any) => isWithinSelectedMonth(job.createdAt));
-
-    // --- 3. Filter Candidates/Applications ---
-    const mentorOnlyCandidates = candidates.filter((c: any) => {
+    const scopedCandidates = candidates.filter((c: any) => {
       const creatorId = c.createdBy?._id || c.createdBy;
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 
-    const fCandidates = mentorOnlyCandidates.filter((c: any) => isWithinSelectedMonth(c.createdAt));
-    setFilteredCandidates(mentorOnlyCandidates); // Store ALL mentor candidates to filter them dynamically in chart/stats
+    return { scopedJobs, scopedCandidates };
+  }, [user, users, jobs, candidates]);
 
-    // --- 4. Calculate Positions Left (Based on mentor's jobs in this period) ---
-    let totalPositionsLeft = 0;
-    filteredJobs.forEach((job: any) => {
-      // For hired count, we check candidates for this job that joined
-      const hiredCount = candidates.filter((c: any) => (c.jobId?._id === job._id || c.jobId === job._id) && c.status === "Joined").length;
-      totalPositionsLeft += Math.max(0, (job.noOfPositions || 0) - hiredCount);
-    });
+  useEffect(() => {
+    const { scopedJobs, scopedCandidates } = scopedData;
+    if (!scopedJobs.length && !scopedCandidates.length) return;
 
-    // --- 5. Calculate Stats ---
+    // A. Filter Jobs (Open Only for headlines)
+    const openJobs = scopedJobs.filter((j: any) => j.status === 'Open');
+    const openJobIds = new Set(openJobs.map((job: any) => (job._id || "").toString()));
+
+    const isOpenJobCandidate = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid && openJobIds.has(String(jid));
+    };
+
+    // B. Global (Open Jobs) Headline Stats
+    const activeClientIdsInRange = new Set(
+      openJobs.map((j: any) => {
+        const cid = j.clientId;
+        return typeof cid === "object" && cid?._id ? cid._id : String(cid);
+      }).filter(Boolean)
+    );
+
+    const totalPositionsGlobal = openJobs.reduce((sum, j: any) => sum + (Number(j.noOfPositions) || 0), 0);
+    const totalJoinedInOpenJobs = scopedCandidates.filter((c: any) =>
+      c.status === "Joined" && isOpenJobCandidate(c)
+    ).length;
+    const remainingPositions = Math.max(0, totalPositionsGlobal - totalJoinedInOpenJobs);
+
+    // C. Range-based Statistics
+    const candidatesInRange = scopedCandidates.filter(c => filterByRange(getStatusTimestamp(c, (c.status as string) || "New"), startDate, endDate) && isOpenJobCandidate(c));
+
     const newStats: Stats = {
-      totalJobs: filteredJobs.length,
-      openJobs: filteredJobs.filter((j: any) => j.status === 'Open').length,
-      totalCandidates: fCandidates.length,
-      totalApplications: fCandidates.length,
-      new: fCandidates.filter((c: any) => c.status === 'New').length,
-      shortlisted: fCandidates.filter((c: any) => (c.status === 'Shortlisted' || c.status === 'Screen') && isWithinSelectedMonth(c.createdAt)).length,
-      interviewed: fCandidates.filter((c: any) => c.status === 'Interviewed' && isWithinSelectedMonth(c.createdAt)).length,
-      selected: mentorOnlyCandidates.filter((c: any) => c.status === 'Selected' && isWithinSelectedMonth(c.selectionDate)).length,
-      joined: mentorOnlyCandidates.filter((c: any) => c.status === 'Joined' && isWithinSelectedMonth(c.joiningDate)).length,
-      rejected: fCandidates.filter((c: any) => c.status === 'Rejected').length,
-      positionsLeft: totalPositionsLeft,
+      totalJobs: openJobs.length,
+      openJobs: openJobs.length,
+      activeClients: activeClientIdsInRange.size,
+      totalCandidates: candidatesInRange.length,
+      totalApplications: candidatesInRange.length,
+      new: scopedCandidates.filter((c: any) =>
+        c.status === 'New' &&
+        filterByRange(getStatusTimestamp(c, 'New'), startDate, endDate) &&
+        isOpenJobCandidate(c)
+      ).length,
+      shortlisted: scopedCandidates.filter((c: any) =>
+        ['Shortlisted', 'Screen', 'Screened'].includes(c.status) &&
+        filterByRange(getStatusTimestamp(c, ['Shortlisted', 'Screen', 'Screened']), startDate, endDate) &&
+        isOpenJobCandidate(c)
+      ).length,
+      interviewed: scopedCandidates.filter((c: any) =>
+        c.status === 'Interviewed' &&
+        filterByRange(getStatusTimestamp(c, 'Interviewed'), startDate, endDate) &&
+        isOpenJobCandidate(c)
+      ).length,
+      selected: scopedCandidates.filter((c: any) =>
+        c.status === 'Selected' &&
+        filterByRange(getStatusTimestamp(c, 'Selected', c.selectionDate), startDate, endDate) &&
+        isOpenJobCandidate(c)
+      ).length,
+      joined: scopedCandidates.filter((c: any) =>
+        c.status === 'Joined' &&
+        filterByRange(getStatusTimestamp(c, 'Joined', c.joiningDate), startDate, endDate) &&
+        isOpenJobCandidate(c)
+      ).length,
+      rejected: scopedCandidates.filter((c: any) =>
+        c.status === 'Rejected' &&
+        filterByRange(getStatusTimestamp(c, 'Rejected'), startDate, endDate) &&
+        isOpenJobCandidate(c)
+      ).length,
+      positionsLeft: remainingPositions,
     };
 
     setStats(newStats);
+  }, [scopedData, startDate, endDate]);
 
-  }, [user, jobs, candidates, users, selectedMonth, selectedYear]);
-
-  // --- Calculate Date Props for ActivityLogs ---
-  const { externalStartDate, externalEndDate } = useMemo(() => {
-    if (selectedMonth === null || selectedYear === null) return { externalStartDate: undefined, externalEndDate: undefined };
-
-    const start = new Date(selectedYear, selectedMonth, 1);
-    const end = new Date(selectedYear, selectedMonth + 1, 0);
-
-    return {
-      externalStartDate: start.toISOString().split('T')[0],
-      externalEndDate: end.toISOString().split('T')[0]
-    };
-  }, [selectedMonth, selectedYear]);
-
-  // --- 4. Identify Team Members ---
+  // --- 3. Identify Team Members for Chart ---
   const teamMemberIds = useMemo(() => {
     if (!user || !users) return [];
-
-    const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
+    const directReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === user._id);
     let allReporteeIds = directReportees.map((u: any) => u._id);
-
-    if (user.designation === "Manager") {
-      directReportees.forEach((mentor: any) => {
-        const mentorReportees = users.filter(
-          (u: any) => u?.reporter?._id === mentor._id
-        );
-        allReporteeIds = [
-          ...allReporteeIds,
-          ...mentorReportees.map((u: any) => u._id),
-        ];
-      });
-    }
-
-    // Include self
+    directReportees.forEach((reportee: any) => {
+      const childReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === reportee._id);
+      allReporteeIds = [...allReporteeIds, ...childReportees.map((u: any) => u._id)];
+    });
     return [user._id, ...allReporteeIds];
   }, [user, users]);
 
-  // --- 5. Prepare Recruiter Performance Data ---
+  // --- 4. Prepare Recruiter Performance Data ---
   const recruiterPerformanceData = useMemo(() => {
     const recruiterStats: Record<string, { name: string; uploaded: number; shortlisted: number; joined: number }> = {};
+    const { scopedCandidates } = scopedData;
 
-    // Initialize with all team members
     users.forEach(u => {
       if (teamMemberIds.includes(u._id)) {
         recruiterStats[u._id] = { name: u.name, uploaded: 0, shortlisted: 0, joined: 0 };
       }
     });
 
-    filteredCandidates.forEach((c) => {
-      const creator = c.createdBy;
-      if (!creator) return;
+    scopedCandidates.forEach((c) => {
+      const creatorId = String(c.createdBy?._id || c.createdBy);
+      if (!recruiterStats[creatorId]) return;
 
-      const creatorId = typeof creator === 'object' && '_id' in creator ? (creator as any)._id : String(creator);
-      const creatorName = typeof creator === 'object' && 'name' in creator ? (creator as any).name : "Unknown";
-
-      if (!recruiterStats[creatorId]) {
-        recruiterStats[creatorId] = { name: creatorName, uploaded: 0, shortlisted: 0, joined: 0 };
-      }
-
-      // Check for upload/shortlist in selected period
-      if (isWithinSelectedMonth(c.createdAt)) {
+      if (filterByRange(c.createdAt || "", startDate, endDate)) {
         recruiterStats[creatorId].uploaded += 1;
-        if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
+        if (['Shortlisted', 'Screen', 'Screened'].includes(c.status)) recruiterStats[creatorId].shortlisted += 1;
       }
 
-      // Check for join/select in selected period
-      if (c.status === "Selected" && isWithinSelectedMonth(c.selectionDate)) {
+      if (c.status === "Selected" && filterByRange(c.selectionDate || "", startDate, endDate)) {
         recruiterStats[creatorId].joined += 1;
       }
-      if (c.status === "Joined" && isWithinSelectedMonth(c.joiningDate)) {
+      if (c.status === "Joined" && filterByRange(c.joiningDate || "", startDate, endDate)) {
         recruiterStats[creatorId].joined += 1;
       }
     });
@@ -224,13 +225,28 @@ export const Dashboard = () => {
     return Object.values(recruiterStats)
       .sort((a, b) => b.uploaded - a.uploaded)
       .slice(0, maxRecruiters);
-  }, [filteredCandidates, users, teamMemberIds, selectedMonth, selectedYear, screenSize]);
+  }, [scopedData, users, teamMemberIds, startDate, endDate, screenSize]);
 
   const statCards: Array<{ label: string; value: number; subValue?: string; icon: any; color: string; bgColor: string; path: string }> = [
     {
-      label: 'Total Requirements',
-      value: stats.totalJobs,
-      subValue: `${stats.openJobs} Open`,
+      label: 'Active Clients',
+      value: stats.activeClients || 0,
+      icon: Building2,
+      color: 'from-purple-500 to-purple-600',
+      bgColor: 'bg-purple-50',
+      path: '/Mentor/clients'
+    },
+    {
+      label: 'Positions Left',
+      value: stats.positionsLeft,
+      icon: Briefcase,
+      color: 'from-emerald-500 to-emerald-600',
+      bgColor: 'bg-emerald-50',
+      path: '/Mentor/jobs'
+    },
+    {
+      label: 'Active Requirements',
+      value: stats.openJobs,
       icon: Briefcase,
       color: 'from-blue-500 to-blue-600',
       bgColor: 'bg-blue-50',
@@ -240,17 +256,9 @@ export const Dashboard = () => {
       label: 'Total Candidates',
       value: stats.totalCandidates,
       icon: Users,
-      color: 'from-green-500 to-green-600',
-      bgColor: 'bg-green-50',
+      color: 'from-blue-500 to-blue-600',
+      bgColor: 'bg-blue-50',
       path: '/Mentor/candidates'
-    },
-    {
-      label: 'Positions Left',
-      value: stats.positionsLeft,
-      icon: Briefcase,
-      color: 'from-purple-500 to-purple-600',
-      bgColor: 'bg-purple-50',
-      path: '/Mentor/jobs'
     },
     {
       label: 'New',
@@ -303,10 +311,6 @@ export const Dashboard = () => {
     { label: 'Rejected', value: stats.rejected, color: 'bg-red-400' },
   ];
 
-  const upcomingInterviews = filteredCandidates.filter(
-    (c) => c.status?.toLowerCase() === "interviewed"
-  );
-
   return (
     <div className="space-y-6 sm:space-y-8 font-sans p-4 sm:p-0">
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-6">
@@ -320,43 +324,33 @@ export const Dashboard = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex flex-col flex-1 min-w-[80px]">
-            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Year</label>
-            <select
-              value={selectedYear === null ? "" : selectedYear}
-              onChange={(e) => setSelectedYear(e.target.value === "" ? null : Number(e.target.value))}
+          <div className="flex flex-col min-w-[140px]">
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Upload From</label>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
               className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
-            >
-              <option value="">All</option>
-              {years.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
+            />
           </div>
-          <div className="flex flex-col flex-1 min-w-[100px]">
-            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Month</label>
-            <select
-              value={selectedMonth === null ? "" : selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value === "" ? null : Number(e.target.value))}
+          <div className="flex flex-col min-w-[140px]">
+            <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Upload To</label>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
               className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
-            >
-              <option value="">All</option>
-              {months.map((month, index) => (
-                <option key={month} value={index}>{month}</option>
-              ))}
-            </select>
+            />
           </div>
-          {(selectedMonth !== null || selectedYear !== null) && (
-            <button
-              onClick={() => {
-                setSelectedMonth(null);
-                setSelectedYear(null);
-              }}
-              className="mt-5 px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
-            >
-              Clear
-            </button>
-          )}
+          <button
+            onClick={() => {
+              setStartDate("");
+              setEndDate("");
+            }}
+            className="mt-5 px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
+          >
+            Clear
+          </button>
         </div>
       </div>
 
@@ -513,7 +507,7 @@ export const Dashboard = () => {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                <ActivityLogs externalStartDate={externalStartDate} externalEndDate={externalEndDate} />
+                <ActivityLogs externalStartDate={startDate} externalEndDate={endDate} />
               </div>
             </div>
           </div>
@@ -554,12 +548,12 @@ export const Dashboard = () => {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {upcomingInterviews.length === 0 ? (
+                {scopedData.scopedCandidates.filter(c => c.status?.toLowerCase() === "interviewed").length === 0 ? (
                   <p className="text-sm text-slate-500 text-center py-2">
                     No upcoming interviews
                   </p>
                 ) : (
-                  upcomingInterviews.slice(0, 5).map((interview: any, index: number) => (
+                  scopedData.scopedCandidates.filter(c => c.status?.toLowerCase() === "interviewed").slice(0, 5).map((interview: any, index: number) => (
                     <div
                       key={index}
                       className="flex items-center gap-4 pb-4 border-b border-slate-100 last:border-0"

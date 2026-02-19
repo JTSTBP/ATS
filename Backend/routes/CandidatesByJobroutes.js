@@ -258,14 +258,14 @@ async function sendUpdateNotificationToReporter(updatingUserId, candidateName, j
 // 🔵 Get all candidates (with Pagination & Filtering)
 router.get("/", async (req, res) => {
   try {
-    const { page, limit, search, status, client, jobTitle, stage, startDate, endDate } = req.query;
+    const { page, limit, search, status, client, jobTitle, stage, startDate, endDate, reporterId, jobStatus, joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
 
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
     console.log("🔍 Candidates Filter Request:", {
-      page, limit, search, status, client, jobTitle, stage, startDate, endDate
+      page, limit, search, status, client, jobTitle, stage, startDate, endDate, reporterId, jobStatus
     });
 
     // Base Match Stage (for direct fields)
@@ -280,59 +280,6 @@ router.get("/", async (req, res) => {
     if (stage && stage !== "all") {
       matchStage.interviewStage = stage;
     }
-
-    // Filter by Date Range
-    if (startDate || endDate) {
-      if (status === "Selected") {
-        matchStage.selectionDate = {};
-        if (startDate) matchStage.selectionDate.$gte = new Date(startDate);
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          matchStage.selectionDate.$lte = end;
-        }
-      } else if (status === "Joined") {
-        matchStage.joiningDate = {};
-        if (startDate) matchStage.joiningDate.$gte = new Date(startDate);
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          matchStage.joiningDate.$lte = end;
-        }
-      } else {
-        matchStage.createdAt = {};
-        if (startDate) matchStage.createdAt.$gte = new Date(startDate);
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          matchStage.createdAt.$lte = end;
-        }
-      }
-    }
-
-    // Filter by Joining Date Range
-    const { joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
-    if (joinStartDate || joinEndDate) {
-      matchStage.joiningDate = {};
-      if (joinStartDate) matchStage.joiningDate.$gte = new Date(joinStartDate);
-      if (joinEndDate) {
-        const end = new Date(joinEndDate);
-        end.setHours(23, 59, 59, 999);
-        matchStage.joiningDate.$lte = end;
-      }
-    }
-
-    // Filter by Selection Date Range
-    if (selectStartDate || selectEndDate) {
-      matchStage.selectionDate = {};
-      if (selectStartDate) matchStage.selectionDate.$gte = new Date(selectStartDate);
-      if (selectEndDate) {
-        const end = new Date(selectEndDate);
-        end.setHours(23, 59, 59, 999);
-        matchStage.selectionDate.$lte = end;
-      }
-    }
-
 
     // Search (Candidate Name, Email, Phone, Skills) - stored in dynamicFields
     if (search) {
@@ -350,7 +297,93 @@ router.get("/", async (req, res) => {
     }
 
     // Aggregation Pipeline
+    const isStatusAll = !status || status === "all";
+
     const pipeline = [
+      // 1. Compute relevantTimestamp based on whether a specific status is selected
+      ...(startDate || endDate ? [
+        // Only add the $addFields + $match if date filtering is needed
+        ...(isStatusAll ? [
+          // Status = "all" → filter directly by createdAt
+          {
+            $match: {
+              createdAt: {
+                ...(startDate ? { $gte: new Date(startDate) } : {}),
+                ...(endDate ? { $lte: (() => { const d = new Date(endDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+              }
+            }
+          }
+        ] : [
+          // Specific status selected → compute relevantTimestamp from statusHistory
+          {
+            $addFields: {
+              relevantTimestamp: {
+                $let: {
+                  vars: {
+                    historyMatch: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: { $ifNull: ["$statusHistory", []] },
+                            as: "h",
+                            cond: (["Shortlisted", "Screen", "Screened"].includes(status))
+                              ? { $in: ["$$h.status", ["Shortlisted", "Screen", "Screened"]] }
+                              : { $eq: ["$$h.status", status] }
+                          }
+                        },
+                        -1
+                      ]
+                    }
+                  },
+                  in: {
+                    $cond: [
+                      { $not: ["$$historyMatch"] },
+                      {
+                        $switch: {
+                          branches: [
+                            { case: { $eq: ["$status", "Joined"] }, then: { $ifNull: ["$joiningDate", "$createdAt"] } },
+                            { case: { $eq: ["$status", "Selected"] }, then: { $ifNull: ["$selectionDate", "$createdAt"] } }
+                          ],
+                          default: "$createdAt"
+                        }
+                      },
+                      "$$historyMatch.timestamp"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            $match: {
+              relevantTimestamp: {
+                ...(startDate ? { $gte: new Date(startDate) } : {}),
+                ...(endDate ? { $lte: (() => { const d = new Date(endDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+              }
+            }
+          }
+        ])
+      ] : []),
+
+      // 3. Filter by Joined/Selected specific ranges if provided
+      ...(joinStartDate || joinEndDate ? [{
+        $match: {
+          joiningDate: {
+            ...(joinStartDate ? { $gte: new Date(joinStartDate) } : {}),
+            ...(joinEndDate ? { $lte: (() => { const d = new Date(joinEndDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+          }
+        }
+      }] : []),
+      ...(selectStartDate || selectEndDate ? [{
+        $match: {
+          selectionDate: {
+            ...(selectStartDate ? { $gte: new Date(selectStartDate) } : {}),
+            ...(selectEndDate ? { $lte: (() => { const d = new Date(selectEndDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+          }
+        }
+      }] : []),
+
+      // 4. Base filtering (Status, Stage, Search)
       { $match: matchStage },
       { $sort: { createdAt: -1 } },
 
@@ -402,7 +435,9 @@ router.get("/", async (req, res) => {
       {
         $match: {
           ...(client && client !== "all" ? { "client.companyName": new RegExp(client, "i") } : {}),
-          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(jobTitle, "i") } : {})
+          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(jobTitle, "i") } : {}),
+          ...(reporterId && reporterId !== "all" ? { "reporter._id": new mongoose.Types.ObjectId(reporterId) } : {}),
+          ...(jobStatus && jobStatus !== "all" ? { "job.status": jobStatus } : {})
         }
       }
     ];
@@ -433,6 +468,7 @@ router.get("/", async (req, res) => {
                   jobId: {
                     _id: "$job._id",
                     title: "$job.title",
+                    status: "$job.status",
                     stages: "$job.stages",
                     clientId: {
                       _id: "$client._id",
@@ -538,6 +574,15 @@ router.post("/", upload.single("resume"), async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Job not found. Please select a valid job.",
+      });
+    }
+
+    // 1.1️⃣ Check if user is a recruiter and if the job is open
+    const creator = await User.findById(req.body.createdBy);
+    if (creator && creator.designation === "Recruiter" && job.status !== "Open") {
+      return res.status(403).json({
+        success: false,
+        message: `Candidates cannot be added to a job with '${job.status}' status. Only 'Open' jobs are available for recruitment.`,
       });
     }
 
@@ -649,10 +694,10 @@ router.post("/", upload.single("resume"), async (req, res) => {
 // 🟣 Get Candidates with Role-Based Access Control (Pagination & Filtering)
 router.get("/role-based-candidates", async (req, res) => {
   try {
-    const { userId, designation, page, limit, search, status, client, jobTitle, stage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
+    const { userId, designation, page, limit, search, status, client, jobTitle, stage, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, reporterId, jobStatus } = req.query;
 
     console.log("🔍 Role-Based Candidates Request:", {
-      userId, designation, page, limit, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate
+      userId, designation, page, limit, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, reporterId, jobStatus
     });
     const user = await User.findById(userId);
 
@@ -662,76 +707,37 @@ router.get("/role-based-candidates", async (req, res) => {
     const lowerDesignation = designation ? designation.toLowerCase() : "";
     let allowedUserIds = [];
     if (lowerDesignation === "admin") {
-      // Admin sees all, so we might not need to filter by createdBy, but let's see logic below
-      // Actually, if admin, we can skip createdBy filter or specific list
       allowedUserIds = null; // null means 'all'
     } else if (lowerDesignation === "recruiter") {
       allowedUserIds = [userId];
-    } else if (lowerDesignation === "mentor") {
-      const allUsers = await User.find({}).select("reporter designation");
-      const recruiters = allUsers.filter(u =>
-        u.designation?.toLowerCase() === "recruiter" &&
-        (u.reporter?.toString() === userId)
-      );
-      allowedUserIds = [userId, ...recruiters.map(r => r._id.toString())];
-    } else if (lowerDesignation === "manager") {
-      const allUsers = await User.find({}).select("reporter designation");
-      // Mentors reporting to manager
-      const mentors = allUsers.filter(u =>
-        u.designation?.toLowerCase() === "mentor" &&
-        (u.reporter?.toString() === userId)
-      );
-      const mentorIds = mentors.map(m => m._id.toString());
+    } else if (lowerDesignation === "mentor" || lowerDesignation === "manager") {
+      const allUsers = await User.find({}).select("_id reporter designation");
 
-      // Recruiters reporting to those mentors
-      const recruiters = allUsers.filter(u =>
-        u.designation?.toLowerCase() === "recruiter" &&
-        mentorIds.includes(u.reporter?.toString())
-      );
+      // Get direct reportees (designation-agnostic)
+      const directReportees = allUsers.filter(u => u.reporter?.toString() === userId);
+      const directReporteeIds = directReportees.map(u => u._id.toString());
 
-      allowedUserIds = [userId, ...mentorIds, ...recruiters.map(r => r._id.toString())];
+      if (lowerDesignation === "manager") {
+        // Get indirect reportees (designation-agnostic, 2 levels deep)
+        const indirectReportees = allUsers.filter(u =>
+          u.reporter && directReporteeIds.includes(u.reporter.toString())
+        );
+        allowedUserIds = [userId, ...directReporteeIds, ...indirectReportees.map(u => u._id.toString())];
+      } else {
+        allowedUserIds = [userId, ...directReporteeIds];
+      }
     }
 
-    // 2️⃣ Determine Job IDs where user is Lead or Assigned
-    // This adds to the visibility: User can see candidates for jobs they are assigned to, regardless of who created them.
-    let assignedJobIds = [];
-    if (lowerDesignation !== "admin" && lowerDesignation !== "recruiter") { // STRICT FILTER: Recruiters don't see shared candidates here
-      const jobs = await Job.find({
-        $or: [
-          { leadRecruiter: userId },
-          { assignedRecruiters: userId }, // assuming stores IDs, or array of objects checking below
-          { "assignedRecruiters._id": userId } // compatibility if array of objects
-        ]
-      }).select("_id");
-      assignedJobIds = jobs.map(j => j._id);
-    }
-
-    // 3️⃣ Construct Match Query
+    // 2️⃣ Construct Match Query
     const matchStage = {};
 
-    // A. Visibility Filter (Admin sees all, others restricted)
+    // A. Visibility Filter (Admin sees all, others strictly by creator)
     if (lowerDesignation !== "admin") {
-      const accessConditions = [];
-
-      // Condition 1: Created by allowed users
       if (allowedUserIds && allowedUserIds.length > 0) {
-        accessConditions.push({
-          createdBy: { $in: allowedUserIds.map(id => new mongoose.Types.ObjectId(id)) }
-        });
-      }
-
-      // Condition 2: Belongs to assigned jobs
-      if (assignedJobIds.length > 0) {
-        accessConditions.push({
-          jobId: { $in: assignedJobIds }
-        });
-      }
-
-      if (accessConditions.length > 0) {
-        matchStage.$or = accessConditions;
+        matchStage.createdBy = { $in: allowedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
       } else if (allowedUserIds && allowedUserIds.length === 0) {
-        // Should technically see nothing if not admin and no allowed users/jobs
-        // But usually own user is in allowedUserIds
+        // Safety: If somehow no users found, restrict to self
+        matchStage.createdBy = new mongoose.Types.ObjectId(userId);
       }
     }
 
@@ -743,56 +749,7 @@ router.get("/role-based-candidates", async (req, res) => {
       matchStage.interviewStage = stage;
     }
 
-    // Filter by Date Range
-    if (startDate || endDate) {
-      if (status === "Selected") {
-        matchStage.selectionDate = {};
-        if (startDate) matchStage.selectionDate.$gte = new Date(startDate);
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          matchStage.selectionDate.$lte = end;
-        }
-      } else if (status === "Joined") {
-        matchStage.joiningDate = {};
-        if (startDate) matchStage.joiningDate.$gte = new Date(startDate);
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          matchStage.joiningDate.$lte = end;
-        }
-      } else {
-        matchStage.createdAt = {};
-        if (startDate) matchStage.createdAt.$gte = new Date(startDate);
-        if (endDate) {
-          const end = new Date(endDate);
-          end.setHours(23, 59, 59, 999);
-          matchStage.createdAt.$lte = end;
-        }
-      }
-    }
-
-    // Filter by Joining Date Range
-    if (joinStartDate || joinEndDate) {
-      matchStage.joiningDate = {};
-      if (joinStartDate) matchStage.joiningDate.$gte = new Date(joinStartDate);
-      if (joinEndDate) {
-        const end = new Date(joinEndDate);
-        end.setHours(23, 59, 59, 999);
-        matchStage.joiningDate.$lte = end;
-      }
-    }
-
-    // Filter by Selection Date Range
-    if (selectStartDate || selectEndDate) {
-      matchStage.selectionDate = {};
-      if (selectStartDate) matchStage.selectionDate.$gte = new Date(selectStartDate);
-      if (selectEndDate) {
-        const end = new Date(selectEndDate);
-        end.setHours(23, 59, 59, 999);
-        matchStage.selectionDate.$lte = end;
-      }
-    }
+    // Search logic remains in matchStage for query optimization
 
 
     // Search
@@ -830,9 +787,92 @@ router.get("/role-based-candidates", async (req, res) => {
     const pipeline = [
       // 1. Initial Match (Visibility, Status, Stage, Search on Dynamic Fields)
       { $match: matchStage },
+
+      // 1b. Context-aware date filtering
+      ...(startDate || endDate ? [
+        ...(!status || status === "all" ? [
+          // Status = "all" → filter directly by createdAt
+          {
+            $match: {
+              createdAt: {
+                ...(startDate ? { $gte: new Date(startDate) } : {}),
+                ...(endDate ? { $lte: (() => { const d = new Date(endDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+              }
+            }
+          }
+        ] : [
+          // Specific status selected → compute relevantTimestamp from statusHistory
+          {
+            $addFields: {
+              relevantTimestamp: {
+                $let: {
+                  vars: {
+                    historyMatch: {
+                      $arrayElemAt: [
+                        {
+                          $filter: {
+                            input: { $ifNull: ["$statusHistory", []] },
+                            as: "h",
+                            cond: (["Shortlisted", "Screen", "Screened"].includes(status))
+                              ? { $in: ["$$h.status", ["Shortlisted", "Screen", "Screened"]] }
+                              : { $eq: ["$$h.status", status] }
+                          }
+                        },
+                        -1
+                      ]
+                    }
+                  },
+                  in: {
+                    $cond: [
+                      { $not: ["$$historyMatch"] },
+                      {
+                        $switch: {
+                          branches: [
+                            { case: { $eq: ["$status", "Joined"] }, then: { $ifNull: ["$joiningDate", "$createdAt"] } },
+                            { case: { $eq: ["$status", "Selected"] }, then: { $ifNull: ["$selectionDate", "$createdAt"] } }
+                          ],
+                          default: "$createdAt"
+                        }
+                      },
+                      "$$historyMatch.timestamp"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          {
+            $match: {
+              relevantTimestamp: {
+                ...(startDate ? { $gte: new Date(startDate) } : {}),
+                ...(endDate ? { $lte: (() => { const d = new Date(endDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+              }
+            }
+          }
+        ])
+      ] : []),
+
+      // 1d. Filter by Joined/Selected specific ranges if provided
+      ...(joinStartDate || joinEndDate ? [{
+        $match: {
+          joiningDate: {
+            ...(joinStartDate ? { $gte: new Date(joinStartDate) } : {}),
+            ...(joinEndDate ? { $lte: (() => { const d = new Date(joinEndDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+          }
+        }
+      }] : []),
+      ...(selectStartDate || selectEndDate ? [{
+        $match: {
+          selectionDate: {
+            ...(selectStartDate ? { $gte: new Date(selectStartDate) } : {}),
+            ...(selectEndDate ? { $lte: (() => { const d = new Date(selectEndDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+          }
+        }
+      }] : []),
+
       { $sort: { createdAt: -1 } },
 
-      // 2. Lookups (Required for filtering by Client/JobTitle)
+      // 2. Lookups (Required for filtering by Client/JobTitle/Reporter/JobStatus)
       {
         $lookup: {
           from: "jobs",
@@ -853,11 +893,35 @@ router.get("/role-based-candidates", async (req, res) => {
       },
       { $unwind: { path: "$client", preserveNullAndEmptyArrays: true } },
 
-      // 3. Secondary Match (Client & Job Title Filters)
+      // Lookup CreatedBy User
+      {
+        $lookup: {
+          from: "users",
+          localField: "createdBy",
+          foreignField: "_id",
+          as: "creator"
+        }
+      },
+      { $unwind: { path: "$creator", preserveNullAndEmptyArrays: true } },
+
+      // Lookup Creator's Reporter
+      {
+        $lookup: {
+          from: "users",
+          localField: "creator.reporter",
+          foreignField: "_id",
+          as: "reporter"
+        }
+      },
+      { $unwind: { path: "$reporter", preserveNullAndEmptyArrays: true } },
+
+      // 3. Secondary Match (Relational Filters)
       {
         $match: {
           ...(client && client !== "all" ? { "client.companyName": new RegExp(client, "i") } : {}),
-          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(jobTitle, "i") } : {})
+          ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(jobTitle, "i") } : {}),
+          ...(reporterId && reporterId !== "all" ? { "reporter._id": new mongoose.Types.ObjectId(reporterId) } : {}),
+          ...(jobStatus && jobStatus !== "all" ? { "job.status": jobStatus } : {})
         }
       },
 
@@ -874,57 +938,6 @@ router.get("/role-based-candidates", async (req, res) => {
                 _id: 1,
                 status: 1,
                 interviewStage: 1,
-                joiningDate: 1, // Added
-                offerLetter: 1, // Added
-                createdAt: 1,
-                resumeUrl: 1,
-                linkedinUrl: 1,
-                portfolioUrl: 1,
-                notes: 1,
-                dynamicFields: 1,
-                comments: 1,
-
-                // Reconstruct jobId object structure expected by frontend
-                jobId: {
-                  _id: "$job._id",
-                  title: "$job.title",
-                  stages: "$job.stages",
-                  clientId: {
-                    _id: "$client._id",
-                    companyName: "$client.companyName"
-                  }
-                },
-                createdBy: 1 // Keep ID for next lookup
-              }
-            },
-
-            // Populate User fields (Creators, Reporters) - AFTER Limit for performance
-            {
-              $lookup: {
-                from: "users",
-                localField: "createdBy",
-                foreignField: "_id",
-                as: "creator"
-              }
-            },
-            { $unwind: { path: "$creator", preserveNullAndEmptyArrays: true } },
-
-            // Populate Creator's Reporter
-            {
-              $lookup: {
-                from: "users",
-                localField: "creator.reporter",
-                foreignField: "_id",
-                as: "creatorReporter"
-              }
-            },
-            { $unwind: { path: "$creatorReporter", preserveNullAndEmptyArrays: true } },
-
-            {
-              $project: {
-                _id: 1,
-                status: 1,
-                interviewStage: 1,
                 joiningDate: 1,
                 offerLetter: 1,
                 selectionDate: 1,
@@ -935,18 +948,25 @@ router.get("/role-based-candidates", async (req, res) => {
                 portfolioUrl: 1,
                 notes: 1,
                 dynamicFields: 1,
-                jobId: 1,
                 comments: 1,
-
-                // Reconstruct createdBy object structure
+                jobId: {
+                  _id: "$job._id",
+                  title: "$job.title",
+                  status: "$job.status",
+                  stages: "$job.stages",
+                  clientId: {
+                    _id: "$client._id",
+                    companyName: "$client.companyName"
+                  }
+                },
                 createdBy: {
                   _id: "$creator._id",
                   name: "$creator.name",
                   email: "$creator.email",
                   designation: "$creator.designation",
                   reporter: {
-                    _id: "$creatorReporter._id",
-                    name: "$creatorReporter.name"
+                    _id: "$reporter._id",
+                    name: "$reporter.name"
                   }
                 }
               }
@@ -1021,45 +1041,7 @@ router.get("/user/:userId", async (req, res) => {
       query.status = new RegExp(`^${status}$`, "i");
     }
 
-    // Filter by Date Range (createdAt)
-    if (startDate || endDate) {
-      query.createdAt = {};
-      if (startDate) {
-        query.createdAt.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        query.createdAt.$lte = end;
-      }
-    }
-
-    // Filter by Joining Date Range
-    if (joinStartDate || joinEndDate) {
-      query.joiningDate = {};
-      if (joinStartDate) query.joiningDate.$gte = new Date(joinStartDate);
-      if (joinEndDate) {
-        const end = new Date(joinEndDate);
-        end.setHours(23, 59, 59, 999);
-        query.joiningDate.$lte = end;
-      }
-    }
-
-    // Filter by Selection Date Range
-    if (selectStartDate || selectEndDate) {
-      query.selectionDate = {};
-      if (selectStartDate) query.selectionDate.$gte = new Date(selectStartDate);
-      if (selectEndDate) {
-        const end = new Date(selectEndDate);
-        end.setHours(23, 59, 59, 999);
-        query.selectionDate.$lte = end;
-      }
-    }
-
-
     // 3️⃣ Search Filter (Name, Email, Phone, Skills, Job Title)
-    // Note: Job Title search requires lookup, which is harder in simple find().
-    // We'll focus on dynamicFields for now as per other endpoints.
     if (search) {
       const searchRegex = new RegExp(search, "i");
       query.$or = [
@@ -1074,57 +1056,109 @@ router.get("/user/:userId", async (req, res) => {
       ];
     }
 
-    // 4️⃣ If Pagination is NOT requested, return ALL (Backward Compatibility)
-    if (!page || !limit) {
-      const candidates = await Candidate.find(query)
-        .populate("createdBy", "name email")
-        .populate({
-          path: "jobId",
-          select: "title _id clientId stages candidateFields",
-          populate: {
-            path: "clientId",
-            select: "companyName pocs"
-          }
-        })
-        .populate({
-          path: "interviewStageHistory.updatedBy",
-          select: "name email designation",
-        })
-        .populate({
-          path: "statusHistory.updatedBy",
-          select: "name email designation",
-        })
-        .sort({ createdAt: -1 });
-      return res.json({ success: true, candidates });
-    }
-
-    // 5️⃣ If Pagination IS requested
+    // Convert to Aggregation for Status History Logic
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
 
+    // Define the date match based on status history logic
     const pipeline = [
-      { $match: { createdBy: new mongoose.Types.ObjectId(userId) } }, // Ensure ObjectId match
+      { $match: { createdBy: new mongoose.Types.ObjectId(userId) } },
 
-      // Apply Search & Status Filters to the match
-      ...(Object.keys(query).length > 1 ? [{
+      // Calculate relevantTimestamp
+      {
+        $addFields: {
+          relevantTimestamp: {
+            $let: {
+              vars: {
+                historyMatch: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$statusHistory",
+                        as: "h",
+                        cond: {
+                          $cond: [
+                            { $or: [{ $not: [status] }, { $eq: [status, "all"] }] },
+                            { $eq: ["$$h.status", "$status"] },
+                            {
+                              $cond: [
+                                { $in: [status, ["Shortlisted", "Screen", "Screened"]] },
+                                { $in: ["$$h.status", ["Shortlisted", "Screen", "Screened"]] },
+                                { $eq: ["$$h.status", status] }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    -1
+                  ]
+                }
+              },
+              in: {
+                $cond: [
+                  { $not: ["$$historyMatch"] },
+                  {
+                    $switch: {
+                      branches: [
+                        { case: { $eq: ["$status", "Joined"] }, then: "$joiningDate" },
+                        { case: { $eq: ["$status", "Selected"] }, then: "$selectionDate" }
+                      ],
+                      default: "$createdAt"
+                    }
+                  },
+                  "$$historyMatch.timestamp"
+                ]
+              }
+            }
+          }
+        }
+      },
+
+      // Filter by relevantTimestamp
+      ...(startDate || endDate ? [{
+        $match: {
+          relevantTimestamp: {
+            ...(startDate ? { $gte: new Date(startDate) } : {}),
+            ...(endDate ? { $lte: (() => { const d = new Date(endDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+          }
+        }
+      }] : []),
+
+      // Filter by Joined/Selected specific ranges if provided
+      ...(joinStartDate || joinEndDate ? [{
+        $match: {
+          joiningDate: {
+            ...(joinStartDate ? { $gte: new Date(joinStartDate) } : {}),
+            ...(joinEndDate ? { $lte: (() => { const d = new Date(joinEndDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+          }
+        }
+      }] : []),
+      ...(selectStartDate || selectEndDate ? [{
+        $match: {
+          selectionDate: {
+            ...(selectStartDate ? { $gte: new Date(selectStartDate) } : {}),
+            ...(selectEndDate ? { $lte: (() => { const d = new Date(selectEndDate); d.setHours(23, 59, 59, 999); return d; })() } : {})
+          }
+        }
+      }] : []),
+
+      // Status and Search (Remaining query logic)
+      {
         $match: (() => {
-          // We need to exclude createdBy from here as it's already matched above
-          // and query might use string ID instead of ObjectId
-          const { createdBy, ...rest } = query;
+          const { createdBy, createdAt, joiningDate, selectionDate, ...rest } = query;
           return rest;
         })()
-      }] : []),
+      },
 
       { $sort: { createdAt: -1 } },
 
-      // Pagination Facet
       {
         $facet: {
           candidates: [
             { $skip: skip },
             { $limit: limitNum },
-            // Lookups for population
             {
               $lookup: {
                 from: "users",
@@ -1133,10 +1167,7 @@ router.get("/user/:userId", async (req, res) => {
                 as: "createdBy"
               }
             },
-            { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
-            {
-              $project: { "createdBy.password": 0, "createdBy.appPassword": 0 }
-            },
+            { $unwind: "$createdBy" },
             {
               $lookup: {
                 from: "jobs",
@@ -1145,8 +1176,7 @@ router.get("/user/:userId", async (req, res) => {
                 as: "jobId"
               }
             },
-            { $unwind: { path: "$jobId", preserveNullAndEmptyArrays: true } },
-            // Nested lookup for Client in Job
+            { $unwind: "$jobId" },
             {
               $lookup: {
                 from: "clients",
@@ -1155,51 +1185,16 @@ router.get("/user/:userId", async (req, res) => {
                 as: "jobId.clientId"
               }
             },
-            { $unwind: { path: "$jobId.clientId", preserveNullAndEmptyArrays: true } },
+            { $unwind: "$jobId.clientId" }
           ],
           totalCount: [{ $count: "count" }]
         }
       }
     ];
 
-    // Note: The pipeline above is a simplified version. 
-    // To match the exact population of the non-paginated version (especially deep nested history),
-    // it's often easier to fetch IDs first via pagination, then populate fully.
-
-    // Alternative Strategy for Consistency:
-    // 1. Count total documents matching query
-    // 2. Fetch paginated documents using standard .find(query).skip().limit().populate(...)
-
-    const totalCandidates = await Candidate.countDocuments(query);
-
-    const paginatedCandidates = await Candidate.find(query)
-      .populate({
-        path: "createdBy",
-        select: "name email reporter",
-        populate: {
-          path: "reporter",
-          select: "name"
-        }
-      })
-      .populate({
-        path: "jobId",
-        select: "title _id clientId stages candidateFields",
-        populate: {
-          path: "clientId",
-          select: "companyName pocs"
-        }
-      })
-      .populate({
-        path: "interviewStageHistory.updatedBy",
-        select: "name email designation",
-      })
-      .populate({
-        path: "statusHistory.updatedBy",
-        select: "name email designation",
-      })
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limitNum);
+    const result = await Candidate.aggregate(pipeline);
+    const paginatedCandidates = result[0].candidates;
+    const totalCandidates = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
 
     return res.json({
       success: true,

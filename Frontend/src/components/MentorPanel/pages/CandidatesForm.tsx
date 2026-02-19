@@ -125,6 +125,20 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       return isCreatedByMentor || isJobAssignedToMentorTeam;
     });
 
+  } else if (user.designation === "Recruiter") {
+    // RECRUITER → Only jobs created by or assigned to user AND must be "Open"
+    filteredJobs = jobs.filter((job) => {
+      const isCreatedByUser = job?.CreatedBy === user._id || job?.CreatedBy?._id === user._id;
+
+      const isAssignedToUser =
+        Array.isArray(job.assignedRecruiters) &&
+        job.assignedRecruiters.some(
+          (r: any) => (r._id === user._id || r === user._id)
+        );
+
+      return (isCreatedByUser || isAssignedToUser) && job.status === "Open";
+    });
+
   } else {
     // DEFAULT → Only jobs created by user
     filteredJobs = jobs.filter(

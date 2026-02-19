@@ -24,6 +24,21 @@ type Candidate = {
   joiningDate?: string;
   selectionDate?: string;
   expectedJoiningDate?: string;
+  interviewStageHistory?: Array<{
+    stageName: string;
+    status: "Selected" | "Rejected";
+    notes?: string;
+    updatedBy: string | any;
+    timestamp: string;
+  }>;
+  statusHistory?: Array<{
+    status: string;
+    comment?: string;
+    joiningDate?: string;
+    rejectionReason?: string;
+    updatedBy: string | any;
+    timestamp: string;
+  }>;
 };
 
 
@@ -47,6 +62,8 @@ type CandidateContextType = {
       joinEndDate?: string;
       selectStartDate?: string;
       selectEndDate?: string;
+      reporterId?: string;
+      jobStatus?: string;
     }
   ) => Promise<void>;
   fetchRoleBasedCandidates: (
@@ -66,6 +83,8 @@ type CandidateContextType = {
       joinEndDate?: string;
       selectStartDate?: string;
       selectEndDate?: string;
+      reporterId?: string;
+      jobStatus?: string;
     }
   ) => Promise<void>;
 
@@ -118,6 +137,8 @@ type CandidateContextType = {
       joinEndDate?: string;
       selectStartDate?: string;
       selectEndDate?: string;
+      reporterId?: string;
+      jobStatus?: string;
     }
 
   ) => Promise<void>;

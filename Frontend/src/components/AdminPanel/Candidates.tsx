@@ -129,6 +129,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     const [statusFilter, setStatusFilter] = useState("all");
     const [filterClient, setFilterClient] = useState("all");
     const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
+    const [filterJobStatus, setFilterJobStatus] = useState("all");
+    const [filterReporter, setFilterReporter] = useState("all");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
     const [joinStartDate, setJoinStartDate] = useState("");
@@ -142,6 +144,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     const limit = 10;
 
     const [clients, setClients] = useState<any[]>([]);
+    const [mentors, setMentors] = useState<any[]>([]);
 
     useEffect(() => {
         const jobTitleFromUrl = searchParams.get("jobTitle");
@@ -176,6 +179,19 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 }
             })
             .catch(err => console.error('Error fetching clients:', err));
+
+        // Fetch users (mentors)
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/users`)
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    // Filter or show all users? Usually, reporters are Mentors or Managers.
+                    // For now, let's show all users as options to be safe, or just mentors.
+                    // User request says "Reportees column filteration", which filters by the reporter's name.
+                    setMentors(data);
+                }
+            })
+            .catch(err => console.error('Error fetching mentors:', err));
     }, []);
 
     // 2️⃣ Fetch Paginated Candidates when filters/page change
@@ -187,13 +203,17 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                 search: searchTerm,
                 status: statusFilter,
                 client: filterClient,
-                jobTitle: filterJobTitle
+                jobTitle: filterJobTitle,
+                reporterId: filterReporter,
+                jobStatus: filterJobStatus
             });
             fetchPaginatedCandidates(currentPage, limit, {
                 search: searchTerm,
                 status: statusFilter,
                 client: filterClient,
                 jobTitle: filterJobTitle,
+                reporterId: filterReporter,
+                jobStatus: filterJobStatus,
                 startDate,
                 endDate,
                 joinStartDate,
@@ -204,13 +224,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
         }, 300); // Debounce search
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, fetchPaginatedCandidates]);
+    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterReporter, filterJobStatus, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, fetchPaginatedCandidates]);
 
 
     // Reset page to 1 on filter change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, statusFilter, filterClient, filterJobTitle, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
+    }, [searchTerm, statusFilter, filterClient, filterJobTitle, filterReporter, filterJobStatus, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate]);
 
 
     // 3️⃣ Get unique job titles from JOBS CONTEXT instead of candidates (since candidates are paginated)
@@ -314,6 +334,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             status: statusFilter,
             client: filterClient,
             jobTitle: filterJobTitle,
+            reporterId: filterReporter,
+            jobStatus: filterJobStatus,
             startDate,
             endDate,
             joinStartDate,
@@ -388,7 +410,36 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
 
                     <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Upload From</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Reportees</label>
+                        <SearchableSelect
+                            options={[
+                                { value: 'all', label: 'All Mentors' },
+                                ...mentors.filter(m => m.name).map(m => ({ value: m._id, label: m.name }))
+                            ]}
+                            value={filterReporter}
+                            onChange={(val) => setFilterReporter(val)}
+                            placeholder="Select Mentor"
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Job Status</label>
+                        <SearchableSelect
+                            options={[
+                                { value: 'all', label: 'All Status' },
+                                { value: 'Open', label: 'Open' },
+                                { value: 'Closed', label: 'Closed' },
+                                { value: 'Hold', label: 'Hold' }
+                            ]}
+                            value={filterJobStatus}
+                            onChange={(val) => setFilterJobStatus(val)}
+                            placeholder="Job Status"
+                        />
+                    </div>
+
+
+                    <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">From Date</label>
                         <input
                             type="date"
                             value={startDate}
@@ -398,7 +449,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                     </div>
 
                     <div className="space-y-1">
-                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">Upload To</label>
+                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider text-center block">To Date</label>
                         <input
                             type="date"
                             value={endDate}
@@ -454,7 +505,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                     )}
 
                     <div className="flex items-end">
-                        {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate) ? (
+                        {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate || filterClient !== "all" || filterJobTitle !== "all" || filterReporter !== "all" || filterJobStatus !== "all" || searchTerm || statusFilter !== "all") ? (
                             <button
                                 onClick={() => {
                                     setStartDate("");
@@ -463,13 +514,19 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                     setJoinEndDate("");
                                     setSelectStartDate("");
                                     setSelectEndDate("");
+                                    setFilterReporter("all");
+                                    setFilterJobStatus("all");
+                                    setFilterClient("all");
+                                    setFilterJobTitle("all");
+                                    setSearchTerm("");
+                                    setStatusFilter("all");
                                 }}
                                 className="w-full px-4 py-2 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition text-sm font-semibold"
                             >
-                                Reset Dates
+                                Clear All
                             </button>
                         ) : (
-                            <div className="w-full h-9"></div> // Placeholder to keep height consistent
+                            <div className="w-full h-9"></div>
                         )}
                     </div>
 
@@ -528,6 +585,9 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Upload Date
+                                </th>
+                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
+                                    Requirement Status
                                 </th>
                                 <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
                                     Resume
@@ -606,6 +666,14 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                             {candidate.createdAt ? formatDate(candidate.createdAt) : "-"}
+                                        </td>
+                                        <td className="px-6 py-4 text-sm whitespace-nowrap">
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${candidate.jobId?.status === 'Open' ? 'bg-green-100 text-green-700' :
+                                                candidate.jobId?.status === 'Closed' ? 'bg-red-100 text-red-700' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                {candidate.jobId?.status || "Open"}
+                                            </span>
                                         </td>
 
 

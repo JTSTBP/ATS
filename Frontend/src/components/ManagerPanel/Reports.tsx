@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Info, Check, Users, Briefcase, CalendarCheck, X, UserPlus, ClipboardCheck, Clock, CheckCircle, Filter } from "lucide-react";
+import { Search, Info, Check, Users, Briefcase, CalendarCheck, X, UserPlus, ClipboardCheck, Clock, CheckCircle, Filter, Building2 } from "lucide-react";
 import { useAuth } from "../../context/AuthProvider";
 import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
@@ -31,11 +31,16 @@ export default function ManagerReports() {
   // Default to current month
   const [startDate, setStartDate] = useState(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
   });
   const [endDate, setEndDate] = useState(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   });
 
   const [clientSearch, setClientSearch] = useState("");
@@ -116,15 +121,15 @@ export default function ManagerReports() {
   const scopedData = useMemo(() => {
     if (!user || !users || !jobs || !candidates) return { scopedJobs: [], scopedCandidates: [] };
 
-    const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
+    // Designation-agnostic recursive reporting
+    const directReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === user._id);
     let allReporteeIds = directReportees.map((u: any) => u._id);
 
-    if (user.designation === "Manager") {
-      directReportees.forEach((mentor: any) => {
-        const mentorReportees = users.filter((u: any) => u?.reporter?._id === mentor._id);
-        allReporteeIds = [...allReporteeIds, ...mentorReportees.map((u: any) => u._id)];
-      });
-    }
+    // Get 2nd level reportees (e.g., Recruiters reporting to Mentors)
+    directReportees.forEach((reportee: any) => {
+      const childReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === reportee._id);
+      allReporteeIds = [...allReporteeIds, ...childReportees.map((u: any) => u._id)];
+    });
 
     const scopedJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
@@ -145,18 +150,34 @@ export default function ManagerReports() {
   const clientJobReportData = useMemo(() => {
     const reportRows: any[] = [];
 
+    const openJobsInScope = scopedJobs.filter(j => j.status === "Open");
+    const openJobIds = new Set(openJobsInScope.map(job => (job._id || "").toString()));
+
+    const getCandidateJobId = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid ? String(jid) : null;
+    };
+
+    const isOpenJobCandidate = (c: any) => {
+      const jid = getCandidateJobId(c);
+      return jid && openJobIds.has(jid);
+    };
+
     scopedJobs.forEach(job => {
+      const isJobOpen = job.status === "Open";
+      // Candidates created in range for this job (ONLY if job is open)
       const jobCandidatesInRange = scopedCandidates.filter(c => {
-        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-        return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
+        const cJobId = getCandidateJobId(c);
+        return cJobId === job._id && (c.createdAt ? isWithinDateRange(String(c.createdAt)) : false) && isJobOpen;
       });
 
       const joinedCandidatesInRangeCount = scopedCandidates.filter(c => {
-        const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+        const cJobId = getCandidateJobId(c);
         return (
           cJobId === job._id &&
           c.status === "Joined" &&
-          (c.joiningDate ? isWithinDateRange(c.joiningDate.toString()) : false)
+          (c.joiningDate ? isWithinDateRange(c.joiningDate.toString()) : false) &&
+          isJobOpen
         );
       }).length;
 
@@ -184,7 +205,7 @@ export default function ManagerReports() {
       const matchesJobSearch = jobSearch ? job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
       const matchesGlobalDate = job.createdAt ? isWithinDateRange(job.createdAt) : true;
 
-      if (matchesDateFilter && matchesClientFilter && matchesJobFilter && matchesRecruiterFilter && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch && matchesGlobalDate) {
+      if (matchesDateFilter && matchesClientFilter && matchesJobFilter && matchesRecruiterFilter && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch && matchesGlobalDate && (isJobOpen || jobCandidatesInRange.length > 0 || joinedCandidatesInRangeCount > 0)) {
         reportRows.push({
           job,
           clientName,
@@ -220,22 +241,75 @@ export default function ManagerReports() {
   }, [scopedJobs, scopedCandidates, clients, users, clientSearch, recruiterSearch, jobSearch, startDate, endDate, selectedFilters]);
 
   const dashboardStats = useMemo(() => {
-    const { totals, reportRows } = clientJobReportData;
-    const activeJobs = reportRows.filter(row => row.job.status === "Open").length;
+    // 1. Global (System Status) Statistics for Scoped Requirements
+    const openJobs = scopedJobs.filter(j => j.status === "Open");
+    const activeJobs = openJobs.length;
+    const openJobIds = new Set(openJobs.map(job => (job._id || "").toString()));
+
+    const getCandidateJobId = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid ? String(jid) : null;
+    };
+
+    const isOpenJobCandidate = (c: any) => {
+      const jid = getCandidateJobId(c);
+      return jid && openJobIds.has(jid);
+    };
+
+    // Active Clients linked to Open jobs in scope
+    const activeClientIds = new Set(
+      openJobs
+        .map(j => {
+          const cid = j.clientId;
+          if (!cid) return null;
+          return typeof cid === "object" && cid._id ? cid._id : String(cid);
+        })
+        .filter(Boolean)
+    );
+    const activeClients = activeClientIds.size;
+
+    // Positions Left for Open jobs in scope: sum(positions) - sum(joined)
+    const totalPositionsGlobal = openJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+    const totalJoinedInOpenJobs = scopedCandidates.filter(c =>
+      c.status === "Joined" && isOpenJobCandidate(c)
+    ).length;
+    const remainingPositions = Math.max(0, totalPositionsGlobal - totalJoinedInOpenJobs);
+
+    // 2. Range-based (Activity) Statistics from filtered report rows
+    const openJobCandidatesInRange = scopedCandidates.filter(c =>
+      isWithinDateRange(c.createdAt) && isOpenJobCandidate(c)
+    );
+
+    const totalCandidates = openJobCandidatesInRange.length;
+    const newCandidates = openJobCandidatesInRange.filter(c => c.status === "New").length;
+    const shortlistedCandidates = openJobCandidatesInRange.filter(c =>
+      ["Screen", "Screened", "Shortlisted"].includes(c.status)
+    ).length;
+    const interviewedCandidates = openJobCandidatesInRange.filter(c => c.status === "Interviewed").length;
+    const holdCandidates = openJobCandidatesInRange.filter(c => c.status === "Hold").length;
+
+    // Selection/Join counts based on their specific event dates (from GLOBAL scopedCandidates)
+    const selectedCandidates = scopedCandidates.filter(c =>
+      c.status === "Selected" && (c.selectionDate ? isWithinDateRange(String(c.selectionDate)) : false) && isOpenJobCandidate(c)
+    ).length;
+
+    const joinedCandidates = scopedCandidates.filter(c =>
+      c.status === "Joined" && (c.joiningDate ? isWithinDateRange(String(c.joiningDate)) : false) && isOpenJobCandidate(c)
+    ).length;
 
     return {
-      totalCandidates: totals.uploads || 0,
+      totalCandidates,
       activeJobs,
-      totalPositions: totals.positions || 0,
-      remainingPositions: (totals.positions || 0) - (totals.Joined || 0),
-      newCandidates: totals.New || 0,
-      shortlistedCandidates: totals.Shortlisted || 0,
-      interviewedCandidates: totals.Interviewed || 0,
-      selectedCandidates: totals.Selected || 0,
-      joinedCandidates: totals.Joined || 0,
-      holdCandidates: totals.Hold || 0,
+      activeClients,
+      remainingPositions,
+      newCandidates,
+      shortlistedCandidates,
+      interviewedCandidates,
+      selectedCandidates,
+      joinedCandidates,
+      holdCandidates,
     };
-  }, [clientJobReportData]);
+  }, [scopedJobs, scopedCandidates, clientJobReportData, startDate, endDate]);
 
   const openCandidatePopup = (jobTitle: string, clientName: string, status: string | "Total", jobCandidates: any[]) => {
     setCandidatePopupData({
@@ -361,15 +435,24 @@ export default function ManagerReports() {
               />
             </div>
           </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={() => { setStartDate(""); setEndDate(""); }}
+              className="px-4 py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-all h-full self-stretch sm:self-auto flex items-center justify-center"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10">
         {[
-          { label: "Total Positions", value: dashboardStats.totalPositions, icon: Briefcase, color: "blue", path: "/Manager/jobs" },
+          { label: "Active Clients", value: dashboardStats.activeClients, icon: Building2, color: "purple", path: "/Manager/clients" },
           { label: "Positions Left", value: dashboardStats.remainingPositions, icon: Briefcase, color: "emerald", path: "/Manager/jobs" },
-          { label: "Active Jobs", value: dashboardStats.activeJobs, icon: CalendarCheck, color: "amber", path: "/Manager/jobs" },
+          { label: "Active Requirements", value: dashboardStats.activeJobs, icon: CalendarCheck, color: "amber", path: "/Manager/jobs" },
+          { label: "Total Candidates", value: dashboardStats.totalCandidates, icon: Users, color: "blue", path: "/Manager/candidates" },
           { label: "New", value: dashboardStats.newCandidates, icon: UserPlus, color: "blue", path: "/Manager/candidates" },
           { label: "Screen", value: dashboardStats.shortlistedCandidates, icon: ClipboardCheck, color: "orange", path: "/Manager/candidates" },
           { label: "Interviewed", value: dashboardStats.interviewedCandidates, icon: Clock, color: "purple", path: "/Manager/candidates" },
@@ -386,11 +469,11 @@ export default function ManagerReports() {
               <h2 className="text-2xl sm:text-3xl font-bold mt-1 text-slate-800">{stat.value}</h2>
             </div>
             <div className={`p-2.5 sm:p-3 rounded-xl transition-colors ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-100' :
-                stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' :
-                  stat.color === 'amber' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-100' :
-                    stat.color === 'orange' ? 'bg-orange-50 text-orange-600 group-hover:bg-orange-100' :
-                      stat.color === 'purple' ? 'bg-purple-50 text-purple-600 group-hover:bg-purple-100' :
-                        'bg-green-50 text-green-600 group-hover:bg-green-100'
+              stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' :
+                stat.color === 'amber' ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-100' :
+                  stat.color === 'orange' ? 'bg-orange-50 text-orange-600 group-hover:bg-orange-100' :
+                    stat.color === 'purple' ? 'bg-purple-50 text-purple-600 group-hover:bg-purple-100' :
+                      'bg-green-50 text-green-600 group-hover:bg-green-100'
               }`}>
               <stat.icon size={20} className="sm:w-6 sm:h-6" />
             </div>
@@ -415,8 +498,16 @@ export default function ManagerReports() {
                 placeholder="Search Client..."
                 value={clientSearch}
                 onChange={(e) => setClientSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                className="pl-9 pr-10 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
               />
+              {clientSearch && (
+                <button
+                  onClick={() => setClientSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <div className="relative group">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -425,8 +516,16 @@ export default function ManagerReports() {
                 placeholder="Search Job Title..."
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                className="pl-9 pr-10 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
               />
+              {jobSearch && (
+                <button
+                  onClick={() => setJobSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <div className="relative group">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
@@ -435,8 +534,16 @@ export default function ManagerReports() {
                 placeholder="Search Recruiter..."
                 value={recruiterSearch}
                 onChange={(e) => setRecruiterSearch(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
+                className="pl-9 pr-10 py-2 bg-white border border-slate-200 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium"
               />
+              {recruiterSearch && (
+                <button
+                  onClick={() => setRecruiterSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           </div>
         </div>

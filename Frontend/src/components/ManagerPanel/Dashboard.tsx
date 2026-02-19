@@ -4,9 +4,13 @@ import {
   CalendarCheck,
   CheckCircle,
   TrendingUp,
+  Building2,
+  UserPlus,
+  ClipboardCheck,
+  Clock,
 } from "lucide-react";
 import { useCandidateContext } from "../../context/CandidatesProvider";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useAuth } from "../../context/AuthProvider"; // Corrected import path
 import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
@@ -31,37 +35,50 @@ export default function ManagerDashboard() {
   const { jobs, fetchJobs } = useJobContext();
   const navigate = useNavigate();
 
-  const [selectedMonth, setSelectedMonth] = useState(() => {
-    return new Date().toISOString().slice(0, 7); // Default to current month (YYYY-MM)
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}-01`;
   });
 
-  useEffect(() => {
-    fetchUsers();
-    fetchJobs();
-    fetchallCandidates();
-  }, []);
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
-  const filterByMonth = (dateString: string | undefined) => {
-    if (!selectedMonth) return true;
+  const filterByRange = (dateString: string | undefined) => {
+    if (!startDate && !endDate) return true;
     if (!dateString) return false;
     const date = new Date(dateString);
-    const month = date.toISOString().slice(0, 7); // YYYY-MM
-    return month === selectedMonth;
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+
+    if (start && end) return date >= start && date <= end;
+    if (start) return date >= start;
+    if (end) return date <= end;
+    return true;
   };
 
   // --- Manager Scoping Logic ---
   const scopedData = useMemo(() => {
     if (!user || !users || !jobs || !candidates) return { scopedJobs: [], scopedCandidates: [] };
 
-    const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
+    // Designation-agnostic recursive reporting
+    const directReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === user._id);
     let allReporteeIds = directReportees.map((u: any) => u._id);
 
-    if (user.designation === "Manager") {
-      directReportees.forEach((mentor: any) => {
-        const mentorReportees = users.filter((u: any) => u?.reporter?._id === mentor._id);
-        allReporteeIds = [...allReporteeIds, ...mentorReportees.map((u: any) => u._id)];
-      });
-    }
+    // Get 2nd level reportees (e.g., Recruiters reporting to Mentors)
+    directReportees.forEach((reportee: any) => {
+      const childReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === reportee._id);
+      allReporteeIds = [...allReporteeIds, ...childReportees.map((u: any) => u._id)];
+    });
 
     const scopedJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
@@ -78,36 +95,61 @@ export default function ManagerDashboard() {
 
   const { scopedJobs, scopedCandidates, allReporteeIds } = scopedData;
 
+  // Centralized Helper for Stats & Performance Calculation
+  const openJobIds = useMemo(() => {
+    const openJobs = scopedJobs.filter(j => j.status === "Open");
+    return new Set(openJobs.map(job => (job._id || "").toString()));
+  }, [scopedJobs]);
+
+  const getCandidateJobId = useCallback((c: any) => {
+    const jid = c.jobId?._id || c.jobId;
+    return jid ? String(jid) : null;
+  }, []);
+
+  const isOpenJobCandidate = useCallback((c: any) => {
+    const jid = getCandidateJobId(c);
+    return jid && openJobIds.has(jid);
+  }, [openJobIds, getCandidateJobId]);
+
   // Calculate statistics (Identical Logic to Admin)
   const stats = useMemo(() => {
-    const filteredJobs = scopedJobs.filter((j) => filterByMonth(j.createdAt));
+    // 1. Global (System Status) Statistics for Scoped Requirements
+    const openJobs = scopedJobs.filter(j => j.status === "Open");
+    const activeJobs = openJobs.length;
 
-    const totalCandidates = scopedCandidates.filter((c) => filterByMonth(c.createdAt)).length;
-    const activeJobs = scopedJobs.filter((j) => j.status === "Open").length;
+    // Active Clients linked to Open jobs in scope
+    const activeClientIds = new Set(
+      openJobs
+        .map(j => {
+          const cid = j.clientId;
+          if (!cid) return null;
+          return typeof cid === "object" && cid._id ? cid._id : String(cid);
+        })
+        .filter(Boolean)
+    );
+    const activeClients = activeClientIds.size;
+
+    // Remaining Positions for Open jobs in scope: sum(positions) - sum(joined)
+    const totalPositionsGlobal = openJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+    const totalJoinedInOpenJobs = scopedCandidates.filter(c =>
+      c.status === "Joined" && isOpenJobCandidate(c)
+    ).length;
+    const remainingPositions = Math.max(0, totalPositionsGlobal - totalJoinedInOpenJobs);
+
+    // 2. Range-based (Activity) Statistics
+    const totalCandidates = scopedCandidates.filter((c) => filterByRange(c.createdAt) && isOpenJobCandidate(c)).length;
 
     // Status-specific counts
-    const newCandidates = scopedCandidates.filter((c) => c.status === "New" && filterByMonth(c.createdAt)).length;
-    const shortlistedCandidates = scopedCandidates.filter((c) => c.status === "Shortlisted" && filterByMonth(c.createdAt)).length;
-    const interviewedCandidates = scopedCandidates.filter((c) => c.status === "Interviewed" && filterByMonth(c.createdAt)).length;
-    const selectedCandidates = scopedCandidates.filter((c) => c.status === "Selected" && filterByMonth(c.selectionDate)).length;
-
-    const totalPositions = filteredJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
-
-    const joinedCandidates = scopedCandidates.filter(c => {
-      const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
-      return (
-        c.status === "Joined" &&
-        filterByMonth(c.joiningDate) &&
-        filteredJobs.some(j => String(j._id) === String(cJobId))
-      );
-    }).length;
-
-    const remainingPositions = totalPositions - joinedCandidates;
+    const newCandidates = scopedCandidates.filter((c) => c.status === "New" && filterByRange(c.createdAt) && isOpenJobCandidate(c)).length;
+    const shortlistedCandidates = scopedCandidates.filter((c) => (c.status === "Shortlisted" || c.status === "Screen" || c.status === "Screened") && filterByRange(c.createdAt) && isOpenJobCandidate(c)).length;
+    const interviewedCandidates = scopedCandidates.filter((c) => c.status === "Interviewed" && filterByRange(c.createdAt) && isOpenJobCandidate(c)).length;
+    const selectedCandidates = scopedCandidates.filter((c) => c.status === "Selected" && (c.selectionDate ? filterByRange(String(c.selectionDate)) : false) && isOpenJobCandidate(c)).length;
+    const joinedCandidates = scopedCandidates.filter((c) => c.status === "Joined" && (c.joiningDate ? filterByRange(String(c.joiningDate)) : false) && isOpenJobCandidate(c)).length;
 
     return {
       totalCandidates,
       activeJobs,
-      totalPositions,
+      activeClients,
       remainingPositions,
       newCandidates,
       shortlistedCandidates,
@@ -115,14 +157,14 @@ export default function ManagerDashboard() {
       selectedCandidates,
       joinedCandidates,
     };
-  }, [scopedJobs, scopedCandidates, selectedMonth]);
+  }, [scopedJobs, scopedCandidates, startDate, endDate, isOpenJobCandidate]);
 
   // Recruiter Performance Data (For team members)
   const recruiterPerformanceData = useMemo(() => {
     const recruiterStats: Record<string, { name: string; uploaded: number; shortlisted: number; joined: number }> = {};
 
     // Get all team members plus the manager themselves
-    const teamMembers = users.filter(u => u._id === user?._id || allReporteeIds.includes(u._id));
+    const teamMembers = users.filter(u => u._id === user?._id || (allReporteeIds || []).includes(u._id));
 
     teamMembers.forEach(u => {
       recruiterStats[u._id] = { name: u.name, uploaded: 0, shortlisted: 0, joined: 0 };
@@ -132,14 +174,13 @@ export default function ManagerDashboard() {
       const creatorId = c.createdBy?._id || c.createdBy;
       if (!recruiterStats[creatorId]) return;
 
-      if (filterByMonth(c.createdAt)) {
+      if (filterByRange(c.createdAt) && isOpenJobCandidate(c)) {
         recruiterStats[creatorId].uploaded += 1;
-        if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
+        if (["Shortlisted", "Screen", "Screened"].includes(c.status || "")) {
+          recruiterStats[creatorId].shortlisted += 1;
+        }
       }
-      if (c.status === "Selected" && filterByMonth(c.selectionDate)) {
-        recruiterStats[creatorId].joined += 1;
-      }
-      if (c.status === "Joined" && filterByMonth(c.joiningDate)) {
+      if (c.status === "Joined" && (c.joiningDate ? filterByRange(String(c.joiningDate)) : false) && isOpenJobCandidate(c)) {
         recruiterStats[creatorId].joined += 1;
       }
     });
@@ -148,36 +189,67 @@ export default function ManagerDashboard() {
     return Object.values(recruiterStats)
       .sort((a, b) => b.uploaded - a.uploaded)
       .slice(0, maxRecruiters);
-  }, [scopedCandidates, users, user, selectedMonth, allReporteeIds, screenSize]);
+  }, [scopedCandidates, users, user, startDate, endDate, allReporteeIds, screenSize, isOpenJobCandidate]);
+
+  useEffect(() => {
+    fetchUsers();
+    fetchJobs();
+    fetchallCandidates();
+  }, []);
 
   return (
     <div className="p-4 md:p-8 bg-slate-50 min-h-screen text-slate-800">
       {/* Header */}
-      <div className="mb-6 sm:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="mb-6 sm:mb-8 flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Manager Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">Manager Dashboard</h1>
           <p className="text-sm sm:text-base text-slate-500 mt-1">
             Welcome back! Here's a summary of your team's recruitment activities.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-slate-200 w-fit">
-          <span className="text-xs sm:text-sm font-semibold text-slate-600 whitespace-nowrap uppercase tracking-wider">Month:</span>
-          <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="px-2 py-0.5 border-none bg-transparent focus:ring-0 text-sm sm:text-base font-bold text-blue-600 cursor-pointer"
-          />
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex flex-col xs:flex-row items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-2 flex-1">
+              <CalendarCheck size={16} className="text-indigo-500 shrink-0" />
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent border-none text-xs sm:text-sm font-semibold focus:ring-0 cursor-pointer p-0"
+              />
+            </div>
+            <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest hidden xs:block">to</div>
+            <div className="flex items-center gap-2 flex-1">
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent border-none text-xs sm:text-sm font-semibold focus:ring-0 cursor-pointer p-0"
+              />
+            </div>
+          </div>
+          {(startDate || endDate) && (
+            <button
+              onClick={() => { setStartDate(""); setEndDate(""); }}
+              className="px-4 py-2 text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 rounded-xl transition-all h-full self-stretch sm:self-auto flex items-center justify-center border border-red-100"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 sm:gap-6 mb-8 sm:mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10">
         {[
-          { label: "Total Candidates", value: stats.totalCandidates, icon: Users, color: "blue", path: "/Manager/candidates" },
-          { label: "Total Positions", value: stats.totalPositions, icon: Briefcase, color: "indigo", path: "/Manager/jobs" },
+          { label: "Active Clients", value: stats.activeClients, icon: Building2, color: "purple", path: "/Manager/clients" },
           { label: "Positions Left", value: stats.remainingPositions, icon: Briefcase, color: "orange", path: "/Manager/jobs" },
+          { label: "Active Requirements", value: stats.activeJobs, icon: CalendarCheck, color: "amber", path: "/Manager/jobs" },
+          { label: "Total Candidates", value: stats.totalCandidates, icon: Users, color: "blue", path: "/Manager/candidates" },
+          { label: "New", value: stats.newCandidates, icon: UserPlus, color: "blue", path: "/Manager/candidates" },
+          { label: "Screen", value: stats.shortlistedCandidates, icon: ClipboardCheck, color: "orange", path: "/Manager/candidates" },
+          { label: "Interviewed", value: stats.interviewedCandidates, icon: Clock, color: "purple", path: "/Manager/candidates" },
           { label: "Selected", value: stats.selectedCandidates, icon: CheckCircle, color: "emerald", path: "/Manager/candidates?status=Selected" },
           { label: "Joined", value: stats.joinedCandidates, icon: Users, color: "green", path: "/Manager/candidates?status=Joined" }
         ].map((stat, i) => (
@@ -191,10 +263,10 @@ export default function ManagerDashboard() {
               <h2 className="text-2xl sm:text-3xl font-bold mt-1 sm:mt-2 text-slate-800">{stat.value}</h2>
             </div>
             <div className={`p-3 rounded-xl transition-colors ${stat.color === 'blue' ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-100' :
-                stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100' :
-                  stat.color === 'orange' ? 'bg-orange-50 text-orange-600 group-hover:bg-orange-100' :
-                    stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' :
-                      'bg-green-50 text-green-600 group-hover:bg-green-100'
+              stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100' :
+                stat.color === 'orange' ? 'bg-orange-50 text-orange-600 group-hover:bg-orange-100' :
+                  stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100' :
+                    'bg-green-50 text-green-600 group-hover:bg-green-100'
               }`}>
               <stat.icon size={screenSize === 'mobile' ? 20 : 24} />
             </div>

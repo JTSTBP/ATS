@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { BarChart3, TrendingUp, Users, CheckCircle, XCircle, UserPlus, ClipboardCheck, Clock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthProvider';
 import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
 import { useJobContext } from '../../../context/DataProvider';
+import { getStatusTimestamp } from '../../../utils/statusUtils';
 
 type ReportStats = {
     totalCandidates: number;
@@ -12,7 +13,6 @@ type ReportStats = {
     interviewed: number;
     selected: number;
     joined: number;
-    rejected: number;
 };
 
 type JobPerformance = {
@@ -20,7 +20,6 @@ type JobPerformance = {
     title: string;
     totalCandidates: number;
     activePipeline: number;
-    hired: number;
     status: string;
 };
 
@@ -30,22 +29,26 @@ export const MentorReports = () => {
     const { candidates, fetchallCandidates } = useCandidateContext();
     const { jobs, fetchJobs } = useJobContext();
 
-    const [selectedMonth, setSelectedMonth] = useState<number | null>(new Date().getMonth());
-    const [selectedYear, setSelectedYear] = useState<number | null>(new Date().getFullYear());
+    // --- 1. Date Range Filter Setup ---
+    const [startDate, setStartDate] = useState<string>(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    });
+    const [endDate, setEndDate] = useState<string>(() => {
+        return new Date().toISOString().split('T')[0];
+    });
 
-    const months = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
-
-    const years = useMemo(() => {
-        const currentYear = new Date().getFullYear();
-        const result = [];
-        for (let i = 0; i < 5; i++) {
-            result.push(currentYear - i);
-        }
-        return result;
-    }, []);
+    const filterByRange = (dateString: string | null | undefined, start: string, end: string) => {
+        if (!start && !end) return true; // Show overall data if no range
+        if (!dateString) return false;
+        const date = new Date(dateString);
+        date.setHours(0, 0, 0, 0);
+        const s = start ? new Date(start) : new Date(0);
+        s.setHours(0, 0, 0, 0);
+        const e = end ? new Date(end) : new Date(8640000000000000);
+        e.setHours(23, 59, 59, 999);
+        return date >= s && date <= e;
+    };
 
     const [stats, setStats] = useState<ReportStats>({
         totalCandidates: 0,
@@ -54,7 +57,6 @@ export const MentorReports = () => {
         interviewed: 0,
         selected: 0,
         joined: 0,
-        rejected: 0,
     });
 
     const [jobPerformance, setJobPerformance] = useState<JobPerformance[]>([]);
@@ -67,70 +69,87 @@ export const MentorReports = () => {
     useEffect(() => {
         if (!user || !jobs || !candidates || !users) return;
 
-        // --- 1. Filter Logic (Same as Dashboard) ---
-        const isWithinSelectedMonth = (dateString: string) => {
-            if (selectedMonth === null || selectedYear === null) return true;
-            const date = new Date(dateString);
-            return date.getMonth() === selectedMonth && date.getFullYear() === selectedYear;
-        };
-
-        const directReportees = users.filter((u: any) => u?.reporter?._id === user._id);
+        // --- 2. Filter Logic (Consistant with Dashboard) ---
+        const directReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === user._id);
         let allReporteeIds = directReportees.map((u: any) => u._id);
 
-        if (user.designation === "Manager") {
-            directReportees.forEach((mentor: any) => {
-                const mentorReportees = users.filter(
-                    (u: any) => u?.reporter?._id === mentor._id
-                );
-                allReporteeIds = [
-                    ...allReporteeIds,
-                    ...mentorReportees.map((u: any) => u._id),
-                ];
-            });
-        }
+        // Get 2nd level reportees
+        directReportees.forEach((reportee: any) => {
+            const childReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === reportee._id);
+            allReporteeIds = [...allReporteeIds, ...childReportees.map((u: any) => u._id)];
+        });
 
-        const filteredJobs = jobs.filter((job: any) => {
+        const scopedJobs = jobs.filter((job: any) => {
             const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
-            const isCreatorAllowed = creatorId === user._id || allReporteeIds.includes(creatorId);
-            return isCreatorAllowed && isWithinSelectedMonth(job.createdAt);
+            return creatorId === user._id || allReporteeIds.includes(creatorId);
         });
 
-        const filteredCandidates = candidates.filter((c: any) => {
+        const openJobs = scopedJobs.filter((j: any) => j.status === 'Open');
+        const openJobIds = new Set(openJobs.map((job: any) => (job._id || "").toString()));
+
+        const isOpenJobCandidate = (c: any) => {
+            const jid = c.jobId?._id || c.jobId;
+            return jid && openJobIds.has(String(jid));
+        };
+
+        const scopedCandidates = candidates.filter((c: any) => {
             const creatorId = c.createdBy?._id || c.createdBy;
-            const isCreatorAllowed = creatorId === user._id || allReporteeIds.includes(creatorId);
-            return isCreatorAllowed && isWithinSelectedMonth(c.createdAt);
+            return creatorId === user._id || allReporteeIds.includes(creatorId);
         });
 
-        // --- 2. Calculate Overall Stats ---
+        // Filter candidates by DATE RANGE + OPEN JOBS (for general stats)
+        const candidatesInRange = scopedCandidates.filter(c =>
+            filterByRange(getStatusTimestamp(c, (c.status as string) || "New"), startDate, endDate) && isOpenJobCandidate(c)
+        );
+
+        // --- 3. Calculate Overall Stats ---
         setStats({
-            totalCandidates: filteredCandidates.length,
-            new: filteredCandidates.filter((c: any) => c.status === 'New').length,
-            shortlisted: filteredCandidates.filter((c: any) => c.status === 'Shortlisted').length,
-            interviewed: filteredCandidates.filter((c: any) => c.status === 'Interviewed').length,
-            selected: filteredCandidates.filter((c: any) => c.status === 'Selected').length,
-            joined: filteredCandidates.filter((c: any) => c.status === 'Joined').length,
-            rejected: filteredCandidates.filter((c: any) => c.status === 'Rejected').length,
+            totalCandidates: candidatesInRange.length,
+            new: scopedCandidates.filter((c: any) =>
+                c.status === 'New' &&
+                filterByRange(getStatusTimestamp(c, 'New'), startDate, endDate) &&
+                isOpenJobCandidate(c)
+            ).length,
+            shortlisted: scopedCandidates.filter((c: any) =>
+                ['Shortlisted', 'Screen', 'Screened'].includes(c.status) &&
+                filterByRange(getStatusTimestamp(c, ['Shortlisted', 'Screen', 'Screened']), startDate, endDate) &&
+                isOpenJobCandidate(c)
+            ).length,
+            interviewed: scopedCandidates.filter((c: any) =>
+                c.status === 'Interviewed' &&
+                filterByRange(getStatusTimestamp(c, 'Interviewed'), startDate, endDate) &&
+                isOpenJobCandidate(c)
+            ).length,
+            selected: scopedCandidates.filter((c: any) =>
+                c.status === 'Selected' &&
+                filterByRange(getStatusTimestamp(c, 'Selected', c.selectionDate), startDate, endDate) &&
+                isOpenJobCandidate(c)
+            ).length,
+            joined: scopedCandidates.filter((c: any) =>
+                c.status === 'Joined' &&
+                filterByRange(getStatusTimestamp(c, 'Joined', c.joiningDate), startDate, endDate) &&
+                isOpenJobCandidate(c)
+            ).length,
         });
 
-        // --- 3. Calculate Job Performance ---
-        const performanceData = filteredJobs.map((job: any) => {
-            const jobCandidates = filteredCandidates.filter((c: any) =>
+        // --- 4. Calculate Job Performance (within range) ---
+        const performanceData = openJobs.map((job: any) => {
+            const jobCandidates = scopedCandidates.filter((c: any) =>
                 (typeof c.jobId === 'object' ? c.jobId?._id : c.jobId) === job._id
             );
 
             return {
                 id: job._id,
                 title: job.title,
-                totalCandidates: jobCandidates.length,
+                totalCandidates: jobCandidates.filter(c => filterByRange(c.createdAt || getStatusTimestamp(c, jobCandidates.map(jc => jc.status).filter((s): s is string => !!s)), startDate, endDate)).length,
                 activePipeline: jobCandidates.filter((c: any) => ['New', 'Shortlisted', 'Interviewed'].includes(c.status)).length,
-                hired: jobCandidates.filter((c: any) => ['Selected', 'Joined'].includes(c.status)).length,
                 status: job.status
             };
         });
 
         setJobPerformance(performanceData);
 
-    }, [user, jobs, candidates, users, selectedMonth, selectedYear]);
+    }, [user, jobs, candidates, users, startDate, endDate]);
 
     const funnelData = [
         { label: 'New', value: stats.new, color: 'bg-yellow-400', width: '100%' },
@@ -149,48 +168,38 @@ export const MentorReports = () => {
                 </div>
 
                 <div className="flex flex-wrap items-end gap-3 sm:gap-4">
-                    <div className="flex flex-col min-w-[100px] flex-1 sm:flex-none">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Year</label>
-                        <select
-                            value={selectedYear === null ? "" : selectedYear}
-                            onChange={(e) => setSelectedYear(e.target.value === "" ? null : Number(e.target.value))}
+                    <div className="flex flex-col min-w-[140px] flex-1 sm:flex-none">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Upload From</label>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
                             className="bg-gray-50 border border-gray-100 text-gray-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 block w-full p-2.5 transition-all outline-none cursor-pointer"
-                        >
-                            <option value="">All Years</option>
-                            {years.map(year => (
-                                <option key={year} value={year}>{year}</option>
-                            ))}
-                        </select>
+                        />
                     </div>
                     <div className="flex flex-col min-w-[140px] flex-1 sm:flex-none">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Month</label>
-                        <select
-                            value={selectedMonth === null ? "" : selectedMonth}
-                            onChange={(e) => setSelectedMonth(e.target.value === "" ? null : Number(e.target.value))}
+                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Upload To</label>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
                             className="bg-gray-50 border border-gray-100 text-gray-700 text-sm font-bold rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 block w-full p-2.5 transition-all outline-none cursor-pointer"
-                        >
-                            <option value="">All Months</option>
-                            {months.map((month, index) => (
-                                <option key={month} value={index}>{month}</option>
-                            ))}
-                        </select>
+                        />
                     </div>
-                    {(selectedMonth !== null || selectedYear !== null) && (
-                        <button
-                            onClick={() => {
-                                setSelectedMonth(null);
-                                setSelectedYear(null);
-                            }}
-                            className="px-4 py-2.5 bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all border border-red-100 h-[42px]"
-                        >
-                            Reset
-                        </button>
-                    )}
+                    <button
+                        onClick={() => {
+                            setStartDate("");
+                            setEndDate("");
+                        }}
+                        className="px-4 py-2.5 bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-red-100 transition-all border border-red-100 h-[42px]"
+                    >
+                        Clear
+                    </button>
                 </div>
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
                     <div className="flex items-center justify-between mb-3">
                         <div className="bg-blue-50 p-2.5 rounded-xl group-hover:bg-blue-100 transition-colors">
@@ -240,26 +249,6 @@ export const MentorReports = () => {
                     </div>
                     <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.joined}</h3>
                 </div>
-
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="bg-green-50 p-2.5 rounded-xl group-hover:bg-green-100 transition-colors">
-                            <TrendingUp className="w-5 h-5 text-green-600" />
-                        </div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Hired</span>
-                    </div>
-                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.selected + stats.joined}</h3>
-                </div>
-
-                <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 group hover:shadow-md transition-all">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="bg-red-50 p-2.5 rounded-xl group-hover:bg-red-100 transition-colors">
-                            <XCircle className="w-5 h-5 text-red-600" />
-                        </div>
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Reject</span>
-                    </div>
-                    <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-800">{stats.rejected}</h3>
-                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -304,7 +293,6 @@ export const MentorReports = () => {
                                     <th className="px-4 py-3">Job Title</th>
                                     <th className="px-4 py-3 text-center">Candidates</th>
                                     <th className="px-4 py-3 text-center">Active</th>
-                                    <th className="px-4 py-3 text-center">Hired</th>
                                     <th className="px-4 py-3 text-center">Status</th>
                                 </tr>
                             </thead>
@@ -315,7 +303,6 @@ export const MentorReports = () => {
                                             <td className="px-4 py-4 text-gray-900 font-bold">{job.title}</td>
                                             <td className="px-4 py-4 text-center">{job.totalCandidates}</td>
                                             <td className="px-4 py-4 text-center text-blue-600 font-bold">{job.activePipeline}</td>
-                                            <td className="px-4 py-4 text-center text-green-600 font-bold">{job.hired}</td>
                                             <td className="px-4 py-4 text-center">
                                                 <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${job.status === 'Open' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-gray-50 text-gray-500 border border-gray-100'
                                                     }`}>

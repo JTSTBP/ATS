@@ -216,6 +216,24 @@ export default function UploadCandidatePage() {
         );
     }
 
+    if (user?.designation === "Recruiter" && job.status !== "Open") {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <ArrowLeft size={32} className="text-red-600" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800">UNAUTHORIZED ACCESS</h2>
+                <p className="text-slate-500">Recruiters can only upload candidates for jobs with "Open" status.</p>
+                <button
+                    onClick={() => navigate(-1)}
+                    className="px-6 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors"
+                >
+                    GO BACK
+                </button>
+            </div>
+        );
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}

@@ -150,7 +150,7 @@ export default function UploadCV() {
                 onPreview={handlePreview}
                 onUploadCandidate={handleUpload}
                 candidateCount={getCandidateCount(job._id || "")}
-                showUploadButton={true}
+                showUploadButton={job.status === 'Open'}
               />
             ))}
           </div>

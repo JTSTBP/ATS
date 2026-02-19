@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, FileText, Briefcase, Building2 } from "lucide-react";
+import { Users, Briefcase, Building2, UserCheck, UserPlus, Monitor, MessageSquare, CheckCircle } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useJobContext } from "../../context/DataProvider";
@@ -58,8 +58,12 @@ export default function AnalyticsTab() {
   // Date Filter State (Defaults to Current Month)
   const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>(() => {
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    const start = `${year}-${month}-01`;
+    const end = `${year}-${month}-${day}`;
     return { startDate: start, endDate: end };
   });
 
@@ -95,51 +99,91 @@ export default function AnalyticsTab() {
 
   // Calculate Stats
   const stats = useMemo(() => {
-    const totalUsers = filteredData.users.length;
-    const totalCandidates = filteredData.candidates.length;
-    const totalJobs = filteredData.jobs.length;
-    const totalClients = filteredData.clients.length;
+    // 1. Global (System Status) Statistics - Always based on current Open jobs
+    const openJobs = jobs.filter(j => j.status === "Open");
+    const activeJobs = openJobs.length;
+    const openJobIds = new Set(openJobs.map(job => String(job._id)));
 
-    // If no range, can't calculate growth vs prev period easily.
-    if (!dateRange.startDate || !dateRange.endDate) {
-      return {
-        totalUsers,
-        growth: "All Time",
-        totalCandidates,
-        totalJobs,
-        totalClients
-      };
-    }
+    // Active Clients: unique clientIds from active jobs
+    const activeClientIds = new Set(
+      openJobs
+        .map(j => {
+          const cid = j.clientId;
+          if (!cid) return null;
+          return typeof cid === "object" && "_id" in cid ? String(cid._id) : String(cid);
+        })
+        .filter(Boolean)
+    );
+    const activeClients = activeClientIds.size;
 
-    const start = new Date(dateRange.startDate);
-    const end = new Date(dateRange.endDate);
-    const duration = end.getTime() - start.getTime();
+    // Helper to get jobId robustly
+    const getCandidateJobId = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid ? String(jid) : null;
+    };
 
-    const prevStart = new Date(start.getTime() - duration);
-    const prevEnd = new Date(start.getTime());
+    const isOpenJobCandidate = (c: any) => {
+      const jid = getCandidateJobId(c);
+      return jid && openJobIds.has(jid);
+    };
 
-    const usersPrevPeriod = users.filter(u => {
-      const d = new Date(u.createdAt);
-      return d >= prevStart && d < prevEnd;
-    }).length;
+    // Positions Left: total noOfPositions across active jobs - total joined across active jobs
+    const totalPositions = openJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+    const totalJoinedInOpenJobs = candidates.filter(c =>
+      c.status === "Joined" && isOpenJobCandidate(c)
+    ).length;
+    const positionsLeft = Math.max(0, totalPositions - totalJoinedInOpenJobs);
 
-    let growthValue = 0;
-    if (usersPrevPeriod > 0) {
-      growthValue = ((totalUsers - usersPrevPeriod) / usersPrevPeriod) * 100;
-    } else if (totalUsers > 0) {
-      growthValue = 100;
-    }
+    // Active Requirements: open jobs count
+    const activeRequirements = activeJobs;
 
-    const growth = growthValue >= 0 ? `+${growthValue.toFixed(1)}%` : `${growthValue.toFixed(1)}%`;
+    // helper function
+    const isInRange = (dateString: string | undefined) => {
+      if (!dateRange.startDate && !dateRange.endDate) return true;
+      if (!dateString) return false;
+      const date = new Date(dateString);
+      const start = dateRange.startDate ? new Date(dateRange.startDate) : null;
+      const end = dateRange.endDate ? new Date(dateRange.endDate) : null;
+
+      if (start) start.setHours(0, 0, 0, 0);
+      if (end) end.setHours(23, 59, 59, 999);
+
+      if (start && end) return date >= start && date <= end;
+      if (start) return date >= start;
+      if (end) return date <= end;
+      return true;
+    };
+
+    // Candidate status breakdown (date-filtered and OPEN JOB candidates)
+    const openJobCandidatesInRange = candidates.filter(c =>
+      isInRange(c.createdAt) && isOpenJobCandidate(c)
+    );
+    const totalCandidates = openJobCandidatesInRange.length;
+
+    const statusCounts = { New: 0, Screen: 0, Interviewed: 0, Selected: 0, Joined: 0 };
+    openJobCandidatesInRange.forEach(c => {
+      const s = c.status || "New";
+      if (s === "New") statusCounts.New++;
+      else if (s === "Screen" || s === "Screened" || s === "Shortlisted") statusCounts.Screen++;
+      else if (s === "Interviewed") statusCounts.Interviewed++;
+    });
+
+    // To strictly match Dashboard logic for Selected/Joined (date filter on the status field itself):
+    statusCounts.Selected = candidates.filter(c =>
+      c.status === "Selected" && isInRange(c.selectionDate) && isOpenJobCandidate(c)
+    ).length;
+    statusCounts.Joined = candidates.filter(c =>
+      c.status === "Joined" && isInRange(c.joiningDate) && isOpenJobCandidate(c)
+    ).length;
 
     return {
-      totalUsers,
-      growth,
+      activeClients,
+      positionsLeft,
+      activeRequirements,
       totalCandidates,
-      totalJobs,
-      totalClients
+      ...statusCounts
     };
-  }, [filteredData, users, dateRange]);
+  }, [filteredData, jobs, candidates, dateRange]);
 
   // Prepare Chart Data: User Growth Trend (Filtered)
   const userGrowthData = useMemo(() => {
@@ -273,63 +317,122 @@ export default function AnalyticsTab() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      {/* Summary Cards — Row 1: Active Clients | Positions Left | Active Requirements */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+        {/* Active Clients */}
         <div
-          onClick={() => navigate("/Admin/Users")}
-          className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-blue-200"
+          onClick={() => navigate("/Admin/Clients")}
+          className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-purple-200"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium">Active Users</p>
-            <div className="flex items-baseline gap-2">
-              <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.totalUsers}</h2>
-              <span className={`text-xs font-bold ${stats.growth.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-                {stats.growth}
-              </span>
-            </div>
-            <p className="text-[10px] text-slate-400 mt-1">vs previous period</p>
+            <p className="text-slate-500 text-sm font-medium">Active Clients</p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.activeClients}</h2>
+            <p className="text-[10px] text-slate-400 mt-1">Clients with open jobs</p>
           </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-lg">
-            <Users size={24} />
+          <div className="bg-purple-50 text-purple-600 p-3 rounded-lg">
+            <Building2 size={24} />
           </div>
         </div>
 
-        <div
-          onClick={() => navigate("/Admin/reports")}
-          className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-orange-200"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium">New Applications</p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.totalCandidates}</h2>
-          </div>
-          <div className="bg-orange-50 text-orange-600 p-3 rounded-lg">
-            <FileText size={24} />
-          </div>
-        </div>
-
+        {/* Positions Left */}
         <div
           onClick={() => navigate("/Admin/Jobs")}
           className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-emerald-200"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium">Jobs Posted</p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.totalJobs}</h2>
+            <p className="text-slate-500 text-sm font-medium">Positions Left</p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.positionsLeft}</h2>
+            <p className="text-[10px] text-slate-400 mt-1">Open positions – joined</p>
           </div>
           <div className="bg-emerald-50 text-emerald-600 p-3 rounded-lg">
             <Briefcase size={24} />
           </div>
         </div>
 
+        {/* Active Requirements */}
         <div
-          onClick={() => navigate("/Admin/Clients")}
-          className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-purple-200"
+          onClick={() => navigate("/Admin/Jobs")}
+          className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-amber-200"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium">New Clients</p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.totalClients}</h2>
+            <p className="text-slate-500 text-sm font-medium">Active Requirements</p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.activeRequirements}</h2>
+            <p className="text-[10px] text-slate-400 mt-1">Jobs with Open status</p>
           </div>
-          <div className="bg-purple-50 text-purple-600 p-3 rounded-lg">
-            <Building2 size={24} />
+          <div className="bg-amber-50 text-amber-600 p-3 rounded-lg">
+            <Briefcase size={24} />
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards — Row 2: Total Candidates + Status Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
+        {/* Total Candidates */}
+        <div
+          onClick={() => navigate("/Admin/reports")}
+          className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-blue-200 col-span-2 sm:col-span-1"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium">Total Candidates</p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.totalCandidates}</h2>
+          </div>
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-lg">
+            <Users size={22} />
+          </div>
+        </div>
+
+        {/* New */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-xs font-medium">New</p>
+            <h2 className="text-2xl font-bold mt-1 text-slate-800">{stats.New}</h2>
+          </div>
+          <div className="bg-blue-50 text-blue-500 p-2.5 rounded-lg">
+            <UserPlus size={20} />
+          </div>
+        </div>
+
+        {/* Screen */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-xs font-medium">Screen</p>
+            <h2 className="text-2xl font-bold mt-1 text-slate-800">{stats.Screen}</h2>
+          </div>
+          <div className="bg-indigo-50 text-indigo-500 p-2.5 rounded-lg">
+            <Monitor size={20} />
+          </div>
+        </div>
+
+        {/* Interviewed */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-xs font-medium">Interviewed</p>
+            <h2 className="text-2xl font-bold mt-1 text-slate-800">{stats.Interviewed}</h2>
+          </div>
+          <div className="bg-orange-50 text-orange-500 p-2.5 rounded-lg">
+            <MessageSquare size={20} />
+          </div>
+        </div>
+
+        {/* Selected */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-xs font-medium">Selected</p>
+            <h2 className="text-2xl font-bold mt-1 text-slate-800">{stats.Selected}</h2>
+          </div>
+          <div className="bg-yellow-50 text-yellow-500 p-2.5 rounded-lg">
+            <UserCheck size={20} />
+          </div>
+        </div>
+
+        {/* Joined */}
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center hover:shadow-md transition-all">
+          <div>
+            <p className="text-slate-500 text-xs font-medium">Joined</p>
+            <h2 className="text-2xl font-bold mt-1 text-slate-800">{stats.Joined}</h2>
+          </div>
+          <div className="bg-emerald-50 text-emerald-500 p-2.5 rounded-lg">
+            <CheckCircle size={20} />
           </div>
         </div>
       </div>

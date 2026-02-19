@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import FinanceDashboard from "./FinanceDashboard";
+import { getStatusTimestamp } from "../../utils/statusUtils";
 import {
   BarChart,
   Bar,
@@ -95,38 +96,101 @@ export default function AdminDashboard() {
 
   // Calculate statistics
   const stats = useMemo(() => {
-    // 🔹 Global (Overall) Statistics - System status metrics (Unfiltered)
-    const activeJobs = jobs.filter((j) => j.status === "Open").length;
-    const totalPositions = jobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
-    const joinedCandidatesEver = candidates.filter(c => c.status === "Joined").length;
-    const remainingPositions = totalPositions - joinedCandidatesEver;
+    // Active jobs (status = Open) — always unfiltered
+    const openJobs = jobs.filter((j) => j.status === "Open");
+    const activeJobs = openJobs.length;
 
-    // 🔹 Range-based (Activity) Statistics - Filtered by selected date range
-    const totalCandidates = candidates.filter((c) => filterByRange(c.createdAt)).length;
+    // Active Clients: unique clients that have at least one open job
+    const activeClientIds = new Set(
+      openJobs
+        .map(j => {
+          const cid = j.clientId;
+          if (!cid) return null;
+          return typeof cid === "object" && cid._id ? cid._id : String(cid);
+        })
+        .filter(Boolean)
+    );
+    const activeClients = activeClientIds.size;
+
+    // Positions Left: total noOfPositions across ALL open jobs minus joined count across ALL open jobs
+    const totalPositions = openJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
+    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
+    const totalJoinedInOpenJobs = candidates.filter(candidate =>
+      candidate.status === "Joined" &&
+      candidate.jobId &&
+      openJobIds.has(candidate.jobId._id.toString())
+    ).length;
+
+
+    // const totalJoinedInOpenJobs = openJobs.reduce((sum, j) => sum + (Number(j.joined) || 0), 0);
+    const remainingPositions = Math.max(0, totalPositions - totalJoinedInOpenJobs);
+
+
+    // helper function
+    const isOpenJobCandidate = (candidate) =>
+      candidate.jobId &&
+      openJobIds.has(candidate.jobId._id.toString());
+
 
     // Status-specific counts for candidates in range
-    const newCandidates = candidates.filter((c) => c.status === "New" && filterByRange(c.createdAt)).length;
-    const shortlistedCandidates = candidates.filter((c) => c.status === "Shortlisted" && filterByRange(c.createdAt)).length;
-    const interviewedCandidates = candidates.filter((c) => c.status === "Interviewed" && filterByRange(c.createdAt)).length;
+    // const newCandidates = candidates.filter((c) => c.status === "New" && filterByRange(c.createdAt)).length;
+    // const shortlistedCandidates = candidates.filter((c) => (c.status === "Shortlisted" || c.status === "Screen" || c.status === "Screened") && filterByRange(c.createdAt)).length;
+    // const interviewedCandidates = candidates.filter((c) => c.status === "Interviewed" && filterByRange(c.createdAt)).length;
 
-    // Selection and Join counts based on their specific event dates in range
-    const selectedCandidates = candidates.filter((c) => c.status === "Selected" && filterByRange(c.selectionDate)).length;
-    const joinedCandidates = candidates.filter((c) => c.status === "Joined" && filterByRange(c.joiningDate)).length;
+    // // Selection and Join counts based on their specific event dates in range
+    // const selectedCandidates = candidates.filter((c) => c.status === "Selected" && filterByRange(c.selectionDate)).length;
+    // const joinedCandidates = candidates.filter((c) => c.status === "Joined" && filterByRange(c.joiningDate)).length;
 
-    // Overall Clients (Unfiltered)
-    const totalClients = clients.length;
+    const totalCandidates = candidates.filter(c =>
+      filterByRange(getStatusTimestamp(c, (c.status as string) || "New")) &&
+      isOpenJobCandidate(c)
+    ).length;
 
+    const newCandidates = candidates.filter(c =>
+      c.status === "New" &&
+      filterByRange(getStatusTimestamp(c, "New")) &&
+      isOpenJobCandidate(c)
+    ).length;
+
+    const shortlistedCandidates = candidates.filter(c =>
+      (c.status === "Shortlisted" ||
+        c.status === "Screen" ||
+        c.status === "Screened") &&
+      filterByRange(getStatusTimestamp(c, ["Shortlisted", "Screen", "Screened"])) &&
+      isOpenJobCandidate(c)
+    ).length;
+
+    const interviewedCandidates = candidates.filter(c =>
+      c.status === "Interviewed" &&
+      filterByRange(getStatusTimestamp(c, "Interviewed")) &&
+      isOpenJobCandidate(c)
+    ).length;
+
+    // Selection count based on selectionDate/statusHistory
+    const selectedCandidates = candidates.filter(c =>
+      c.status === "Selected" &&
+      filterByRange(getStatusTimestamp(c, "Selected", c.selectionDate)) &&
+      isOpenJobCandidate(c)
+    ).length;
+
+    // Joined count based on joiningDate/statusHistory
+    const joinedCandidates = candidates.filter(c =>
+      c.status === "Joined" &&
+      filterByRange(getStatusTimestamp(c, "Joined", c.joiningDate)) &&
+      isOpenJobCandidate(c)
+    ).length;
+    console.log(totalCandidates, "totalCandidates")
     return {
       totalCandidates,
       activeJobs,
       totalPositions,
       remainingPositions,
+      activeClients,
       newCandidates,
       shortlistedCandidates,
       interviewedCandidates,
       selectedCandidates,
       joinedCandidates,
-      totalClients
     };
   }, [users, leaves, jobs, candidates, clients, startDate, endDate]);
 
@@ -156,19 +220,21 @@ export default function AdminDashboard() {
         recruiterStats[creatorId] = { name: creatorName, uploaded: 0, shortlisted: 0, joined: 0 };
       }
 
-      // 1. Uploaded/Shortlisted check (by createdAt)
-      if (filterByRange(c.createdAt)) {
+      // 1. Uploaded/Shortlisted check (by status history)
+      if (filterByRange(getStatusTimestamp(c, (c.status as string) || "New"))) {
         recruiterStats[creatorId].uploaded += 1;
-        if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
+        if (["Shortlisted", "Screen", "Screened"].includes(c.status || "")) {
+          recruiterStats[creatorId].shortlisted += 1;
+        }
       }
 
-      // 2. Selected check (by selectionDate)
-      if (c.status === "Selected" && filterByRange(c.selectionDate)) {
+      // 2. Selected check (by status history)
+      if (c.status === "Selected" && filterByRange(getStatusTimestamp(c, "Selected", c.selectionDate))) {
         recruiterStats[creatorId].joined += 1;
       }
 
-      // 3. Joined check (by joiningDate)
-      if (c.status === "Joined" && filterByRange(c.joiningDate)) {
+      // 3. Joined check (by status history)
+      if (c.status === "Joined" && filterByRange(getStatusTimestamp(c, "Joined", c.joiningDate))) {
         recruiterStats[creatorId].joined += 1;
       }
     });
@@ -231,6 +297,63 @@ export default function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-10">
+        {/* Active Clients */}
+        <div
+          onClick={() => navigate("/Admin/clients")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
+              Active Clients
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.activeClients}
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-1">Clients with open jobs</p>
+          </div>
+          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
+            <Building2 size={24} />
+          </div>
+        </div>
+
+        {/* Positions Left */}
+        <div
+          onClick={() => navigate("/Admin/jobs")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-amber-600 transition-colors">
+              Positions Left
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.remainingPositions}
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-1">Open positions – joined</p>
+          </div>
+          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
+            <Briefcase size={24} />
+          </div>
+        </div>
+
+        {/* Active Requirements */}
+        <div
+          onClick={() => navigate("/Admin/jobs")}
+          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
+        >
+          <div>
+            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+              Active Requirements
+            </p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">
+              {stats.activeJobs}
+            </h2>
+            <p className="text-[10px] text-slate-400 mt-1">Jobs with Open status</p>
+          </div>
+          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+            <CalendarCheck size={24} />
+          </div>
+        </div>
+
         {/* Total Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
@@ -249,80 +372,25 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Active Clients */}
-        <div
-          onClick={() => navigate("/Admin/clients")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
-              Active Clients
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.totalClients}
-            </h2>
-          </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
-            <Building2 size={24} />
-          </div>
-        </div>
-
-
-        {/* Positions Left */}
-        <div
-          onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
-              Positions Left
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.remainingPositions}
-            </h2>
-          </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
-            <Briefcase size={24} />
-          </div>
-        </div>
-
-        {/* Active Jobs */}
-        <div
-          onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-amber-600 transition-colors">
-              Active Requirements
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.activeJobs}
-            </h2>
-          </div>
-          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
-            <CalendarCheck size={24} />
-          </div>
-        </div>
-
         {/* New Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
+            <p className="text-slate-500 text-sm font-medium group-hover:text-sky-600 transition-colors">
               New
             </p>
             <h2 className="text-3xl font-bold mt-1 text-slate-800">
               {stats.newCandidates}
             </h2>
           </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
+          <div className="bg-sky-50 text-sky-600 p-3 rounded-xl group-hover:bg-sky-100 transition-colors">
             <UserPlus size={24} />
           </div>
         </div>
 
-        {/* Shortlisted Candidates */}
+        {/* Screened Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"

@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { TrendingUp, Calendar, Users } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCandidateContext } from '../../context/CandidatesProvider';
 import { useAuth } from '../../context/AuthProvider';
 import { useNavigate } from 'react-router-dom';
@@ -14,6 +14,25 @@ export default function Reports() {
   const { fetchJobs } = useJobContext();
   const { fetchClients } = useClientsContext();
   const navigate = useNavigate();
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  const filterByRange = (dateString: string | null | undefined, start: string, end: string) => {
+    if (!start && !end) return true;
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    date.setHours(0, 0, 0, 0);
+    const s = start ? new Date(start) : new Date(0);
+    s.setHours(0, 0, 0, 0);
+    const e = end ? new Date(end) : new Date(8640000000000000);
+    e.setHours(23, 59, 59, 999);
+    return date >= s && date <= e;
+  };
 
   // Fetch data on component mount
   useEffect(() => {
@@ -35,7 +54,7 @@ export default function Reports() {
       rejected: 0,
     };
 
-    const userCandidates = candidates;
+    const userCandidates = candidates.filter(c => filterByRange(c.createdAt, startDate, endDate));
 
     const totalApplications = userCandidates.length;
     const interviews = userCandidates.filter((c) =>
@@ -58,7 +77,7 @@ export default function Reports() {
       shortlisted,
       rejected,
     };
-  }, [candidates, user]);
+  }, [candidates, user, startDate, endDate]);
 
   // Calculate top positions
   const topPositions = useMemo(() => {
@@ -81,11 +100,11 @@ export default function Reports() {
             ? (count / stats.totalApplications) * 100
             : 0,
       }));
-  }, [candidates, user, stats.totalApplications]);
+  }, [candidates, user, stats.totalApplications, startDate, endDate]);
 
   // Calculate recent activity
   const recentActivity = useMemo(() => {
-    const userCandidates = candidates;
+    const userCandidates = candidates.filter(c => filterByRange(c.createdAt, startDate, endDate));
     const last7Days = new Date();
     last7Days.setDate(last7Days.getDate() - 7);
 
@@ -108,7 +127,7 @@ export default function Reports() {
         action: `CV uploaded for ${typeof candidates[0]?.jobId === 'string' ? 'position' : (candidates[0]?.jobId?.title || 'position')}`,
         count: candidates.length,
       }));
-  }, [candidates, user]);
+  }, [candidates, user, startDate, endDate]);
 
   if (loading) {
     return (
@@ -125,19 +144,38 @@ export default function Reports() {
       transition={{ duration: 0.5 }}
       className="text-slate-800 space-y-6"
     >
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-gray-100 mb-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 leading-tight">
-            Recruitment Reports
-          </h1>
-          <p className="text-sm sm:text-base text-gray-500 mt-1">
-            Analytics and insights for your recruitment pipeline
-          </p>
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex flex-col min-w-[140px]">
+          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Upload From</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+          />
         </div>
+        <div className="flex flex-col min-w-[140px]">
+          <label className="text-[10px] font-bold text-gray-400 uppercase mb-1">Upload To</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="bg-gray-50 border-none text-gray-700 text-xs sm:text-sm font-semibold rounded-lg focus:ring-2 focus:ring-blue-500 block p-2 transition-all"
+          />
+        </div>
+        <button
+          onClick={() => {
+            setStartDate("");
+            setEndDate("");
+          }}
+          className="mt-5 px-3 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors"
+        >
+          Clear
+        </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {[
           { label: 'Applications', value: stats.totalApplications, icon: TrendingUp, color: 'text-blue-600', hover: 'hover:border-blue-300', route: '/Recruiter/candidates', description: 'Total candidates uploaded' },
           { label: 'Interviews', value: stats.interviews, icon: TrendingUp, color: 'text-indigo-600', hover: 'hover:border-indigo-300', route: '/Recruiter/candidates?status=Interview', description: 'Candidates interviewed' },
@@ -253,6 +291,6 @@ export default function Reports() {
           )}
         </div>
       </div>
-    </motion.div>
+    </motion.div >
   );
 }
