@@ -5,7 +5,7 @@ import { X } from "lucide-react";
 interface StatusUpdateModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, ctc?: string, rejectionReason?: string) => void;
+    onConfirm: (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, ctc?: string, rejectionReason?: string, stageNameForHistory?: string, stageStatus?: string, stageNotes?: string) => void;
     newStatus: string;
     candidateName?: string;
     isCommentOnly?: boolean;
@@ -14,8 +14,10 @@ interface StatusUpdateModalProps {
     currentExpectedJoiningDate?: string;
     currentRejectedBy?: string;
     currentCTC?: string;
-    droppedBy?: string; // New prop for auto-determined drop source
+    droppedBy?: string;
     isLoading?: boolean;
+    stageNameForHistory?: string;
+    nextStageName?: string;
 }
 
 export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
@@ -30,8 +32,10 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     currentExpectedJoiningDate,
     currentRejectedBy,
     currentCTC,
-    droppedBy,
     isLoading = false,
+    stageNameForHistory,
+    nextStageName,
+    droppedBy: propDroppedBy,
 }) => {
     const [comment, setComment] = useState("");
     const [joiningDate, setJoiningDate] = useState("");
@@ -40,7 +44,12 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
     const [expectedJoiningDate, setExpectedJoiningDate] = useState("");
     const [rejectedBy, setRejectedBy] = useState("");
     const [rejectionReason, setRejectionReason] = useState("");
+    const [droppedBy, setDroppedBy] = useState("");
     const [ctc, setCtc] = useState("");
+
+    // Interview Stage Specific State
+    const [stageStatus, setStageStatus] = useState("Selected"); // Default to Selected for moving to next stage
+    const [stageNotes, setStageNotes] = useState("");
 
     useEffect(() => {
         if (isOpen) {
@@ -50,17 +59,45 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
             setSelectionDate(currentSelectionDate ? new Date(currentSelectionDate).toISOString().split('T')[0] : "");
             setExpectedJoiningDate(currentExpectedJoiningDate ? new Date(currentExpectedJoiningDate).toISOString().split('T')[0] : "");
             setRejectedBy(currentRejectedBy || "");
+            setDroppedBy(propDroppedBy || "");
             setRejectionReason("");
             setCtc(currentCTC || "");
+            setStageStatus("Selected");
+            setStageNotes("");
         }
-    }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate, currentRejectedBy, currentCTC]);
-
-    if (!isOpen) return null;
+    }, [isOpen, currentJoiningDate, currentSelectionDate, currentExpectedJoiningDate, currentRejectedBy, propDroppedBy, currentCTC]);
 
     const isJoined = newStatus === "Joined";
     const isSelected = newStatus === "Selected";
     const isDropped = newStatus === "Dropped";
-    // const isRejected = newStatus === "Rejected" || newStatus === "Dropped"; 
+    const isInterviewUpdate = !!stageNameForHistory; // True if we are completing a stage
+    const isRejected = newStatus === "Rejected" || (isInterviewUpdate && stageStatus === "Rejected");
+
+    // Role detection logic
+    const effectiveRejectedBy = (isInterviewUpdate && stageStatus === "Rejected") ? "Client" : rejectedBy;
+    const effectiveDroppedBy = (isInterviewUpdate && newStatus === "Dropped") ? "Client" : droppedBy;
+
+    if (!isOpen) return null;
+
+    const rejectionReasons = [
+        "Lacks Technical Skills",
+        "Salary Mismatch",
+        "Communication Skills",
+        "Experience Level",
+        "Culture Fit",
+        "Found Better Candidate",
+        "Notice Period Issues",
+        "Not Interested",
+        "Other"
+    ];
+
+    const getModalTitle = () => {
+        if (isCommentOnly) return "Add Comment";
+        if (isJoined && currentJoiningDate) return "Update Joining Details";
+        if (isInterviewUpdate) return `Move to ${nextStageName || "Next Stage"}`;
+        if (newStatus === "Rejected" || (isInterviewUpdate && stageStatus === "Rejected")) return "Candidate Rejection";
+        return "Update Status";
+    };
 
     return (
         <AnimatePresence>
@@ -69,11 +106,11 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.95, opacity: 0 }}
-                    className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+                    className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
                 >
-                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
                         <h3 className="text-lg font-bold text-gray-800">
-                            {isCommentOnly ? "Add Comment" : (isJoined && currentJoiningDate ? "Update Joining Details" : "Update Status")}
+                            {getModalTitle()}
                         </h3>
                         <button
                             onClick={onClose}
@@ -83,17 +120,58 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                         </button>
                     </div>
 
-                    <div className="p-6">
-                        {!isCommentOnly && (
+                    <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
+                        {!isCommentOnly && !isInterviewUpdate && (
                             <p className="text-gray-600 mb-4">
                                 Changing status {candidateName ? `for ${candidateName}` : ""} to{" "}
                                 <span className="font-bold text-orange-600">{newStatus}</span>.
+                            </p>
+                        )}
+                        {!isCommentOnly && isInterviewUpdate && (
+                            <p className="text-gray-600 mb-4">
+                                Completing <span className="font-bold">{stageNameForHistory}</span> and moving to <span className="font-bold text-orange-600">{nextStageName || "Next Stage"}</span>.
                             </p>
                         )}
                         {!isCommentOnly && isJoined && currentJoiningDate && (
                             <p className="text-gray-600 mb-4">
                                 Update joining details {candidateName ? `for ${candidateName}` : ""}.
                             </p>
+                        )}
+
+                        {/* Interview Stage Completion Details */}
+                        {isInterviewUpdate && (
+                            <div className="mb-4 space-y-4 p-4 bg-orange-50 rounded-lg border border-orange-100">
+                                <h4 className="font-semibold text-gray-800 text-sm">
+                                    {stageNameForHistory} Details
+                                </h4>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Status <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        value={stageStatus}
+                                        onChange={(e) => setStageStatus(e.target.value)}
+                                    >
+                                        <option value="Selected">Selected</option>
+                                        <option value="Rejected">Rejected</option>
+                                    </select>
+                                </div>
+                                {stageStatus !== "Rejected" && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Stage Notes/Feedback
+                                        </label>
+                                        <textarea
+                                            className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
+                                            rows={2}
+                                            placeholder="Enter feedback for this stage..."
+                                            value={stageNotes}
+                                            onChange={(e) => setStageNotes(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         {isSelected && (
@@ -178,121 +256,119 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             </div>
                         )}
 
-                        {newStatus === "Rejected" && (
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Rejected By <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <input
-                                            type="radio"
-                                            name="rejectedBy"
-                                            value="Client"
-                                            checked={rejectedBy === "Client"}
-                                            onChange={(e) => setRejectedBy(e.target.value)}
-                                            className="w-4 h-4 text-orange-600 focus:ring-orange-500 border-gray-300"
-                                        />
-                                        <span className="text-sm text-gray-700 group-hover:text-orange-600 transition-colors">Client</span>
+                        {isRejected && (
+                            <div className="mb-4 space-y-4 p-4 bg-red-50 rounded-lg border border-red-100">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Rejected By
                                     </label>
-                                    <label className="flex items-center gap-2 cursor-pointer group">
-                                        <input
-                                            type="radio"
-                                            name="rejectedBy"
-                                            value="Mentor"
-                                            checked={rejectedBy === "Mentor"}
-                                            onChange={(e) => setRejectedBy(e.target.value)}
-                                            className="w-4 h-4 text-orange-600 focus:ring-orange-500 border-gray-300"
-                                        />
-                                        <span className="text-sm text-gray-700 group-hover:text-orange-600 transition-colors">Mentor</span>
+                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-medium">
+                                        {effectiveRejectedBy || "Not set"}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Rejection Reason <span className="text-red-500">*</span>
                                     </label>
+                                    <select
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all scrollbar-hide"
+                                        value={rejectionReason}
+                                        onChange={(e) => setRejectionReason(e.target.value)}
+                                    >
+                                        <option value="">Select a reason</option>
+                                        {rejectionReasons.map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                         )}
 
-                        {newStatus === "Rejected" && (
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Rejection Reason <span className="text-red-500">*</span>
-                                </label>
-                                <select
-                                    required
-                                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
-                                    value={rejectionReason}
-                                    onChange={(e) => setRejectionReason(e.target.value)}
-                                >
-                                    <option value="">Select a reason</option>
-                                    <option value="communication skills">Communication Skills</option>
-                                    <option value="experience not matched">Experience Not Matched</option>
-                                    <option value="salary not matched">Salary Not Matched</option>
-                                    <option value="stability issue">Stability Issue</option>
-                                    <option value="skills not matched">Skills Not Matched</option>
-                                    <option value="already interviewed/duplicate">Already Interviewed / Duplicate Candidate</option>
-                                </select>
-                            </div>
-                        )}
-
-                        {isDropped && droppedBy && (
-                            <div className="mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
-                                <p className="text-sm text-red-700 font-medium">
-                                    This candidate will be marked as <span className="font-bold">Dropped by {droppedBy}</span>.
-                                </p>
+                        {isDropped && (
+                            <div className="mb-4 space-y-4 p-4 bg-orange-50 rounded-lg border border-orange-100">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Dropped By
+                                    </label>
+                                    <div className="p-3 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium">
+                                        {effectiveDroppedBy || "Not set"}
+                                    </div>
+                                </div>
                             </div>
                         )}
 
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {isDropped ? "Reason for Drop" : "Add a Comment (Optional)"} {isDropped && <span className="text-red-500">*</span>}
+                            {isRejected ? "Rejection Notes" : (isDropped ? "Reason for Drop" : "Add a Comment (Optional)")} {(isDropped || isRejected) && <span className="text-red-500">*</span>}
                         </label>
                         <textarea
                             className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
-                            rows={4}
-                            placeholder={isDropped ? "Please explain why the candidate was dropped..." : "Enter reason or notes for this status change..."}
+                            rows={3}
+                            placeholder={isRejected ? "Add any details about the rejection..." : (isDropped ? "Please explain why the candidate was dropped..." : "Enter reason or notes for this status change...")}
                             value={comment}
                             onChange={(e) => setComment(e.target.value)}
                         />
+                    </div>
 
-                        <div className="flex justify-end gap-3 mt-6">
-                            <button
-                                onClick={onClose}
-                                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                disabled={isLoading}
-                                onClick={() => {
-                                    if (isJoined && !joiningDate) {
-                                        alert("Please select a joining date");
-                                        return;
-                                    }
-                                    if (isSelected && !selectionDate) {
-                                        alert("Please select a selection date");
-                                        return;
-                                    }
-                                    if (isJoined && !ctc) {
-                                        alert("Please enter the offered CTC");
-                                        return;
-                                    }
-                                    if (newStatus === "Rejected" && !rejectedBy) {
-                                        alert("Please select who rejected the candidate");
-                                        return;
-                                    }
-                                    if (isDropped && !comment) {
-                                        alert("Please provide a reason for dropping the candidate");
-                                        return;
-                                    }
-                                    if (newStatus === "Rejected" && !rejectionReason) {
-                                        alert("Please select a rejection reason");
-                                        return;
-                                    }
-                                    onConfirm(comment, joiningDate, offerLetter, selectionDate, expectedJoiningDate, isDropped ? droppedBy : rejectedBy, ctc, rejectionReason);
-                                }}
-                                className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm flex items-center gap-2 ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
-                            >
-                                {isLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                                {isLoading ? "Updating..." : (isDropped ? "Confirm Drop" : "Confirm Update")}
-                            </button>
-                        </div>
+                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3">
+                        <button
+                            onClick={onClose}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            disabled={isLoading}
+                            onClick={() => {
+                                if (isJoined && !joiningDate) {
+                                    alert("Please select a joining date");
+                                    return;
+                                }
+                                if (isSelected && !selectionDate) {
+                                    alert("Please select a selection date");
+                                    return;
+                                }
+                                if (isJoined && !ctc) {
+                                    alert("Please enter the offered CTC");
+                                    return;
+                                }
+                                if (newStatus === "Rejected" && !rejectedBy) {
+                                    alert("Please select who rejected the candidate");
+                                    return;
+                                }
+                                if (isDropped && !comment) {
+                                    alert("Please provide a reason for dropping the candidate");
+                                    return;
+                                }
+                                if (isRejected && !rejectionReason) {
+                                    alert("Please enter a rejection reason");
+                                    return;
+                                }
+                                if (isRejected && !comment) {
+                                    alert("Please provide rejection notes");
+                                    return;
+                                }
+
+                                // Pass additional stage details if applicable
+                                onConfirm(
+                                    comment,
+                                    joiningDate,
+                                    offerLetter,
+                                    selectionDate,
+                                    expectedJoiningDate,
+                                    (isDropped || (isInterviewUpdate && stageStatus === "Rejected")) ? "Client" : effectiveRejectedBy, // Default to Client for Interview Rejection
+                                    ctc,
+                                    rejectionReason,
+                                    isInterviewUpdate ? stageNameForHistory : undefined, // Pass stage name for history
+                                    isInterviewUpdate ? stageStatus : undefined,
+                                    isInterviewUpdate ? stageStatus === "Rejected" ? comment : stageNotes : undefined // Use comment as stage notes for rejection
+                                );
+                            }}
+                            className={`px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium transition-colors shadow-sm flex items-center gap-2 ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
+                        >
+                            {isLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            {isLoading ? "Updating..." : (isDropped ? "Confirm Drop" : (isRejected ? "Confirm Rejection" : "Confirm Update"))}
+                        </button>
                     </div>
                 </motion.div>
             </div>

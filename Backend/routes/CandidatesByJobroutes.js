@@ -258,7 +258,7 @@ async function sendUpdateNotificationToReporter(updatingUserId, candidateName, j
 // 🔵 Get all candidates (with Pagination & Filtering)
 router.get("/", async (req, res) => {
   try {
-    const { page, limit, search, status, client, jobTitle, stage, startDate, endDate, reporterId, jobStatus, joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
+    const { page, limit, search, status, client, jobTitle, stage, startDate, endDate, reporterId, recruiterId, jobStatus, joinStartDate, joinEndDate, selectStartDate, selectEndDate } = req.query;
 
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
@@ -437,6 +437,7 @@ router.get("/", async (req, res) => {
           ...(client && client !== "all" ? { "client.companyName": new RegExp(client, "i") } : {}),
           ...(jobTitle && jobTitle !== "all" ? { "job.title": new RegExp(jobTitle, "i") } : {}),
           ...(reporterId && reporterId !== "all" ? { "reporter._id": new mongoose.Types.ObjectId(reporterId) } : {}),
+          ...(recruiterId && recruiterId !== "all" ? { "creator._id": new mongoose.Types.ObjectId(recruiterId) } : {}),
           ...(jobStatus && jobStatus !== "all" ? { "job.status": jobStatus } : {})
         }
       }
@@ -464,6 +465,15 @@ router.get("/", async (req, res) => {
                   selectionDate: 1,
                   expectedJoiningDate: 1,
                   createdAt: 1,
+                  notes: 1,
+                  rejectionReason: 1,
+                  rejectedBy: 1,
+                  droppedBy: 1,
+                  linkedinUrl: 1,
+                  portfolioUrl: 1,
+                  interviewStageHistory: 1,
+                  statusHistory: 1,
+                  comments: 1,
                   // Reconstruct jobId object
                   jobId: {
                     _id: "$job._id",
@@ -949,6 +959,11 @@ router.get("/role-based-candidates", async (req, res) => {
                 notes: 1,
                 dynamicFields: 1,
                 comments: 1,
+                rejectionReason: 1,
+                rejectedBy: 1,
+                droppedBy: 1,
+                interviewStageHistory: 1,
+                statusHistory: 1,
                 jobId: {
                   _id: "$job._id",
                   title: "$job.title",
@@ -1420,7 +1435,7 @@ router.put("/:id", upload.single("resume"), async (req, res) => {
 // 🔁 Update candidate status only
 router.patch("/:id/status", offerLetterUpload.single("offerLetter"), async (req, res) => {
   try {
-    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate, rejectedBy, droppedBy, rejectionReason, comment } = req.body;
+    const { status, role, interviewStage, stageStatus, stageNotes, joiningDate, selectionDate, expectedJoiningDate, rejectedBy, droppedBy, rejectionReason, comment, stageNameForHistory } = req.body;
 
     // Get existing candidate to detect changes
     const existingCandidate = await Candidate.findById(req.params.id).populate('jobId', 'title');
@@ -1605,9 +1620,10 @@ router.patch("/:id/status", offerLetterUpload.single("offerLetter"), async (req,
     }
 
     // If stage status and notes are provided, add to history
-    if (status === "Interviewed" && interviewStage && stageStatus) {
+    // [FIX] Allow adding to history even if final status is Rejected, as long as it was an interview update
+    if ((status === "Interviewed" || status === "Rejected") && interviewStage && stageStatus) {
       const stageHistoryEntry = {
-        stageName: interviewStage,
+        stageName: stageNameForHistory || interviewStage,
         status: stageStatus,
         notes: stageNotes || "",
         updatedBy: role,

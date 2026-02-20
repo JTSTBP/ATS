@@ -18,7 +18,7 @@ import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../../utils/dateUtils";
-import { getImageUrl, getFilePreviewUrl } from "../../../utils/imageUtils";
+import { getFilePreviewUrl } from "../../../utils/imageUtils";
 
 
 import { useSearchParams } from "react-router-dom";
@@ -70,6 +70,8 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     currentExpectedJoiningDate?: string;
     currentRejectedBy?: string;
     droppedBy?: string;
+    stageNameForHistory?: string;
+    nextStageName?: string;
   } | null>(null);
 
   const handleStatusChange = (
@@ -80,7 +82,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     currentSelectionDate?: string,
     currentExpectedJoiningDate?: string,
     currentRejectedBy?: string,
-    droppedBy?: string
+    droppedBy?: string,
+    stageNameForHistory?: string,
+    nextStageName?: string
   ) => {
     setPendingStatusChange({
       candidateId,
@@ -90,26 +94,39 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       currentSelectionDate,
       currentExpectedJoiningDate,
       currentRejectedBy,
-      droppedBy
+      droppedBy,
+      stageNameForHistory,
+      nextStageName
     });
     setStatusModalOpen(true);
   };
 
-  const confirmStatusChange = async (comment: string, joiningDate?: string, offerLetter?: File, selectionDate?: string, expectedJoiningDate?: string, rejectedBy?: string, offeredCTC?: string, rejectionReason?: string) => {
+  const confirmStatusChange = async (
+    comment: string,
+    joiningDate?: string,
+    offerLetter?: File,
+    selectionDate?: string,
+    expectedJoiningDate?: string,
+    rejectedBy?: string,
+    offeredCTC?: string,
+    rejectionReason?: string,
+    stageNameForHistory?: string,
+    stageStatus?: string,
+    stageNotes?: string
+  ) => {
     if (!pendingStatusChange) return;
 
     // Determine if this is a drop or reject
-    const isDropped = pendingStatusChange.newStatus === "Dropped";
-    const droppedByValue = isDropped ? pendingStatusChange.droppedBy : undefined;
-    const rejectedByValue = !isDropped ? rejectedBy : undefined;
+    const droppedByValue = pendingStatusChange.newStatus === "Dropped" ? pendingStatusChange.droppedBy : undefined;
+    const rejectedByValue = (pendingStatusChange.newStatus === "Rejected" || stageStatus === "Rejected") ? rejectedBy : undefined;
 
     await updateStatus(
       pendingStatusChange.candidateId,
-      pendingStatusChange.newStatus,
+      stageStatus === "Rejected" ? "Rejected" : pendingStatusChange.newStatus,
       user?._id || "",
       pendingStatusChange.interviewStage,
-      undefined,
-      undefined,
+      stageStatus as any,
+      stageNotes,
       comment,
       joiningDate,
       offerLetter,
@@ -118,7 +135,8 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       rejectedByValue,
       offeredCTC,
       droppedByValue,
-      rejectionReason
+      rejectionReason,
+      stageNameForHistory
     );
 
     if (user?._id && user?.designation) {
@@ -656,28 +674,55 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                           const newStatus = e.target.value;
                           let droppedByVal = undefined;
                           if (newStatus === "Dropped") {
-                            if (candidate.status === "Shortlisted") {
-                              droppedByVal = "Mentor";
-                            } else if (candidate.status === "Interviewed") {
-                              droppedByVal = "Client";
-                            } else {
-                              droppedByVal = "Mentor";
-                            }
+                            if (candidate.status === "Shortlisted") droppedByVal = "Mentor";
+                            else if (["Interviewed", "Selected", "Joined"].includes(candidate.status || "")) droppedByVal = "Client";
                           }
-                          handleStatusChange(candidate._id || "", newStatus, undefined, candidate.joiningDate, candidate.selectionDate, candidate.expectedJoiningDate, undefined, droppedByVal);
+
+                          let rejectedByVal = undefined;
+                          if (newStatus === "Rejected") {
+                            if (candidate.status === "Shortlisted") rejectedByVal = "Mentor";
+                            else if (candidate.status === "Interviewed") rejectedByVal = "Client";
+                          }
+
+                          handleStatusChange(
+                            candidate._id || "",
+                            newStatus,
+                            undefined,
+                            candidate.joiningDate,
+                            candidate.selectionDate,
+                            candidate.expectedJoiningDate,
+                            rejectedByVal,
+                            droppedByVal
+                          );
                         }}
                         className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500"
                       >
-                        <option value="New">New</option>
-                        <option value="Shortlisted">Shortlisted</option>
-                        <option value="Interviewed">Interviewed</option>
-                        <option value="Selected">Selected</option>
-                        <option value="Joined">Joined</option>
-                        <option value="Rejected">Rejected</option>
-                        {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
-                          <option value="Dropped">Dropped</option>
+                        {candidate.status === "Selected" ? (
+                          <>
+                            <option value="Selected">Selected</option>
+                            <option value="Joined">Joined</option>
+                            <option value="Hold">Hold</option>
+                            <option value="Dropped">Dropped</option>
+                          </>
+                        ) : candidate.status === "Joined" ? (
+                          <>
+                            <option value="Joined">Joined</option>
+                            <option value="Dropped">Dropped</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="New">New</option>
+                            <option value="Shortlisted">Shortlisted</option>
+                            <option value="Interviewed">Interviewed</option>
+                            <option value="Selected">Selected</option>
+                            <option value="Joined">Joined</option>
+                            <option value="Rejected">Rejected</option>
+                            {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
+                              <option value="Dropped">Dropped</option>
+                            )}
+                            <option value="Hold">Hold</option>
+                          </>
                         )}
-                        <option value="Hold">Hold</option>
                       </select>
                       {candidate.status === "Interviewed" && candidate.interviewStage && (
                         <div className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 text-center uppercase tracking-wider">
@@ -692,13 +737,15 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                     </td>
 
                     {/* REMARKS */}
-                    <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px] truncate" title={candidate.notes}>
+                    <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px]" title={candidate.notes}>
                       {candidate.status === "Rejected" && candidate.rejectionReason && (
                         <div className="text-xs text-red-600 font-semibold mb-1">
                           Reason: {candidate.rejectionReason}
                         </div>
                       )}
-                      {candidate.notes || "-"}
+                      <div className="truncate text-slate-500">
+                        {candidate.notes || "-"}
+                      </div>
                     </td>
 
                     <td className="px-6 py-4 flex space-x-2">
@@ -802,6 +849,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         currentSelectionDate={pendingStatusChange?.currentSelectionDate}
         currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
         droppedBy={pendingStatusChange?.droppedBy}
+        currentRejectedBy={pendingStatusChange?.currentRejectedBy}
+        stageNameForHistory={pendingStatusChange?.stageNameForHistory}
+        nextStageName={pendingStatusChange?.nextStageName}
       />
     </div >
   );

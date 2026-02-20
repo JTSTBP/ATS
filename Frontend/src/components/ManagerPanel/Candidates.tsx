@@ -13,7 +13,7 @@ import {
   X,
   Clock,
 } from "lucide-react";
-import { getImageUrl, getFilePreviewUrl } from "../../utils/imageUtils";
+import { getFilePreviewUrl } from "../../utils/imageUtils";
 import { formatDate } from "../../utils/dateUtils";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
@@ -150,7 +150,10 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
     currentJoiningDate?: string;
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
+    currentRejectedBy?: string;
     droppedBy?: string;
+    stageNameForHistory?: string;
+    nextStageName?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -235,7 +238,10 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
     currentJoiningDate?: string,
     currentSelectionDate?: string,
     currentExpectedJoiningDate?: string,
-    droppedBy?: string
+    rejectedBy?: string,
+    droppedBy?: string,
+    stageNameForHistory?: string,
+    nextStageName?: string
   ) => {
     const needsModal = ["Interviewed", "Selected", "Joined", "Rejected", "Dropped"].includes(newStatus);
 
@@ -247,7 +253,10 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         currentJoiningDate,
         currentSelectionDate,
         currentExpectedJoiningDate,
-        droppedBy
+        currentRejectedBy: rejectedBy,
+        droppedBy,
+        stageNameForHistory,
+        nextStageName
       });
       setStatusModalOpen(true);
     } else {
@@ -302,23 +311,25 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
     expectedJoiningDate?: string,
     rejectedBy?: string,
     offeredCTC?: string,
-    rejectionReason?: string
+    rejectionReason?: string,
+    stageNameForHistory?: string,
+    stageStatus?: string,
+    stageNotes?: string
   ) => {
     if (!pendingStatusChange) return;
 
     try {
       // Determine if this is a drop or reject
-      const isDropped = pendingStatusChange.newStatus === "Dropped";
-      const droppedByValue = isDropped ? pendingStatusChange.droppedBy : undefined;
-      const rejectedByValue = !isDropped ? rejectedBy : undefined;
+      const droppedByValue = pendingStatusChange.newStatus === "Dropped" ? pendingStatusChange.droppedBy : undefined;
+      const rejectedByValue = (pendingStatusChange.newStatus === "Rejected" || stageStatus === "Rejected") ? rejectedBy : undefined;
 
       await updateStatus(
         pendingStatusChange.candidateId,
-        pendingStatusChange.newStatus,
+        stageStatus === "Rejected" ? "Rejected" : pendingStatusChange.newStatus,
         user!._id,
         pendingStatusChange.interviewStage,
-        undefined, // stageStatus
-        undefined, // stageNotes
+        stageStatus as any,
+        stageNotes,
         comment,
         joiningDate,
         offerLetter,
@@ -327,7 +338,8 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         rejectedByValue,
         offeredCTC,
         droppedByValue,
-        rejectionReason
+        rejectionReason,
+        stageNameForHistory
       );
       toast.success(`Status updated to ${pendingStatusChange.newStatus}`);
       setStatusModalOpen(false);
@@ -624,20 +636,61 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                         <div className="flex flex-col gap-2">
                           <select
                             value={candidate.status || "New"}
-                            onChange={(e) => handleStatusChange(
-                              candidate._id,
-                              e.target.value,
-                              candidate.interviewStage,
-                              candidate.joiningDate,
-                              candidate.selectionDate,
-                              candidate.expectedJoiningDate,
-                              "Manager"
-                            )}
+                            onChange={(e) => {
+                              const newStatus = e.target.value;
+                              let droppedByVal = undefined;
+                              if (newStatus === "Dropped") {
+                                if (candidate.status === "Shortlisted") droppedByVal = "Manager";
+                                else if (["Interviewed", "Selected", "Joined"].includes(candidate.status || "")) droppedByVal = "Client";
+                              }
+
+                              let rejectedByVal = undefined;
+                              if (newStatus === "Rejected") {
+                                if (candidate.status === "Shortlisted") rejectedByVal = "Manager";
+                                else if (candidate.status === "Interviewed") rejectedByVal = "Client";
+                              }
+
+                              handleStatusChange(
+                                candidate._id,
+                                newStatus,
+                                candidate.interviewStage,
+                                candidate.joiningDate,
+                                candidate.selectionDate,
+                                candidate.expectedJoiningDate,
+                                rejectedByVal,
+                                droppedByVal
+                              );
+                            }}
                             className="px-3 py-1.5 border border-slate-200 rounded-lg bg-white text-xs font-bold focus:ring-2 focus:ring-orange-500/20"
                           >
-                            {["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped", "Hold"].map(s => (
-                              <option key={s} value={s}>{s === "Shortlisted" ? "Screen" : s}</option>
-                            ))}
+                            {candidate.status === "Selected" ? (
+                              <>
+                                <option value="Selected">Selected</option>
+                                <option value="Joined">Joined</option>
+                                <option value="Hold">Hold</option>
+                                <option value="Dropped">Dropped</option>
+                              </>
+                            ) : candidate.status === "Joined" ? (
+                              <>
+                                <option value="Joined">Joined</option>
+                                <option value="Dropped">Dropped</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="New">New</option>
+                                <option value="Shortlisted">Shortlisted</option>
+                                <option value="Interviewed">Interviewed</option>
+                                <option value="Selected">Selected</option>
+                                <option value="Joined">Joined</option>
+                                {["Shortlisted", "Interviewed", "Rejected", "Dropped"].includes(candidate.status || "") && (
+                                  <option value="Rejected">Rejected</option>
+                                )}
+                                {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
+                                  <option value="Dropped">Dropped</option>
+                                )}
+                                <option value="Hold">Hold</option>
+                              </>
+                            )}
                           </select>
                           {candidate.status === "Interviewed" && candidate.interviewStage && (
                             <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 flex items-center gap-1">
@@ -701,11 +754,13 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                         </>
                       )}
                       <td className="px-6 py-4 text-slate-600">
-                        <div className="max-w-[200px] truncate" title={candidate.notes}>
+                        <div className="max-w-[200px]" title={candidate.notes}>
                           {candidate.status === "Rejected" && candidate.rejectionReason && (
                             <div className="text-[10px] text-red-600 font-bold uppercase mb-0.5">Rejected: {candidate.rejectionReason}</div>
                           )}
-                          {candidate.notes || "-"}
+                          <div className="truncate text-slate-500">
+                            {candidate.notes || "-"}
+                          </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
@@ -786,6 +841,12 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
           return dynamicFields[nameKey] || "";
         })()}
         currentJoiningDate={pendingStatusChange?.currentJoiningDate}
+        currentSelectionDate={pendingStatusChange?.currentSelectionDate}
+        currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
+        droppedBy={pendingStatusChange?.droppedBy}
+        currentRejectedBy={pendingStatusChange?.currentRejectedBy}
+        stageNameForHistory={pendingStatusChange?.stageNameForHistory}
+        nextStageName={pendingStatusChange?.nextStageName}
       />
     </div>
   );

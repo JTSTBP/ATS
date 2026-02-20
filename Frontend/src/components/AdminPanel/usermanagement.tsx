@@ -329,14 +329,14 @@ export default function UserManagement() {
           </div>
 
           <div className="flex items-center gap-2 order-first sm:order-last">
-            <button
+            {/* <button
               onClick={() => navigate("/Admin/orphan-candidates")}
               className="px-4 py-2.5 bg-red-50 text-red-600 border border-red-100 rounded-xl hover:bg-red-100 transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm"
               title="View candidates with invalid creator IDs"
             >
               <UserX size={18} />
               <span className="hidden xl:inline">Orphans</span>
-            </button>
+            </button> */}
             <button
               onClick={() => {
                 setEditUserId(null);

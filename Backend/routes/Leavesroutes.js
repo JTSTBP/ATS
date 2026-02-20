@@ -27,7 +27,16 @@ router.get("/", async (req, res) => {
 // 📩 Apply for Leave
 router.post("/apply", async (req, res) => {
   try {
-    const { user, leaveType, fromDate, toDate, reason, reporter } = req.body;
+    const {
+      user,
+      leaveType,
+      fromDate,
+      toDate,
+      reason,
+      reporter,
+      leaveCategory,
+      halfDayPeriod,
+    } = req.body;
 
     const usergiv = await User.findById(user);
     if (!usergiv) return res.status(404).json({ message: "User not found" });
@@ -39,6 +48,8 @@ router.post("/apply", async (req, res) => {
       toDate,
       reason,
       reporter,
+      leaveCategory,
+      halfDayPeriod,
     });
 
     await leave.save();
@@ -46,7 +57,8 @@ router.post("/apply", async (req, res) => {
       user,
       "Apply Leave",
       "Leave Management",
-      `${usergiv.name} applied for ${leaveType} from ${fromDate} to ${toDate}`,
+      `${usergiv.name} applied for ${leaveType} (${leaveCategory}${leaveCategory === "Half Day" ? ` - ${halfDayPeriod}` : ""
+      }) from ${fromDate} to ${toDate}`,
       leave._id,
       "LeaveApplication"
     );
@@ -134,6 +146,62 @@ router.get("/reporters", async (req, res) => {
       .sort({ name: 1 });
 
     res.status(200).json(reporters);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// 🗑️ Delete Leave Application
+router.delete("/:leaveId", async (req, res) => {
+  try {
+    const leaveId = req.params.leaveId;
+    const { userId } = req.query; // Admin/Mentor ID for logging
+
+    const leave = await LeaveApplication.findById(leaveId).populate("user", "name");
+    if (!leave) return res.status(404).json({ message: "Leave application not found" });
+
+    await LeaveApplication.findByIdAndDelete(leaveId);
+
+    if (userId) {
+      logActivity(
+        userId,
+        "Delete Leave",
+        "Leave Management",
+        `Deleted leave application for ${leave.user?.name || "Unknown User"}`,
+        leaveId,
+        "LeaveApplication"
+      );
+    }
+
+    res.status(200).json({ message: "Leave application deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// 🗑️ Bulk Delete Leave Applications
+router.post("/bulk-delete", async (req, res) => {
+  try {
+    const { leaveIds, userId } = req.body;
+
+    if (!Array.isArray(leaveIds) || leaveIds.length === 0) {
+      return res.status(400).json({ message: "No leave IDs provided" });
+    }
+
+    await LeaveApplication.deleteMany({ _id: { $in: leaveIds } });
+
+    if (userId) {
+      logActivity(
+        userId,
+        "Bulk Delete Leaves",
+        "Leave Management",
+        `Successfully deleted ${leaveIds.length} leave application(s)`,
+        null,
+        "LeaveApplication"
+      );
+    }
+
+    res.status(200).json({ message: `${leaveIds.length} leave application(s) deleted successfully` });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }

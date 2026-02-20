@@ -5,6 +5,7 @@ import { useUserContext } from "../../context/UserProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
+import { getStatusTimestamp } from "../../utils/statusUtils";
 import {
   BarChart,
   Bar,
@@ -97,12 +98,44 @@ export default function AnalyticsTab() {
     };
   }, [users, candidates, jobs, clients, dateRange]);
 
+  // Helper function to check if a date is in the selected range
+  const isInRange = (dateString: string | undefined | null) => {
+    if (!dateRange.startDate && !dateRange.endDate) return true;
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const start = dateRange.startDate ? new Date(dateRange.startDate) : null;
+    const end = dateRange.endDate ? new Date(dateRange.endDate) : null;
+
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+
+    if (start && end) return date >= start && date <= end;
+    if (start) return date >= start;
+    if (end) return date <= end;
+    return true;
+  };
+
+  // Active Job Helpers
+  const openJobIds = useMemo(() => {
+    return new Set(jobs.filter(j => j.status === "Open").map(job => String(job._id)));
+  }, [jobs]);
+
+  // Helper to get jobId robustly
+  const getCandidateJobId = (c: any) => {
+    const jid = c.jobId?._id || c.jobId;
+    return jid ? String(jid) : null;
+  };
+
+  const isOpenJobCandidate = (c: any) => {
+    const jid = getCandidateJobId(c);
+    return jid && openJobIds.has(jid);
+  };
+
   // Calculate Stats
   const stats = useMemo(() => {
     // 1. Global (System Status) Statistics - Always based on current Open jobs
     const openJobs = jobs.filter(j => j.status === "Open");
     const activeJobs = openJobs.length;
-    const openJobIds = new Set(openJobs.map(job => String(job._id)));
 
     // Active Clients: unique clientIds from active jobs
     const activeClientIds = new Set(
@@ -116,17 +149,6 @@ export default function AnalyticsTab() {
     );
     const activeClients = activeClientIds.size;
 
-    // Helper to get jobId robustly
-    const getCandidateJobId = (c: any) => {
-      const jid = c.jobId?._id || c.jobId;
-      return jid ? String(jid) : null;
-    };
-
-    const isOpenJobCandidate = (c: any) => {
-      const jid = getCandidateJobId(c);
-      return jid && openJobIds.has(jid);
-    };
-
     // Positions Left: total noOfPositions across active jobs - total joined across active jobs
     const totalPositions = openJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
     const totalJoinedInOpenJobs = candidates.filter(c =>
@@ -136,23 +158,6 @@ export default function AnalyticsTab() {
 
     // Active Requirements: open jobs count
     const activeRequirements = activeJobs;
-
-    // helper function
-    const isInRange = (dateString: string | undefined) => {
-      if (!dateRange.startDate && !dateRange.endDate) return true;
-      if (!dateString) return false;
-      const date = new Date(dateString);
-      const start = dateRange.startDate ? new Date(dateRange.startDate) : null;
-      const end = dateRange.endDate ? new Date(dateRange.endDate) : null;
-
-      if (start) start.setHours(0, 0, 0, 0);
-      if (end) end.setHours(23, 59, 59, 999);
-
-      if (start && end) return date >= start && date <= end;
-      if (start) return date >= start;
-      if (end) return date <= end;
-      return true;
-    };
 
     // Candidate status breakdown (date-filtered and OPEN JOB candidates)
     const openJobCandidatesInRange = candidates.filter(c =>
@@ -183,7 +188,7 @@ export default function AnalyticsTab() {
       totalCandidates,
       ...statusCounts
     };
-  }, [filteredData, jobs, candidates, dateRange]);
+  }, [filteredData, jobs, candidates, dateRange, openJobIds]);
 
   // Prepare Chart Data: User Growth Trend (Filtered)
   const userGrowthData = useMemo(() => {
@@ -243,7 +248,7 @@ export default function AnalyticsTab() {
       }
     });
 
-    filteredData.candidates.forEach((c) => {
+    candidates.forEach((c) => {
       const creator = c.createdBy;
       if (!creator) return;
 
@@ -251,9 +256,34 @@ export default function AnalyticsTab() {
 
       // If the recruiter exists in our list (is a recruiter or admin)
       if (recruiterStats[creatorId]) {
-        recruiterStats[creatorId].uploaded += 1;
-        if (c.status === "Shortlisted") recruiterStats[creatorId].shortlisted += 1;
-        if (c.status === "Joined" || c.status === "Selected") recruiterStats[creatorId].joined += 1;
+        // Check if candidate belongs to an OPEN job
+        if (!isOpenJobCandidate(c)) return;
+
+        // 1. Uploaded - based on creation date
+        if (c.createdAt && isInRange(c.createdAt)) {
+          recruiterStats[creatorId].uploaded += 1;
+        }
+
+        // 2. Shortlisted - ONLY if current status is Shortlisted/Screen/Screened AND timestamp is in range
+        if (["Shortlisted", "Screen", "Screened"].includes(c.status || "")) {
+          const shortlistedTimestamp = getStatusTimestamp(c, ["Shortlisted", "Screen", "Screened"]);
+          if (shortlistedTimestamp && isInRange(shortlistedTimestamp)) {
+            recruiterStats[creatorId].shortlisted += 1;
+          }
+        }
+
+        // 3. Joined - ONLY if current status is Joined/Selected AND timestamp is in range
+        if (c.status === "Joined") {
+          const joinedTimestamp = getStatusTimestamp(c, "Joined", c.joiningDate);
+          if (joinedTimestamp && isInRange(joinedTimestamp)) {
+            recruiterStats[creatorId].joined += 1;
+          }
+        } else if (c.status === "Selected") {
+          const selectedTimestamp = getStatusTimestamp(c, "Selected", c.selectionDate);
+          if (selectedTimestamp && isInRange(selectedTimestamp)) {
+            recruiterStats[creatorId].joined += 1;
+          }
+        }
       }
     });
 
@@ -264,7 +294,7 @@ export default function AnalyticsTab() {
     // Limit based on screen size to prevent label crowding
     const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
     return allRecruiters.slice(0, maxRecruiters);
-  }, [filteredData.candidates, users, screenSize]);
+  }, [candidates, users, screenSize, dateRange, jobs, openJobIds]);
 
   // Prepare Top Recruiters Data (for the table)
   const topRecruiters = useMemo(() => {

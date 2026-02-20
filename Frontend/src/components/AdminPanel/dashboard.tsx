@@ -1,4 +1,4 @@
-import { Users, Briefcase, CalendarCheck, UserPlus, ClipboardCheck, Clock, CheckCircle, Filter, X, Building2 } from "lucide-react";
+import { Users, Briefcase, CalendarCheck, UserPlus, ClipboardCheck, Clock, CheckCircle, X, Building2 } from "lucide-react";
 import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
   }
 
   // Filter functions
-  const filterByRange = (dateString: string | undefined) => {
+  const filterByRange = (dateString: string | undefined | null) => {
     if (!startDate && !endDate) return true;
     if (!dateString) return false;
     const date = new Date(dateString);
@@ -93,6 +93,15 @@ export default function AdminDashboard() {
     if (end) return date <= end;
     return true;
   };
+
+  // Active jobs helper
+  const openJobIds = useMemo(() => {
+    return new Set(jobs.filter((j) => j.status === "Open").map(job => job._id?.toString()));
+  }, [jobs]);
+
+  const isOpenJobCandidate = (candidate: any) =>
+    candidate.jobId &&
+    openJobIds.has(candidate.jobId._id?.toString());
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -114,22 +123,14 @@ export default function AdminDashboard() {
 
     // Positions Left: total noOfPositions across ALL open jobs minus joined count across ALL open jobs
     const totalPositions = openJobs.reduce((sum, j) => sum + (Number(j.noOfPositions) || 0), 0);
-    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
+
     const totalJoinedInOpenJobs = candidates.filter(candidate =>
       candidate.status === "Joined" &&
       candidate.jobId &&
       openJobIds.has(candidate.jobId._id.toString())
     ).length;
 
-
-    // const totalJoinedInOpenJobs = openJobs.reduce((sum, j) => sum + (Number(j.joined) || 0), 0);
     const remainingPositions = Math.max(0, totalPositions - totalJoinedInOpenJobs);
-
-
-    // helper function
-    const isOpenJobCandidate = (candidate) =>
-      candidate.jobId &&
-      openJobIds.has(candidate.jobId._id.toString());
 
 
     // Status-specific counts for candidates in range
@@ -192,7 +193,7 @@ export default function AdminDashboard() {
       selectedCandidates,
       joinedCandidates,
     };
-  }, [users, leaves, jobs, candidates, clients, startDate, endDate]);
+  }, [users, leaves, jobs, candidates, clients, startDate, endDate, openJobIds]);
 
   // Prepare Recruiter Performance Data
   const recruiterPerformanceData = useMemo(() => {
@@ -220,22 +221,36 @@ export default function AdminDashboard() {
         recruiterStats[creatorId] = { name: creatorName, uploaded: 0, shortlisted: 0, joined: 0 };
       }
 
-      // 1. Uploaded/Shortlisted check (by status history)
-      if (filterByRange(getStatusTimestamp(c, (c.status as string) || "New"))) {
+      // Check if candidate belongs to an OPEN job
+      if (!isOpenJobCandidate(c)) return;
+
+
+      // 1. Uploaded - based on creation date
+      if (c.createdAt && filterByRange(c.createdAt)) {
         recruiterStats[creatorId].uploaded += 1;
-        if (["Shortlisted", "Screen", "Screened"].includes(c.status || "")) {
+      }
+
+      // 2. Shortlisted - ONLY if current status is Shortlisted/Screen/Screened AND timestamp is in range
+      if (["Shortlisted", "Screen", "Screened"].includes(c.status || "")) {
+        const shortlistedTimestamp = getStatusTimestamp(c, ["Shortlisted", "Screen", "Screened"]);
+        if (shortlistedTimestamp && filterByRange(shortlistedTimestamp)) {
           recruiterStats[creatorId].shortlisted += 1;
         }
       }
 
-      // 2. Selected check (by status history)
-      if (c.status === "Selected" && filterByRange(getStatusTimestamp(c, "Selected", c.selectionDate))) {
-        recruiterStats[creatorId].joined += 1;
-      }
-
-      // 3. Joined check (by status history)
-      if (c.status === "Joined" && filterByRange(getStatusTimestamp(c, "Joined", c.joiningDate))) {
-        recruiterStats[creatorId].joined += 1;
+      // 3. Joined - ONLY if current status is Joined/Selected AND timestamp is in range
+      if (c.status === "Joined") {
+        const joinedTimestamp = getStatusTimestamp(c, "Joined", c.joiningDate);
+        if (joinedTimestamp && filterByRange(joinedTimestamp)) {
+          recruiterStats[creatorId].joined += 1;
+        }
+      } else if (c.status === "Selected") {
+        const selectedTimestamp = getStatusTimestamp(c, "Selected", c.selectionDate);
+        if (selectedTimestamp && filterByRange(selectedTimestamp)) {
+          // Selected counts as joined for this graph? User asked for "Joined", usually implies both final stages.
+          // Previous implementation combined them. Let's keep it consistent with "Joined/Selected" label.
+          recruiterStats[creatorId].joined += 1;
+        }
       }
     });
 
@@ -245,7 +260,7 @@ export default function AdminDashboard() {
     // Limit based on screen size to prevent label crowding
     const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
     return allRecruiters.slice(0, maxRecruiters);
-  }, [candidates, users, startDate, endDate, screenSize]);
+  }, [candidates, users, startDate, endDate, screenSize, jobs, openJobIds]);
 
   return (
     <div className="text-slate-800">

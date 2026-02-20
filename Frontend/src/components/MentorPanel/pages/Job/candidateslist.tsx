@@ -13,15 +13,12 @@ import {
   Phone,
   Link,
   MessageSquare,
-  Edit,
   ChevronDown,
   Search,
   CalendarCheck,
   FileText,
 } from "lucide-react";
 import { getImageUrl, getFilePreviewUrl } from "../../../../utils/imageUtils";
-import { API_BASE_URL } from "../../../../config/config";
-
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthProvider";
 import { useCandidateContext } from "../../../../context/CandidatesProvider";
@@ -120,7 +117,7 @@ const SearchableSelect = ({
                     setIsOpen(false);
                     setSearchTerm("");
                   }}
-                  className={`px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm transition-colors ${value === opt.value ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700'}`}
+                  className={`px - 3 py - 2 hover: bg - blue - 50 cursor - pointer text - sm transition - colors ${value === opt.value ? 'bg-blue-100 text-blue-700 font-semibold' : 'text-gray-700'} `}
                 >
                   {opt.label}
                 </div>
@@ -153,7 +150,6 @@ const CandidatesList = () => {
   const [previewResumeUrl, setPreviewResumeUrl] = useState<string | null>(null);
   const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
   const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
-  const [showStageSelection, setShowStageSelection] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedPocs, setSelectedPocs] = useState<string[]>([]);
   const [emailCandidates, setEmailCandidates] = useState<any[]>([]);
@@ -171,10 +167,14 @@ const CandidatesList = () => {
     type: 'reject' | 'statusChange' | 'shortlist' | 'commentOnly';
     candidateId: string;
     newStatus: string;
+    interviewStage?: string;
     currentJoiningDate?: string;
     currentSelectionDate?: string;
     currentExpectedJoiningDate?: string;
+    rejectedBy?: string;
     droppedBy?: string;
+    stageNameForHistory?: string;
+    nextStageName?: string;
   } | null>(null);
 
   const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
@@ -374,7 +374,15 @@ const CandidatesList = () => {
 
   const handleRejectCandidate = (candidateId: string) => {
     if (!user?._id) return;
-    setPendingAction({ type: 'reject', candidateId, newStatus: 'Rejected' });
+    const candidate = candidates.find(c => c._id === candidateId);
+    setPendingAction({
+      type: 'reject',
+      candidateId,
+      newStatus: 'Rejected',
+      interviewStage: candidate?.interviewStage,
+      rejectedBy: candidate?.status === "Interviewed" ? "Client" : "Mentor",
+      stageNameForHistory: candidate?.status === "Interviewed" ? candidate.interviewStage : undefined
+    });
     setStatusModalOpen(true);
   };
 
@@ -383,30 +391,30 @@ const CandidatesList = () => {
 
     if (pendingAction.type === 'reject' || pendingAction.type === 'statusChange') {
       // Determine if this is a drop or reject
-      const isDropped = pendingAction.newStatus === "Dropped";
-      const droppedByValue = isDropped ? pendingAction.droppedBy : undefined;
-      const rejectedByValue = !isDropped ? rejectedBy : undefined;
+      const droppedByValue = pendingAction.newStatus === "Dropped" ? pendingAction.droppedBy : undefined;
+      const rejectedByValue = pendingAction.newStatus === "Rejected" ? pendingAction.rejectedBy : undefined;
 
       const success = await updateStatus(
         pendingAction.candidateId,
-        pendingAction.newStatus,
+        rejectedBy ? "Rejected" : pendingAction.newStatus, // If rejectedBy from modal is present during interview update
         user?._id || "",
-        undefined,
-        undefined,
-        undefined,
+        pendingAction.interviewStage,
+        undefined, // stageStatus will be handled by onConfirm arguments
+        undefined, // stageNotes will be handled by onConfirm arguments
         comment,
         joiningDate,
         offerLetter,
-        selectionDate, // Add selectionDate
-        expectedJoiningDate, // Add expectedJoiningDate
-        rejectedByValue,
+        selectionDate,
+        expectedJoiningDate,
+        rejectedBy || rejectedByValue,
         offeredCTC,
         droppedByValue,
-        rejectionReason
+        rejectionReason,
+        pendingAction.stageNameForHistory
       );
 
       if (success) {
-        toast.success(`Candidate status updated to ${pendingAction.newStatus}`);
+        toast.success(`Candidate status updated to ${pendingAction.newStatus} `);
         if (id) fetchCandidatesByJob(id);
         if (selectedCandidate && selectedCandidate._id === pendingAction.candidateId) {
           setSelectedCandidate(null);
@@ -441,14 +449,33 @@ const CandidatesList = () => {
     setPendingAction(null);
   };
 
-  const onMoveToNextClick = () => {
-    if (!user?._id) return;
-    if (selectedCandidate?.jobId?.stages?.length > 0) {
-      setShowStageSelection(true);
+  const onMoveToNextClick = (candidate: any) => {
+    if (!user?._id || !candidate) return;
+
+    const jobStages = (candidate.jobId as any)?.stages || [];
+    const currentStageIndex = jobStages.findIndex((s: any) => s.name === candidate.interviewStage);
+    const nextStage = jobStages[currentStageIndex + 1];
+
+    if (nextStage) {
+      setPendingAction({
+        type: 'statusChange',
+        candidateId: candidate._id,
+        newStatus: 'Interviewed',
+        interviewStage: nextStage.name,
+        stageNameForHistory: candidate.interviewStage,
+        nextStageName: nextStage.name
+      });
+      setStatusModalOpen(true);
     } else {
-      // Fallback logic if no stages defined
-      updateStatus(selectedCandidate._id, "Shortlisted", user._id);
-      // or just open standard status selector
+      // Last stage completed -> Selected
+      setPendingAction({
+        type: 'statusChange',
+        candidateId: candidate._id,
+        newStatus: 'Selected',
+        interviewStage: candidate.interviewStage,
+        stageNameForHistory: candidate.interviewStage
+      });
+      setStatusModalOpen(true);
     }
   };
 
@@ -460,240 +487,7 @@ const CandidatesList = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Enhanced Stage Selection Modal Overlay */}
-      {showStageSelection && selectedCandidate && (
-        <div className="fixed inset-0 bg-black/50 z-[70] flex items-center justify-center p-4">
-          <div className="bg-white p-6 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <h3 className="text-xl font-semibold mb-2">
-              Move to Interview Stage
-            </h3>
-            <p className="text-sm text-gray-600 mb-6">
-              Select a stage, status, and add notes for this candidate's
-              progression
-            </p>
-
-            {/* Stage Selection */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Select Interview Stage
-              </label>
-              <div className="space-y-2">
-                {selectedCandidate.jobId.stages.map((stage: any) => (
-                  stage ? (
-                    <button
-                      key={stage._id}
-                      onClick={() => {
-                        // Store selected stage in state
-                        const stageInput = document.getElementById(
-                          "selected-stage"
-                        ) as HTMLInputElement;
-                        if (stageInput) stageInput.value = stage.name;
-
-                        // Visual feedback
-                        document
-                          .querySelectorAll("[data-stage-btn]")
-                          .forEach((btn) => {
-                            btn.classList.remove(
-                              "bg-blue-50",
-                              "border-blue-300",
-                              "ring-2",
-                              "ring-blue-200"
-                            );
-                            btn.classList.add("bg-white", "border-gray-200");
-                          });
-                        (document.activeElement as HTMLElement)?.classList.add(
-                          "bg-blue-50",
-                          "border-blue-300",
-                          "ring-2",
-                          "ring-blue-200"
-                        );
-                      }}
-                      data-stage-btn
-                      className="w-full text-left px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-blue-50 hover:border-blue-300 transition flex justify-between items-center"
-                    >
-                      <span className="font-medium">{stage.name}</span>
-                      <span className="text-xs text-gray-500">
-                        {stage.responsible}
-                      </span>
-                    </button>
-                  ) : null
-                ))}
-              </div>
-              <input type="hidden" id="selected-stage" />
-            </div>
-
-            {/* Status Selection */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Stage Status <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    const statusInput = document.getElementById(
-                      "selected-status"
-                    ) as HTMLInputElement;
-                    if (statusInput) statusInput.value = "Selected";
-
-                    // Visual feedback
-                    document
-                      .getElementById("status-selected")
-                      ?.classList.add(
-                        "bg-green-50",
-                        "border-green-500",
-                        "ring-2",
-                        "ring-green-200"
-                      );
-                    document
-                      .getElementById("status-rejected")
-                      ?.classList.remove(
-                        "bg-red-50",
-                        "border-red-500",
-                        "ring-2",
-                        "ring-red-200"
-                      );
-                  }}
-                  id="status-selected"
-                  className="px-4 py-3 rounded-lg border-2 border-gray-200 bg-white hover:bg-green-50 hover:border-green-300 transition flex items-center justify-center gap-2 font-medium"
-                >
-                  <span className="text-green-600">✓</span>
-                  Selected
-                </button>
-                <button
-                  onClick={() => {
-                    const statusInput = document.getElementById(
-                      "selected-status"
-                    ) as HTMLInputElement;
-                    if (statusInput) statusInput.value = "Rejected";
-
-                    // Visual feedback
-                    document
-                      .getElementById("status-rejected")
-                      ?.classList.add(
-                        "bg-red-50",
-                        "border-red-500",
-                        "ring-2",
-                        "ring-red-200"
-                      );
-                    document
-                      .getElementById("status-selected")
-                      ?.classList.remove(
-                        "bg-green-50",
-                        "border-green-500",
-                        "ring-2",
-                        "ring-green-200"
-                      );
-                  }}
-                  id="status-rejected"
-                  className="px-4 py-3 rounded-lg border-2 border-gray-200 bg-white hover:bg-red-50 hover:border-red-300 transition flex items-center justify-center gap-2 font-medium"
-                >
-                  <span className="text-red-600">✗</span>
-                  Rejected
-                </button>
-              </div>
-              <input type="hidden" id="selected-status" />
-            </div>
-
-            {/* Notes/Comments */}
-            <div className="mb-6">
-              <label
-                htmlFor="stage-notes"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Notes / Comments
-              </label>
-              <textarea
-                id="stage-notes"
-                rows={4}
-                placeholder="Add any comments or reasons for this decision..."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
-              />
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowStageSelection(false);
-                  // Reset form
-                  const stageInput = document.getElementById(
-                    "selected-stage"
-                  ) as HTMLInputElement;
-                  const statusInput = document.getElementById(
-                    "selected-status"
-                  ) as HTMLInputElement;
-                  const notesInput = document.getElementById(
-                    "stage-notes"
-                  ) as HTMLTextAreaElement;
-                  if (stageInput) stageInput.value = "";
-                  if (statusInput) statusInput.value = "";
-                  if (notesInput) notesInput.value = "";
-                }}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (!user?._id) return;
-
-                  const stageInput = document.getElementById(
-                    "selected-stage"
-                  ) as HTMLInputElement;
-                  const statusInput = document.getElementById(
-                    "selected-status"
-                  ) as HTMLInputElement;
-                  const notesInput = document.getElementById(
-                    "stage-notes"
-                  ) as HTMLTextAreaElement;
-
-                  const stageName = stageInput?.value;
-                  const stageStatus = statusInput?.value as
-                    | "Selected"
-                    | "Rejected";
-                  const stageNotes = notesInput?.value || "";
-
-                  if (!stageName) {
-                    toast.error("Please select an interview stage");
-                    return;
-                  }
-
-                  if (!stageStatus) {
-                    toast.error(
-                      "Please select a status (Selected or Rejected)"
-                    );
-                    return;
-                  }
-
-                  const success = await updateStatus(
-                    selectedCandidate._id,
-                    "Interviewed",
-                    user._id,
-                    stageName,
-                    stageStatus,
-                    stageNotes
-                  );
-
-                  if (success) {
-                    toast.success(`Moved to ${stageName} - ${stageStatus}`);
-                    if (id) fetchCandidatesByJob(id);
-                    setShowStageSelection(false);
-                    setSelectedCandidate(null);
-
-                    // Reset form
-                    if (stageInput) stageInput.value = "";
-                    if (statusInput) statusInput.value = "";
-                    if (notesInput) notesInput.value = "";
-                  }
-                }}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
-              >
-                Confirm & Move
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Custom Stage Selection Modal Overlay Removed in favor of StatusUpdateModal */}
 
       {/* Email Selection Modal */}
       {showEmailModal && emailCandidates.length > 0 && (
@@ -777,7 +571,7 @@ const CandidatesList = () => {
 
                   try {
                     const response = await fetch(
-                      `${API_BASE_URL}/api/CandidatesJob/send-email`,
+                      `${API_BASE_URL} /api/CandidatesJob / send - email`,
                       {
                         method: "POST",
                         headers: {
@@ -1121,7 +915,7 @@ const CandidatesList = () => {
                   withResume.forEach((c: any) => {
                     const link = document.createElement("a");
                     link.href = getImageUrl(c.resumeUrl);
-                    link.download = `${c.dynamicFields?.candidateName || "candidate"}_resume.pdf`;
+                    link.download = `${c.dynamicFields?.candidateName || "candidate"} _resume.pdf`;
                     link.click();
                   });
                 }}
@@ -1263,34 +1057,116 @@ const CandidatesList = () => {
                       <MessageSquare size={18} />
                     </button>
 
-                    <select
-                      value={candidate.status}
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        setPendingAction({
-                          type: 'statusChange',
-                          candidateId: candidate._id,
-                          newStatus: newStatus,
-                          currentJoiningDate: candidate.joiningDate,
-                          currentSelectionDate: candidate.selectionDate,
-                          currentExpectedJoiningDate: candidate.expectedJoiningDate,
-                          droppedBy: newStatus === 'Dropped' ? (candidate.status === 'Shortlisted' ? 'Mentor' : 'Client') : undefined
-                        });
-                        setStatusModalOpen(true);
-                      }}
-                      className="flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm"
-                    >
-                      <option value="New">New</option>
-                      <option value="Shortlisted">Shortlist</option>
-                      <option value="Interviewed">Interview</option>
-                      <option value="Selected">Selected</option>
-                      <option value="Joined">Joined</option>
-                      <option value="Rejected">Rejected</option>
-                      {(candidate.status === "Shortlisted" || candidate.status === "Interviewed" || candidate.status === "Dropped") && (
-                        <option value="Dropped">Dropped</option>
+                    <div className="flex flex-col gap-1.5 w-full sm:w-auto">
+                      <select
+                        value={candidate.status}
+                        onChange={(e) => {
+                          const newStatus = e.target.value;
+                          const currentStatus = candidate.status || "New";
+
+                          let droppedByVal = undefined;
+                          if (newStatus === "Dropped") {
+                            if (currentStatus === "Shortlisted") droppedByVal = "Mentor";
+                            else if (["Interviewed", "Selected", "Joined"].includes(currentStatus)) droppedByVal = "Client";
+                          }
+
+                          let rejectedByVal = undefined;
+                          if (newStatus === "Rejected") {
+                            if (currentStatus === "Shortlisted") rejectedByVal = "Mentor";
+                            else if (currentStatus === "Interviewed") rejectedByVal = "Client";
+                          }
+
+                          if (newStatus.startsWith("MOVE_TO_")) {
+                            const nextStageName = newStatus.replace("MOVE_TO_", "");
+                            setPendingAction({
+                              type: 'statusChange',
+                              candidateId: candidate._id,
+                              newStatus: 'Interviewed',
+                              interviewStage: nextStageName,
+                              stageNameForHistory: candidate.interviewStage,
+                              nextStageName: nextStageName
+                            });
+                            setStatusModalOpen(true);
+                            return;
+                          }
+
+                          setPendingAction({
+                            type: 'statusChange',
+                            candidateId: candidate._id,
+                            newStatus: newStatus,
+                            interviewStage: candidate.interviewStage,
+                            currentJoiningDate: candidate.joiningDate,
+                            currentSelectionDate: candidate.selectionDate,
+                            currentExpectedJoiningDate: candidate.expectedJoiningDate,
+                            rejectedBy: rejectedByVal,
+                            droppedBy: droppedByVal,
+                            stageNameForHistory: (newStatus === "Selected" || newStatus === "Rejected") ? candidate.interviewStage : undefined
+                          });
+                          setStatusModalOpen(true);
+                        }}
+                        className="w-full px-4 py-2 text-xs font-bold rounded-xl border border-gray-200 bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all shadow-sm"
+                      >
+                        {candidate.status === "Selected" ? (
+                          <>
+                            <option value="Selected">Selected</option>
+                            <option value="Joined">Joined</option>
+                            <option value="Hold">Hold</option>
+                            <option value="Dropped">Dropped</option>
+                          </>
+                        ) : candidate.status === "Joined" ? (
+                          <>
+                            <option value="Joined">Joined</option>
+                            <option value="Dropped">Dropped</option>
+                          </>
+                        ) : candidate.status === "Interviewed" ? (
+                          <>
+                            <option value="Interviewed">{candidate.interviewStage || "Interviewed"}</option>
+                            {(() => {
+                              const jobStages = (candidate.jobId as any)?.stages || [];
+                              const currentStageIndex = jobStages.findIndex((s: any) => s.name === candidate.interviewStage);
+                              const nextStage = jobStages[currentStageIndex + 1];
+                              if (nextStage) {
+                                return (
+                                  <option value={`MOVE_TO_${nextStage.name}`} className="font-bold text-blue-600">
+                                    Move to {nextStage.name}
+                                  </option>
+                                );
+                              } else {
+                                return <option value="Selected">Selected</option>;
+                              }
+                            })()}
+                          </>
+                        ) : (
+                          <>
+                            <option value="New">New</option>
+                            <option value="Shortlisted">Shortlist</option>
+                            <option value="Interviewed">Interview</option>
+                            <option value="Selected">Selected</option>
+                            <option value="Joined">Joined</option>
+                            <option value="Rejected">Rejected</option>
+                            {["Shortlisted", "Interviewed", "Dropped"].includes(candidate.status || "") && (
+                              <option value="Dropped">Dropped</option>
+                            )}
+                            <option value="Hold">Hold</option>
+                          </>
+                        )}
+                      </select>
+
+                      {candidate.status === "Interviewed" && (
+                        <button
+                          onClick={() => onMoveToNextClick(candidate)}
+                          className="w-full py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-500/20 flex items-center justify-center gap-1.5"
+                        >
+                          <ChevronRight size={12} strokeWidth={3} />
+                          {(() => {
+                            const jobStages = (candidate.jobId as any)?.stages || [];
+                            const currentStageIndex = jobStages.findIndex((s: any) => s.name === candidate.interviewStage);
+                            const nextStage = jobStages[currentStageIndex + 1];
+                            return nextStage ? `Next: ${nextStage.name}` : "Process Selection";
+                          })()}
+                        </button>
                       )}
-                      <option value="Hold">Hold</option>
-                    </select>
+                    </div>
 
                     <button
                       onClick={() => handleDelete(candidate._id)}
@@ -1387,7 +1263,7 @@ const CandidatesList = () => {
                               <span className="text-[10px] font-bold text-slate-400">{formatDate(item.timestamp)}</span>
                             </div>
                             <p className="text-xs text-slate-500 italic">
-                              {item.comment || item.text || item.notes}
+                              {item.rejectionReason ? `Reason: ${item.rejectionReason}` : (item.comment || item.text || item.notes)}
                             </p>
                             <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">
                               By {item.updatedBy?.name || item.author?.name || "System"}
@@ -1454,7 +1330,7 @@ const CandidatesList = () => {
                   Reject Candidate
                 </button>
                 <button
-                  onClick={onMoveToNextClick}
+                  onClick={() => onMoveToNextClick(selectedCandidate)}
                   className="px-6 py-3 bg-blue-600 text-white rounded-2xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                 >
                   Move to Next Stage
@@ -1512,6 +1388,9 @@ const CandidatesList = () => {
         currentSelectionDate={pendingAction?.currentSelectionDate}
         currentExpectedJoiningDate={pendingAction?.currentExpectedJoiningDate}
         droppedBy={pendingAction?.droppedBy}
+        currentRejectedBy={pendingAction?.rejectedBy}
+        stageNameForHistory={pendingAction?.stageNameForHistory}
+        nextStageName={pendingAction?.nextStageName}
       />
     </div>
   );

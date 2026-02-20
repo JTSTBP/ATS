@@ -63,6 +63,7 @@ type CandidateContextType = {
       selectStartDate?: string;
       selectEndDate?: string;
       reporterId?: string;
+      recruiterId?: string;
       jobStatus?: string;
     }
   ) => Promise<void>;
@@ -84,6 +85,7 @@ type CandidateContextType = {
       selectStartDate?: string;
       selectEndDate?: string;
       reporterId?: string;
+      recruiterId?: string;
       jobStatus?: string;
     }
   ) => Promise<void>;
@@ -111,7 +113,8 @@ type CandidateContextType = {
     rejectedBy?: string,
     offeredCTC?: string,
     droppedBy?: string,
-    rejectionReason?: string
+    rejectionReason?: string,
+    stageNameForHistory?: string
   ) => Promise<Candidate | null>;
   addComment: (candidateId: string, authorId: string, text: string) => Promise<boolean>;
 
@@ -138,6 +141,7 @@ type CandidateContextType = {
       selectStartDate?: string;
       selectEndDate?: string;
       reporterId?: string;
+      recruiterId?: string;
       jobStatus?: string;
     }
 
@@ -463,7 +467,8 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     rejectedBy?: string,
     offeredCTC?: string,
     droppedBy?: string,
-    rejectionReason?: string
+    rejectionReason?: string,
+    stageNameForHistory?: string
   ) => {
     try {
       // Use FormData if there's a file to upload
@@ -474,6 +479,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
       if (interviewStage) formData.append("interviewStage", interviewStage);
       if (stageStatus) formData.append("stageStatus", stageStatus);
       if (stageNotes) formData.append("stageNotes", stageNotes);
+      if (stageNameForHistory) formData.append("stageNameForHistory", stageNameForHistory);
       if (comment) formData.append("comment", comment);
       if (joiningDate) formData.append("joiningDate", joiningDate);
       if (offerLetter) formData.append("offerLetter", offerLetter);

@@ -51,21 +51,34 @@ interface UserFormData {
 
 interface Leave {
   _id: string;
-  userId: string;
-  name: string;
-  designation: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    designation: string;
+  };
+  leaveType: string;
   fromDate: string;
   toDate: string;
+  leaveCategory: string;
+  halfDayPeriod?: string;
   reason: string;
   status: "Pending" | "Approved" | "Rejected";
-  appliedAt: string;
-  role: string;
+  appliedDate: string;
+  reporter: {
+    _id: string;
+    name: string;
+    designation: string;
+  };
 }
 
 interface LeaveFormData {
   user: string;
+  leaveType: string;
   fromDate: string;
   toDate: string;
+  leaveCategory: string;
+  halfDayPeriod?: string;
   reason: string;
   reporter: string;
 }
@@ -83,6 +96,8 @@ interface UserContextType {
   fetchAllLeaves: () => Promise<void>;
   fetchLeaves: (userId: string) => Promise<void>;
   applyLeave: (leaveData: LeaveFormData) => Promise<boolean>;
+  deleteLeave: (leaveId: string, userId: string) => Promise<boolean>;
+  bulkDeleteLeaves: (leaveIds: string[], userId: string) => Promise<boolean>;
   updateLeaveStatus: (
     id: string,
     status: "Approved" | "Rejected",
@@ -293,6 +308,35 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const deleteLeave = async (leaveId: string, userId: string) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/api/leaves/${leaveId}`, {
+        params: { userId }
+      });
+      setLeaves((prev) => prev.filter((l) => l._id !== leaveId));
+      toast.success("Leave deleted successfully!");
+      return true;
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete leave");
+      return false;
+    }
+  };
+
+  const bulkDeleteLeaves = async (leaveIds: string[], userId: string) => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/leaves/bulk-delete`, {
+        leaveIds,
+        userId
+      });
+      setLeaves((prev) => prev.filter((l) => !leaveIds.includes(l._id)));
+      toast.success(`${leaveIds.length} leave(s) deleted successfully!`);
+      return true;
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete leaves");
+      return false;
+    }
+  };
+
   const updateLeaveStatus = async (
     id: string,
     status: "Approved" | "Rejected",
@@ -329,6 +373,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         fetchAllLeaves,
         fetchLeaves,
         applyLeave,
+        deleteLeave,
+        bulkDeleteLeaves,
         updateLeaveStatus,
         paginatedUsers,
         pagination,

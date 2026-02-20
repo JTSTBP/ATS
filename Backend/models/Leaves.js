@@ -7,6 +7,15 @@ const leaveSchema = new mongoose.Schema(
     leaveType: { type: String, required: true },
     fromDate: { type: Date, required: true },
     toDate: { type: Date, required: true },
+    leaveCategory: {
+      type: String,
+      enum: ["Full Day", "Half Day"],
+      default: "Full Day",
+    },
+    halfDayPeriod: {
+      type: String,
+      enum: ["First Half", "Second Half"],
+    },
     reason: { type: String, required: true },
     status: {
       type: String,
