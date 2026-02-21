@@ -204,28 +204,56 @@ export const Dashboard = () => {
       }
     });
 
+    // Build open job ids set — only count candidates from open jobs
+    const openJobIds = new Set(jobs.filter((j: any) => j.status === "Open").map((j: any) => String(j._id)));
+    const isOpenJobCandidate = (c: any) => {
+      const jid = c.jobId?._id || c.jobId;
+      return jid && openJobIds.has(String(jid));
+    };
+
     scopedCandidates.forEach((c) => {
       const creatorId = String(c.createdBy?._id || c.createdBy);
       if (!recruiterStats[creatorId]) return;
 
+      // Skip candidates not belonging to an open job
+      if (!isOpenJobCandidate(c)) return;
+
+      // Uploaded — filtered by candidate upload date (createdAt)
       if (filterByRange(c.createdAt || "", startDate, endDate)) {
         recruiterStats[creatorId].uploaded += 1;
-        if (['Shortlisted', 'Screen', 'Screened'].includes(c.status)) recruiterStats[creatorId].shortlisted += 1;
       }
 
-      if (c.status === "Selected" && filterByRange(c.selectionDate || "", startDate, endDate)) {
-        recruiterStats[creatorId].joined += 1;
+      // Shortlisted — filtered by when shortlist status was actually set
+      if (['Shortlisted', 'Screen', 'Screened'].includes(c.status)) {
+        const shortlistedTs = getStatusTimestamp(c, ['Shortlisted', 'Screen', 'Screened']);
+        if (shortlistedTs && filterByRange(shortlistedTs, startDate, endDate)) {
+          recruiterStats[creatorId].shortlisted += 1;
+        }
       }
-      if (c.status === "Joined" && filterByRange(c.joiningDate || "", startDate, endDate)) {
-        recruiterStats[creatorId].joined += 1;
+
+      // Selected — filtered by selection date / status timestamp
+      if (c.status === "Selected") {
+        const selectedTs = getStatusTimestamp(c, "Selected", c.selectionDate);
+        if (selectedTs && filterByRange(selectedTs, startDate, endDate)) {
+          recruiterStats[creatorId].joined += 1;
+        }
+      }
+
+      // Joined — filtered by joining date / status timestamp
+      if (c.status === "Joined") {
+        const joinedTs = getStatusTimestamp(c, "Joined", c.joiningDate);
+        if (joinedTs && filterByRange(joinedTs, startDate, endDate)) {
+          recruiterStats[creatorId].joined += 1;
+        }
       }
     });
 
     const maxRecruiters = screenSize === 'mobile' ? 5 : screenSize === 'tablet' ? 8 : 12;
     return Object.values(recruiterStats)
+      .filter(r => r.uploaded > 0 || r.shortlisted > 0 || r.joined > 0)
       .sort((a, b) => b.uploaded - a.uploaded)
       .slice(0, maxRecruiters);
-  }, [scopedData, users, teamMemberIds, startDate, endDate, screenSize]);
+  }, [scopedData, users, teamMemberIds, startDate, endDate, screenSize, jobs]);
 
   const statCards: Array<{ label: string; value: number; subValue?: string; icon: any; color: string; bgColor: string; path: string }> = [
     {

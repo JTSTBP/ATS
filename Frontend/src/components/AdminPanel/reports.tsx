@@ -17,7 +17,7 @@ export default function ReportsTab() {
   const navigate = useNavigate();
   const [candidatePopupData, setCandidatePopupData] = useState<{ title: string, clientName: string, status: string, jobTitle: string, candidates: any[] } | null>(null);
 
-  // Default to current month
+  // Global date filter - filters JOBS rows only by Date Received (job.createdAt)
   const [startDate, setStartDate] = useState(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -31,6 +31,17 @@ export default function ReportsTab() {
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   });
+
+  // Local candidate filter for Client Job Report table
+  // mode: 'none' | 'total' | 'status' | 'both'
+  const [cjrCandFilterMode, setCjrCandFilterMode] = useState<'none' | 'total' | 'status' | 'both'>('none');
+  const [cjrCandStartDate, setCjrCandStartDate] = useState('');
+  const [cjrCandEndDate, setCjrCandEndDate] = useState('');
+
+  // Local candidate filter for Daily Lineup table
+  const [dlCandFilterMode, setDlCandFilterMode] = useState<'none' | 'total' | 'status' | 'both'>('none');
+  const [dlCandStartDate, setDlCandStartDate] = useState('');
+  const [dlCandEndDate, setDlCandEndDate] = useState('');
 
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string[]>>({
@@ -63,55 +74,105 @@ export default function ReportsTab() {
     fetchJobs();
   }, []);
 
-  const isWithinDateRange = (dateString: string) => {
+  // Helper: check if a date falls within the global (job row) date range
+  const isWithinGlobalRange = (dateString: string | undefined | null) => {
     if (!startDate && !endDate) return true;
+    if (!dateString) return false;
     const date = new Date(dateString);
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(endDate) : null;
-
     if (start) start.setHours(0, 0, 0, 0);
     if (end) end.setHours(23, 59, 59, 999);
-
     if (start && end) return date >= start && date <= end;
     if (start) return date >= start;
     if (end) return date <= end;
     return true;
   };
 
-  // 1. Base Client Job Report Data (Global Date Range Applied, No Column Filters)
+  // Helper: check if a date falls within a custom local date range (for candidates)
+  const isWithinCustomRange = (dateString: string | undefined | null, rangeStart: string, rangeEnd: string) => {
+    if (!rangeStart && !rangeEnd) return true;
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const start = rangeStart ? new Date(rangeStart) : null;
+    const end = rangeEnd ? new Date(rangeEnd) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    if (end) end.setHours(23, 59, 59, 999);
+    if (start && end) return date >= start && date <= end;
+    if (start) return date >= start;
+    if (end) return date <= end;
+    return true;
+  };
+
+  // Helper: get all candidates for a given status, optionally date-filtered by status timestamp
+  const getStatusCandidates = (jobCandidates: any[], status: string, filterMode: 'none' | 'total' | 'status' | 'both', candStart: string, candEnd: string) => {
+    const applyStatusFilter = filterMode === 'status' || filterMode === 'both';
+    return jobCandidates.filter((c: any) => {
+      if (c.status !== status) return false;
+      if (!applyStatusFilter) return true;
+      const ts = getStatusTimestamp(c, status, status === 'Joined' ? c.joiningDate : status === 'Selected' ? c.selectionDate : undefined);
+      return isWithinCustomRange(ts, candStart, candEnd);
+    });
+  };
+
+  // Helper: get candidates for Rejected/Dropped with a by-field qualifier
+  const getSpecialStatusCandidates = (jobCandidates: any[], mainStatus: string, byField: string, byValue: string, filterMode: 'none' | 'total' | 'status' | 'both', candStart: string, candEnd: string) => {
+    const applyStatusFilter = filterMode === 'status' || filterMode === 'both';
+    return jobCandidates.filter((c: any) => {
+      if (c.status !== mainStatus) return false;
+
+      // 1. If explicit field is available, use it
+      const explicitBy = c[byField];
+      if (explicitBy) {
+        if (explicitBy !== byValue) return false;
+      } else {
+        // 2. If not available, infer from statusHistory
+        const history = c.statusHistory || [];
+        const hasInterviewed = history.some((h: any) => h.status === 'Interviewed');
+        const hasShortlisted = history.some((h: any) => h.status === 'Shortlisted');
+
+        if (byValue === 'Client') {
+          // Attributed to Client if they reached Interviewed stage
+          if (!hasInterviewed) return false;
+        } else if (byValue === 'Mentor') {
+          // Attributed to Mentor if they only reached Shortlisted (and not Interviewed)
+          if (hasInterviewed || !hasShortlisted) return false;
+        } else {
+          return false;
+        }
+      }
+
+      if (!applyStatusFilter) return true;
+      const ts = getStatusTimestamp(c, mainStatus);
+      return isWithinCustomRange(ts, candStart, candEnd);
+    });
+  };
+
+  // Helper: get total candidates, optionally filtered by candidate upload date
+  const getTotalCandidates = (jobCandidates: any[], filterMode: 'none' | 'total' | 'status' | 'both', candStart: string, candEnd: string) => {
+    const applyTotalFilter = filterMode === 'total' || filterMode === 'both';
+    if (!applyTotalFilter) return jobCandidates;
+    return jobCandidates.filter((c: any) => isWithinCustomRange(c.createdAt, candStart, candEnd));
+  };
+
+  // 1. Base Client Job Report Data
+  // Global date filter applies to JOBS only (by Date Received). All candidates are lifetime.
   const baseClientJobRows = useMemo(() => {
     const rows: any[] = [];
-    const openJobs = jobs.filter(j => j.status === "Open");
-    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
 
     const getCandidateJobId = (c: any) => {
       const jid = c.jobId?._id || c.jobId;
       return jid ? String(jid) : null;
     };
 
-    const isOpenJobCandidate = (c: any) => {
-      const jid = getCandidateJobId(c);
-      return jid && openJobIds.has(jid);
-    };
-
     jobs.forEach(job => {
-      // Candidates created in range for this job (ONLY if job is open)
-      const isJobOpen = job.status === "Open";
-      const jobCandidates = candidates.filter(c => {
-        const cJobId = getCandidateJobId(c);
-        return cJobId === job._id && isWithinDateRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isJobOpen;
-      });
+      if (job.status !== "Open") return;
+      // Global date filter: show row only if job was created in the global date range
+      if (job.createdAt && !isWithinGlobalRange(job.createdAt)) return;
 
-      // Candidates who joined this job in range (ONLY if job is open)
-      const joinedCandidatesInRangeCount = candidates.filter(c => {
-        const cJobId = getCandidateJobId(c);
-        return (
-          cJobId === job._id &&
-          c.status === "Joined" &&
-          isWithinDateRange(getStatusTimestamp(c, "Joined", c.joiningDate) || "") &&
-          isJobOpen
-        );
-      }).length;
+      // ALL candidates for this job (lifetime) - no date filter here
+      const jobId = job._id ? String(job._id) : null;
+      const jobCandidates = jobId ? candidates.filter(c => getCandidateJobId(c) === jobId) : [];
 
       const jClientId = typeof job.clientId === 'object' ? job.clientId?._id : job.clientId;
       const client = clients.find(c => c._id === jClientId);
@@ -126,23 +187,16 @@ export default function ReportsTab() {
         .map(recruiterId => users.find(u => u._id === recruiterId)?.name)
         .filter(Boolean) as string[];
 
-      const matchesGlobalDate = job.createdAt ? isWithinDateRange(job.createdAt) : true;
-
-      if (matchesGlobalDate && (isJobOpen || jobCandidates.length > 0 || joinedCandidatesInRangeCount > 0)) {
-        rows.push({
-          job,
-          clientName,
-          dateReceived,
-          recruitersInvolved,
-          jobCandidates,
-          joinedCandidatesInRangeCount
-        });
-      }
+      rows.push({
+        job,
+        clientName,
+        dateReceived,
+        recruitersInvolved,
+        jobCandidates, // lifetime candidates
+      });
     });
 
-    // Sort by date (newest first)
     rows.sort((a, b) => new Date(b.job.createdAt || 0).getTime() - new Date(a.job.createdAt || 0).getTime());
-
     return rows;
   }, [jobs, candidates, clients, users, startDate, endDate]);
 
@@ -152,40 +206,61 @@ export default function ReportsTab() {
       const matchesClient = selectedFilters.client.length > 0 ? selectedFilters.client.includes(row.clientName) : true;
       const matchesJob = selectedFilters.job.length > 0 ? selectedFilters.job.includes(row.job.title) : true;
       const matchesRecruiter = selectedFilters.recruiter.length > 0 ? row.recruitersInvolved.some((r: string) => selectedFilters.recruiter.includes(r)) : true;
-      const matchesTotal = selectedFilters.total.length > 0 ? selectedFilters.total.includes(row.jobCandidates.length.toString()) : true;
+      const filteredTotal = getTotalCandidates(row.jobCandidates, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
+      const matchesTotal = selectedFilters.total.length > 0 ? selectedFilters.total.includes(filteredTotal.length.toString()) : true;
+
+      // When local filter is active with dates set, hide rows where the relevant count is 0
+      let matchesLocalFilter = true;
+      const hasCjrDates = cjrCandStartDate || cjrCandEndDate;
+      if (cjrCandFilterMode !== 'none' && hasCjrDates) {
+        if (cjrCandFilterMode === 'total') {
+          matchesLocalFilter = filteredTotal.length > 0;
+        } else if (cjrCandFilterMode === 'status') {
+          const allStatusCount = [
+            ...getStatusCandidates(row.jobCandidates, 'New', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Shortlisted', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Interviewed', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Selected', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Joined', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Hold', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Dropped', 'droppedBy', 'Mentor', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Dropped', 'droppedBy', 'Client', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Rejected', 'rejectedBy', 'Mentor', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Rejected', 'rejectedBy', 'Client', cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate),
+          ];
+          matchesLocalFilter = allStatusCount.length > 0;
+        } else if (cjrCandFilterMode === 'both') {
+          matchesLocalFilter = filteredTotal.length > 0;
+        }
+      }
 
       const matchesClientSearch = clientSearch ? row.clientName.toLowerCase().includes(clientSearch.toLowerCase()) : true;
       const matchesRecruiterSearch = recruiterSearch ? row.recruitersInvolved.some((r: string) => r.toLowerCase().includes(recruiterSearch.toLowerCase())) : true;
       const matchesJobSearch = jobSearch ? row.job.title.toLowerCase().includes(jobSearch.toLowerCase()) : true;
 
-      return matchesDate && matchesClient && matchesJob && matchesRecruiter && matchesTotal && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch;
+      return matchesDate && matchesClient && matchesJob && matchesRecruiter && matchesTotal && matchesLocalFilter && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch;
     });
 
     const totals = reportRows.reduce((acc, row) => {
       acc.positions += (Number(row.job.noOfPositions) || 0);
-      acc.uploads += row.jobCandidates.length;
-      acc.Joined = (acc.Joined || 0) + (row.joinedCandidatesInRangeCount || 0);
-
-      ["New", "Interviewed", "Selected", "Hold"].forEach(status => {
-        const count = row.jobCandidates.filter((c: any) => c.status === status).length;
-        acc[status] = (acc[status] || 0) + count;
-      });
-
-      // Aggregated Screen status matching dashboard logic
-      const screenCount = row.jobCandidates.filter((c: any) =>
-        ["Screen", "Screened", "Shortlisted"].includes(c.status)
-      ).length;
-      acc.Screen = (acc.Screen || 0) + screenCount;
-
-      acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
-      acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
-      acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
-      acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
+      acc.uploads += getTotalCandidates(row.jobCandidates, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.New = (acc.New || 0) + getStatusCandidates(row.jobCandidates, "New", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.Shortlisted = (acc.Shortlisted || 0) + getStatusCandidates(row.jobCandidates, "Shortlisted", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.Screen = (acc.Screen || 0) +
+        ["Screen", "Screened"].reduce((s, st) => s + getStatusCandidates(row.jobCandidates, st, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length, 0);
+      acc.Interviewed = (acc.Interviewed || 0) + getStatusCandidates(row.jobCandidates, "Interviewed", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.Selected = (acc.Selected || 0) + getStatusCandidates(row.jobCandidates, "Selected", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.Joined = (acc.Joined || 0) + getStatusCandidates(row.jobCandidates, "Joined", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.Hold = (acc.Hold || 0) + getStatusCandidates(row.jobCandidates, "Hold", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.rejectByMentor = (acc.rejectByMentor || 0) + getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Mentor", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.rejectByClient = (acc.rejectByClient || 0) + getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Client", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.dropByMentor = (acc.dropByMentor || 0) + getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Mentor", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
+      acc.dropByClient = (acc.dropByClient || 0) + getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Client", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length;
       return acc;
-    }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0, New: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0 } as Record<string, number>);
+    }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0, New: 0, Screen: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0 } as Record<string, number>);
 
     return { reportRows, totals };
-  }, [baseClientJobRows, selectedFilters, clientSearch, recruiterSearch, jobSearch]);
+  }, [baseClientJobRows, selectedFilters, clientSearch, recruiterSearch, jobSearch, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate]);
 
   const getClientJobOptions = (column: string) => {
     const relevantRows = baseClientJobRows.filter(row => {
@@ -193,12 +268,11 @@ export default function ReportsTab() {
       if (column !== 'client' && selectedFilters.client.length > 0 && !selectedFilters.client.includes(row.clientName)) return false;
       if (column !== 'job' && selectedFilters.job.length > 0 && !selectedFilters.job.includes(row.job.title)) return false;
       if (column !== 'recruiter' && selectedFilters.recruiter.length > 0 && !row.recruitersInvolved.some((r: string) => selectedFilters.recruiter.includes(r))) return false;
-      if (column !== 'total' && selectedFilters.total.length > 0 && !selectedFilters.total.includes(row.jobCandidates.length.toString())) return false;
-
+      const filteredTotal = getTotalCandidates(row.jobCandidates, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
+      if (column !== 'total' && selectedFilters.total.length > 0 && !selectedFilters.total.includes(filteredTotal.length.toString())) return false;
       if (clientSearch && !row.clientName.toLowerCase().includes(clientSearch.toLowerCase())) return false;
       if (recruiterSearch && !row.recruitersInvolved.some((r: string) => r.toLowerCase().includes(recruiterSearch.toLowerCase()))) return false;
       if (jobSearch && !row.job.title.toLowerCase().includes(jobSearch.toLowerCase())) return false;
-
       return true;
     });
 
@@ -218,17 +292,17 @@ export default function ReportsTab() {
         options = Array.from(new Set(allRecruiters)).sort();
         break;
       case 'total':
-        options = Array.from(new Set(relevantRows.map(r => r.jobCandidates.length.toString()))).sort((a, b) => parseInt(a) - parseInt(b));
+        options = Array.from(new Set(relevantRows.map(r => getTotalCandidates(r.jobCandidates, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate).length.toString()))).sort((a, b) => parseInt(a) - parseInt(b));
         break;
     }
     return options;
   };
 
-  // 1. Base Daily Lineup Data (Global Date Range Applied)
+  // 2. Base Daily Lineup Data
+  // Global date filter applies to the candidate UPLOAD date (sourceDate = day they were added)
   const baseDailyLineupRows = useMemo(() => {
     const rows: any[] = [];
-    const openJobs = jobs.filter(j => j.status === "Open");
-    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
+    const openJobIds = new Set(jobs.filter(j => j.status === "Open").map(job => String(job._id)));
 
     const getCandidateJobId = (c: any) => {
       const jid = c.jobId?._id || c.jobId;
@@ -243,13 +317,14 @@ export default function ReportsTab() {
     const recruiters = users.filter(u => u.designation?.toLowerCase().includes("recruiter") || u.isAdmin);
 
     recruiters.forEach(recruiter => {
+      // Global date filter on candidate upload date (createdAt)
       const recruiterCandidates = candidates.filter(c => {
         const cCreatorId = typeof c.createdBy === 'object' ? (c.createdBy as any)?._id : c.createdBy;
-        return cCreatorId === recruiter._id && isWithinDateRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isOpenJobCandidate(c);
+        return cCreatorId === recruiter._id && isWithinGlobalRange(c.createdAt) && isOpenJobCandidate(c);
       });
 
       const lineupKeys = Array.from(new Set(recruiterCandidates.map(c => {
-        const date = formatDate(getStatusTimestamp(c, (c.status as string) || "New") || "");
+        const date = formatDate(c.createdAt || "");
         const jobId = getCandidateJobId(c);
         return `${jobId}|${date}`;
       })));
@@ -258,26 +333,25 @@ export default function ReportsTab() {
         const [jobId, sourceDate] = key.split('|');
         if (!jobId || jobId === 'undefined') return;
 
-        const job = jobs.find(j => j._id === jobId);
-        if (!job) return;
+        const job = jobs.find(j => String(j._id) === jobId);
+        if (!job || job.status !== "Open") return;
 
         const jClientId = typeof job.clientId === 'object' ? (job.clientId as any)?._id : job.clientId;
         const client = clients.find(c => jClientId === c._id);
         const clientName = client?.companyName || "Unknown";
         const jobCandidates = recruiterCandidates.filter(c => {
           const cJobId = getCandidateJobId(c);
-          const cDate = formatDate(getStatusTimestamp(c, (c.status as string) || "New") || "");
+          const cDate = formatDate(c.createdAt || "");
           return cJobId === jobId && cDate === sourceDate;
         });
         const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
 
-        // Push regardless of column filters (only verify it exists)
         if (jobCandidates.length > 0) {
           rows.push({
             recruiter,
             job,
             clientName,
-            jobDate,
+            dateReceived: jobDate,
             sourceDate,
             jobCandidates
           });
@@ -288,55 +362,86 @@ export default function ReportsTab() {
     return rows;
   }, [users, candidates, jobs, clients, startDate, endDate]);
 
-  // Daily Lineup Filtered Data
+  // Daily Lineup Filtered Data (with local candidate filter support)
   const dailyLineupReportData = useMemo(() => {
     const reportRows = baseDailyLineupRows.filter(row => {
-      const matchesReq = selectedFilters.daily_req.length > 0 ? selectedFilters.daily_req.includes(row.jobDate) : true;
+      const matchesReq = selectedFilters.daily_req.length > 0 ? selectedFilters.daily_req.includes(row.dateReceived) : true;
       const matchesSource = selectedFilters.daily_source.length > 0 ? selectedFilters.daily_source.includes(row.sourceDate) : true;
       const matchesRecruiter = selectedFilters.daily_recruiter.length > 0 ? selectedFilters.daily_recruiter.includes(row.recruiter.name) : true;
       const matchesClient = selectedFilters.daily_client.length > 0 ? selectedFilters.daily_client.includes(row.clientName) : true;
       const matchesJob = selectedFilters.daily_job.length > 0 ? selectedFilters.daily_job.includes(row.job.title) : true;
-      const matchesTotal = selectedFilters.daily_total.length > 0 ? selectedFilters.daily_total.includes(row.jobCandidates.length.toString()) : true;
+      const filteredTotal = getTotalCandidates(row.jobCandidates, dlCandFilterMode, dlCandStartDate, dlCandEndDate);
+      const matchesTotal = selectedFilters.daily_total.length > 0 ? selectedFilters.daily_total.includes(filteredTotal.length.toString()) : true;
+
+      // When local filter is active with dates set, hide rows where the relevant count is 0
+      let matchesLocalFilter = true;
+      const hasDlDates = dlCandStartDate || dlCandEndDate;
+      if (dlCandFilterMode !== 'none' && hasDlDates) {
+        if (dlCandFilterMode === 'total') {
+          matchesLocalFilter = filteredTotal.length > 0;
+        } else if (dlCandFilterMode === 'status') {
+          const allStatusCount = [
+            ...getStatusCandidates(row.jobCandidates, 'New', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Shortlisted', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Interviewed', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Selected', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Joined', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getStatusCandidates(row.jobCandidates, 'Hold', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Dropped', 'droppedBy', 'Mentor', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Dropped', 'droppedBy', 'Client', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Rejected', 'rejectedBy', 'Mentor', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+            ...getSpecialStatusCandidates(row.jobCandidates, 'Rejected', 'rejectedBy', 'Client', dlCandFilterMode, dlCandStartDate, dlCandEndDate),
+          ];
+          matchesLocalFilter = allStatusCount.length > 0;
+        } else if (dlCandFilterMode === 'both') {
+          matchesLocalFilter = filteredTotal.length > 0;
+        }
+      }
 
       const matchesClientSearch = dailyReportsSearch.client ? row.clientName.toLowerCase().includes(dailyReportsSearch.client.toLowerCase()) : true;
       const matchesRecruiterSearch = dailyReportsSearch.recruiter ? row.recruiter.name.toLowerCase().includes(dailyReportsSearch.recruiter.toLowerCase()) : true;
       const matchesJobSearch = dailyReportsSearch.job ? row.job.title.toLowerCase().includes(dailyReportsSearch.job.toLowerCase()) : true;
 
-      return matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal && matchesSource && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch;
+      return matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal && matchesLocalFilter && matchesSource && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch;
     });
 
     const totals = reportRows.reduce((acc, row) => {
       acc.positions += (Number(row.job.noOfPositions) || 0);
-      acc.uploads += row.jobCandidates.length;
-      ["New", "Shortlisted", "Interviewed", "Selected", "Joined", "Hold"].forEach(status => {
-        const count = row.jobCandidates.filter((c: any) => c.status === status).length;
-        acc[status] = (acc[status] || 0) + count;
-      });
-      acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
-      acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
-      acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
-      acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
+      acc.uploads += getTotalCandidates(row.jobCandidates, dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.New = (acc.New || 0) + getStatusCandidates(row.jobCandidates, "New", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.Shortlisted = (acc.Shortlisted || 0) + getStatusCandidates(row.jobCandidates, "Shortlisted", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.Screen = (acc.Screen || 0) +
+        ["Screen", "Screened"].reduce((s, st) => s + getStatusCandidates(row.jobCandidates, st, dlCandFilterMode, dlCandStartDate, dlCandEndDate).length, 0);
+      acc.Interviewed = (acc.Interviewed || 0) + getStatusCandidates(row.jobCandidates, "Interviewed", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.Selected = (acc.Selected || 0) + getStatusCandidates(row.jobCandidates, "Selected", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.Joined = (acc.Joined || 0) + getStatusCandidates(row.jobCandidates, "Joined", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.Hold = (acc.Hold || 0) + getStatusCandidates(row.jobCandidates, "Hold", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.rejectByMentor = (acc.rejectByMentor || 0) + getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Mentor", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.rejectByClient = (acc.rejectByClient || 0) + getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Client", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.dropByMentor = (acc.dropByMentor || 0) + getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Mentor", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
+      acc.dropByClient = (acc.dropByClient || 0) + getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Client", dlCandFilterMode, dlCandStartDate, dlCandEndDate).length;
       return acc;
-    }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
+    }, { positions: 0, uploads: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0, New: 0, Screen: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0 } as Record<string, number>);
 
     return { reportRows, totals };
-  }, [baseDailyLineupRows, selectedFilters, dailyReportsSearch]);
+  }, [baseDailyLineupRows, selectedFilters, dailyReportsSearch, dlCandFilterMode, dlCandStartDate, dlCandEndDate]);
 
   const getDailyLineupOptions = (column: string) => {
     const relevantRows = baseDailyLineupRows.filter(row => {
-      if (column !== 'daily_req' && selectedFilters.daily_req.length > 0 && !selectedFilters.daily_req.includes(row.jobDate)) return false;
+      if (column !== 'daily_req' && selectedFilters.daily_req.length > 0 && !selectedFilters.daily_req.includes(row.dateReceived)) return false;
       if (column !== 'daily_source' && selectedFilters.daily_source.length > 0 && !selectedFilters.daily_source.includes(row.sourceDate)) return false;
       if (column !== 'daily_recruiter' && selectedFilters.daily_recruiter.length > 0 && !selectedFilters.daily_recruiter.includes(row.recruiter.name)) return false;
       if (column !== 'daily_client' && selectedFilters.daily_client.length > 0 && !selectedFilters.daily_client.includes(row.clientName)) return false;
       if (column !== 'daily_job' && selectedFilters.daily_job.length > 0 && !selectedFilters.daily_job.includes(row.job.title)) return false;
-      if (column !== 'daily_total' && selectedFilters.daily_total.length > 0 && !selectedFilters.daily_total.includes(row.jobCandidates.length.toString())) return false;
+      const filteredTotal = getTotalCandidates(row.jobCandidates, dlCandFilterMode, dlCandStartDate, dlCandEndDate);
+      if (column !== 'daily_total' && selectedFilters.daily_total.length > 0 && !selectedFilters.daily_total.includes(filteredTotal.length.toString())) return false;
       return true;
     });
 
     let options: string[] = [];
     switch (column) {
       case 'daily_req':
-        options = Array.from(new Set(relevantRows.map(r => r.jobDate))).sort();
+        options = Array.from(new Set(relevantRows.map(r => r.dateReceived))).sort();
         break;
       case 'daily_source':
         options = Array.from(new Set(relevantRows.map(r => r.sourceDate))).sort();
@@ -351,7 +456,7 @@ export default function ReportsTab() {
         options = Array.from(new Set(relevantRows.map(r => r.job.title))).sort();
         break;
       case 'daily_total':
-        options = Array.from(new Set(relevantRows.map(r => r.jobCandidates.length.toString()))).sort((a, b) => parseInt(a) - parseInt(b));
+        options = Array.from(new Set(relevantRows.map(r => getTotalCandidates(r.jobCandidates, dlCandFilterMode, dlCandStartDate, dlCandEndDate).length.toString()))).sort((a, b) => parseInt(a) - parseInt(b));
         break;
     }
     return options;
@@ -396,7 +501,7 @@ export default function ReportsTab() {
     // 2. Activity Statistics - Based on filtered table data (date range applied)
     // To match dashboard perfectly:
     const openJobCandidatesInRange = candidates.filter(c =>
-      isWithinDateRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isOpenJobCandidate(c)
+      isWithinGlobalRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isOpenJobCandidate(c)
     );
 
     const totalCandidates = openJobCandidatesInRange.length;
@@ -409,11 +514,11 @@ export default function ReportsTab() {
 
     // Selection/Join counts based on their specific event dates (from GLOBAL candidates)
     const selectedCandidates = candidates.filter(c =>
-      c.status === "Selected" && isWithinDateRange(getStatusTimestamp(c, "Selected", c.selectionDate) || "") && isOpenJobCandidate(c)
+      c.status === "Selected" && isWithinGlobalRange(getStatusTimestamp(c, "Selected", c.selectionDate) || "") && isOpenJobCandidate(c)
     ).length;
 
     const joinedCandidates = candidates.filter(c =>
-      c.status === "Joined" && isWithinDateRange(getStatusTimestamp(c, "Joined", c.joiningDate) || "") && isOpenJobCandidate(c)
+      c.status === "Joined" && isWithinGlobalRange(getStatusTimestamp(c, "Joined", c.joiningDate) || "") && isOpenJobCandidate(c)
     ).length;
 
     return {
@@ -825,6 +930,48 @@ export default function ReportsTab() {
             </div>
           </div>
         </div>
+
+        {/* Local Candidate Date Filter for Client Job Report */}
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center gap-3">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filter Candidate Counts By Date:</span>
+          <select
+            value={cjrCandFilterMode}
+            onChange={e => {
+              setCjrCandFilterMode(e.target.value as 'none' | 'total' | 'status' | 'both');
+              if (e.target.value === 'none') { setCjrCandStartDate(''); setCjrCandEndDate(''); }
+            }}
+            className="text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+          >
+            <option value="none">None (Lifetime Data)</option>
+            <option value="total">Total (by Upload Date)</option>
+            <option value="status">Status Columns (by Status Change Date)</option>
+            <option value="both">Both (Total + Status Columns)</option>
+          </select>
+          {cjrCandFilterMode !== 'none' && (
+            <>
+              <input
+                type="date"
+                value={cjrCandStartDate}
+                onChange={e => setCjrCandStartDate(e.target.value)}
+                className="text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+              <span className="text-xs text-slate-400 font-bold">to</span>
+              <input
+                type="date"
+                value={cjrCandEndDate}
+                onChange={e => setCjrCandEndDate(e.target.value)}
+                className="text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+              <button
+                onClick={() => { setCjrCandFilterMode('none'); setCjrCandStartDate(''); setCjrCandEndDate(''); }}
+                className="text-[10px] font-black uppercase tracking-wider text-red-500 hover:text-red-700 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+              >
+                Clear
+              </button>
+            </>
+          )}
+        </div>
+
         <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px] custom-scrollbar">
           <table className="w-full text-sm text-left border-collapse min-w-[1500px]">
             <thead className="bg-slate-50/50 text-slate-700 font-semibold sticky top-0 z-[30] backdrop-blur-sm">
@@ -960,19 +1107,27 @@ export default function ReportsTab() {
                             {row.recruitersInvolved.length === 0 && <span className="text-slate-400 text-[10px] italic">No recruiters assigned</span>}
                           </div>
                         </td>
+                        {/* Total Uploads Column */}
                         <td className="py-4 px-4 text-center">
-                          <button
-                            disabled={row.jobCandidates.length === 0}
-                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", row.jobCandidates)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
-                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:border-slate-300 transform hover:scale-105"
-                              : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
-                          >
-                            {row.jobCandidates.length}
-                          </button>
+                          {(() => {
+                            const filtered = getTotalCandidates(row.jobCandidates, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
+                            const count = filtered.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Uploads", filtered)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border min-w-[32px] transition-all ${count > 0
+                                  ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:border-slate-300 transform hover:scale-105"
+                                  : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
                         </td>
+                        {/* New and Screen Columns */}
                         {["New", "Shortlisted"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const statusCandidates = getStatusCandidates(row.jobCandidates, status, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                           const count = statusCandidates.length;
                           return (
                             <td key={status} className="py-4 px-4 text-center">
@@ -991,7 +1146,7 @@ export default function ReportsTab() {
                         {/* Dropped by Mentor Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const mentorDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor");
+                            const mentorDropped = getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Mentor", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                             const count = mentorDropped.length;
                             return (
                               <button
@@ -1009,7 +1164,7 @@ export default function ReportsTab() {
                         {/* Reject by Mentor Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const mentorRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor");
+                            const mentorRejected = getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Mentor", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                             const count = mentorRejected.length;
                             return (
                               <button
@@ -1024,8 +1179,9 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
+                        {/* Interviewed Column */}
                         {["Interviewed"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const statusCandidates = getStatusCandidates(row.jobCandidates, status, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                           const count = statusCandidates.length;
                           return (
                             <td key={status} className="py-4 px-4 text-center">
@@ -1041,8 +1197,9 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
+                        {/* Selected + Joined Columns */}
                         {["Selected", "Joined"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const statusCandidates = getStatusCandidates(row.jobCandidates, status, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                           const count = statusCandidates.length;
                           return (
                             <td key={status} className="py-4 px-4 text-center">
@@ -1058,8 +1215,9 @@ export default function ReportsTab() {
                             </td>
                           );
                         })}
+                        {/* Hold Column */}
                         {["Hold"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const statusCandidates = getStatusCandidates(row.jobCandidates, status, cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                           const count = statusCandidates.length;
                           return (
                             <td key={status} className="py-4 px-4 text-center">
@@ -1078,7 +1236,7 @@ export default function ReportsTab() {
                         {/* Dropped by Client Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const clientDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client");
+                            const clientDropped = getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Client", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                             const count = clientDropped.length;
                             return (
                               <button
@@ -1093,9 +1251,10 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
+                        {/* Reject by Client Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
+                            const clientRejected = getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Client", cjrCandFilterMode, cjrCandStartDate, cjrCandEndDate);
                             const count = clientRejected.length;
                             return (
                               <button
@@ -1110,6 +1269,7 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
+
                       </tr>
                     ))}
                     {/* Total Row */}
@@ -1183,7 +1343,50 @@ export default function ReportsTab() {
             </div>
           </div>
         </div>
+
+        {/* Local Candidate Date Filter for Daily Lineup */}
+        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50 flex flex-wrap items-center gap-3">
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Filter Candidate Counts By Date:</span>
+          <select
+            value={dlCandFilterMode}
+            onChange={e => {
+              setDlCandFilterMode(e.target.value as 'none' | 'total' | 'status' | 'both');
+              if (e.target.value === 'none') { setDlCandStartDate(''); setDlCandEndDate(''); }
+            }}
+            className="text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+          >
+            <option value="none">None (Lifetime Data)</option>
+            <option value="total">Total (by Upload Date)</option>
+            <option value="status">Status Columns (by Status Change Date)</option>
+            <option value="both">Both (Total + Status Columns)</option>
+          </select>
+          {dlCandFilterMode !== 'none' && (
+            <>
+              <input
+                type="date"
+                value={dlCandStartDate}
+                onChange={e => setDlCandStartDate(e.target.value)}
+                className="text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+              <span className="text-xs text-slate-400 font-bold">to</span>
+              <input
+                type="date"
+                value={dlCandEndDate}
+                onChange={e => setDlCandEndDate(e.target.value)}
+                className="text-xs font-bold border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+              />
+              <button
+                onClick={() => { setDlCandFilterMode('none'); setDlCandStartDate(''); setDlCandEndDate(''); }}
+                className="text-[10px] font-black uppercase tracking-wider text-red-500 hover:text-red-700 transition-colors px-2 py-1 rounded-lg hover:bg-red-50"
+              >
+                Clear
+              </button>
+            </>
+          )}
+        </div>
+
         <div className="overflow-x-auto overflow-y-auto max-h-[600px] min-h-[300px] md:min-h-[450px] custom-scrollbar">
+
           <table className="w-full text-sm text-left border-collapse min-w-[1500px]">
             <thead className="bg-slate-50/50 text-slate-700 font-semibold sticky top-0 z-[30] backdrop-blur-sm">
               <tr>
@@ -1294,6 +1497,7 @@ export default function ReportsTab() {
             <tbody className="divide-y divide-slate-100">
               {(() => {
                 const { reportRows, totals } = dailyLineupReportData;
+                console.log(reportRows)
 
                 if (reportRows.length === 0) {
                   return (
@@ -1329,19 +1533,25 @@ export default function ReportsTab() {
                         <td className="py-4 px-6 text-slate-700 font-bold text-xs">{row.job.title}</td>
 
                         <td className="py-4 px-4 text-center">
-                          <button
-                            disabled={row.jobCandidates.length === 0}
-                            onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Lineups", row.jobCandidates)}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border min-w-[32px] transition-all ${row.jobCandidates.length > 0
-                              ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:border-slate-300 transform hover:scale-105"
-                              : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
-                          >
-                            {row.jobCandidates.length}
-                          </button>
+                          {(() => {
+                            const filtered = getTotalCandidates(row.jobCandidates, dlCandFilterMode, dlCandStartDate, dlCandEndDate);
+                            const count = filtered.length;
+                            return (
+                              <button
+                                disabled={count === 0}
+                                onClick={() => openCandidatePopup(row.job.title, row.clientName, "Total Lineups", filtered)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold border min-w-[32px] transition-all ${count > 0
+                                  ? "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 hover:border-slate-300 transform hover:scale-105"
+                                  : "bg-slate-50 text-slate-300 border-slate-100 cursor-default"}`}
+                              >
+                                {count}
+                              </button>
+                            );
+                          })()}
                         </td>
 
                         {["New", "Shortlisted"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const statusCandidates = getStatusCandidates(row.jobCandidates, status, dlCandFilterMode, dlCandStartDate, dlCandEndDate);
                           const count = statusCandidates.length;
                           return (
                             <td key={status} className="py-4 px-4 text-center">
@@ -1360,7 +1570,7 @@ export default function ReportsTab() {
                         {/* Dropped by Mentor Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const mentorDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor");
+                            const mentorDropped = getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Mentor", dlCandFilterMode, dlCandStartDate, dlCandEndDate);
                             const count = mentorDropped.length;
                             return (
                               <button
@@ -1378,7 +1588,7 @@ export default function ReportsTab() {
                         {/* Reject by Mentor Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const mentorRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor");
+                            const mentorRejected = getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Mentor", dlCandFilterMode, dlCandStartDate, dlCandEndDate);
                             const count = mentorRejected.length;
                             return (
                               <button
@@ -1395,7 +1605,7 @@ export default function ReportsTab() {
                         </td>
 
                         {["Interviewed"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const statusCandidates = getStatusCandidates(row.jobCandidates, status, dlCandFilterMode, dlCandStartDate, dlCandEndDate);
                           const count = statusCandidates.length;
                           return (
                             <td key={status} className="py-4 px-4 text-center">
@@ -1412,7 +1622,7 @@ export default function ReportsTab() {
                           );
                         })}
                         {["Selected", "Joined", "Hold"].map(status => {
-                          const statusCandidates = row.jobCandidates.filter((c: any) => c.status === status);
+                          const statusCandidates = getStatusCandidates(row.jobCandidates, status, dlCandFilterMode, dlCandStartDate, dlCandEndDate);
                           const count = statusCandidates.length;
                           return (
                             <td key={status} className="py-4 px-4 text-center">
@@ -1431,7 +1641,7 @@ export default function ReportsTab() {
                         {/* Dropped by Client Column */}
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const clientDropped = row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client");
+                            const clientDropped = getSpecialStatusCandidates(row.jobCandidates, "Dropped", "droppedBy", "Client", dlCandFilterMode, dlCandStartDate, dlCandEndDate);
                             const count = clientDropped.length;
                             return (
                               <button
@@ -1448,7 +1658,7 @@ export default function ReportsTab() {
                         </td>
                         <td className="py-4 px-4 text-center">
                           {(() => {
-                            const clientRejected = row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client");
+                            const clientRejected = getSpecialStatusCandidates(row.jobCandidates, "Rejected", "rejectedBy", "Client", dlCandFilterMode, dlCandStartDate, dlCandEndDate);
                             const count = clientRejected.length;
                             return (
                               <button
@@ -1463,12 +1673,13 @@ export default function ReportsTab() {
                             );
                           })()}
                         </td>
+
                       </tr>
                     ))}
                     {/* Total Row */}
                     <tr className="bg-slate-50 font-bold border-t border-slate-200 sticky bottom-0 z-10 shadow-sm">
                       <td colSpan={5} className="py-4 px-6 text-right text-slate-500 uppercase tracking-widest text-[10px]">Total</td>
-                      <td className="py-4 px-4 text-center text-slate-800 text-xs">{totals.lineups}</td>
+                      <td className="py-4 px-4 text-center text-slate-800 text-xs">{totals.uploads}</td>
                       {["New", "Shortlisted"].map(status => (
                         <td key={status} className="py-4 px-4 text-center text-slate-800 text-xs text-xs">
                           {totals[status] || 0}
@@ -1543,6 +1754,7 @@ export default function ReportsTab() {
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Phone</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Recruiter</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status Updated</th>
                                 {hasStatusDetails && <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status Details</th>}
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500 min-w-[200px]">Notes</th>
                               </tr>
@@ -1577,6 +1789,12 @@ export default function ReportsTab() {
                                       })()}`}>
                                         {candidate.status}
                                       </span>
+                                    </td>
+                                    <td className="py-4 px-6 text-slate-600 text-xs font-bold whitespace-nowrap">
+                                      {(() => {
+                                        const ts = getStatusTimestamp(candidate, candidate.status, candidate.status === 'Joined' ? candidate.joiningDate : candidate.status === 'Selected' ? candidate.selectionDate : undefined);
+                                        return ts ? formatDate(ts) : '-';
+                                      })()}
                                     </td>
                                     {hasStatusDetails && (
                                       <td className="py-4 px-6 text-xs space-y-1">

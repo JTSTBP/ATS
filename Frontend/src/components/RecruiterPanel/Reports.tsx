@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useJobContext } from '../../context/DataProvider';
 import { useClientsContext } from '../../context/ClientsProvider';
 import PerformanceReportTable from './PerformanceReportTable';
+import { getStatusTimestamp } from '../../utils/statusUtils';
 
 export default function Reports() {
   const { user } = useAuth();
@@ -43,6 +44,18 @@ export default function Reports() {
     }
   }, [user]);
 
+  const { jobs } = useJobContext();
+
+  // Helper to check if a candidate belongs to an open job
+  const openJobIds = useMemo(() => {
+    return new Set(jobs.filter(j => j.status === 'Open').map(j => String(j._id)));
+  }, [jobs]);
+
+  const isOpenJobCandidate = (c: any) => {
+    const jid = c.jobId?._id || c.jobId;
+    return jid && openJobIds.has(String(jid));
+  };
+
   // Calculate statistics from real data
   const stats = useMemo(() => {
     if (!user || !candidates) return {
@@ -54,20 +67,48 @@ export default function Reports() {
       rejected: 0,
     };
 
-    const userCandidates = candidates.filter(c => filterByRange(c.createdAt, startDate, endDate));
+    // Filter candidates by Open jobs
+    const openJobUserCandidates = candidates.filter(c => isOpenJobCandidate(c));
 
-    const totalApplications = userCandidates.length;
-    const interviews = userCandidates.filter((c) =>
-      c.status === 'Interview' || c.status === 'Interviewed'
+    // Stats were being filtered by createdAt - Applications still should follow upload date
+    const totalApplications = openJobUserCandidates.filter(c =>
+      filterByRange(c.createdAt, startDate, endDate)
     ).length;
 
-    const hires = userCandidates.filter((c) =>
-      c.status === 'Hired' || c.status === 'Offer' || c.status === 'Joined' || c.status === 'Selected'
-    ).length;
+    const interviews = openJobUserCandidates.filter((c) => {
+      if (!['Interview', 'Interviewed'].includes(c.status)) return false;
+      const ts = getStatusTimestamp(c, ['Interview', 'Interviewed']);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
 
-    const screening = userCandidates.filter((c) => c.status === 'New' || c.status === 'Screening' || c.status === 'Under Review').length;
-    const shortlisted = userCandidates.filter((c) => c.status === 'Shortlisted').length;
-    const rejected = userCandidates.filter((c) => c.status === 'Rejected').length;
+    const hires = openJobUserCandidates.filter((c) => {
+      const hireStatuses = ['Joined', 'Hired', 'Selected', 'Offer'];
+      if (!hireStatuses.includes(c.status)) return false;
+      const ts = c.status === 'Joined' ? getStatusTimestamp(c, 'Joined', c.joiningDate)
+        : c.status === 'Selected' || c.status === 'Offer' ? getStatusTimestamp(c, 'Selected', c.selectionDate)
+          : getStatusTimestamp(c, hireStatuses);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
+
+    const screening = openJobUserCandidates.filter((c) => {
+      const screeningStatuses = ['New', 'Screening', 'Under Review'];
+      if (!screeningStatuses.includes(c.status)) return false;
+      const ts = getStatusTimestamp(c, screeningStatuses);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
+
+    const shortlisted = openJobUserCandidates.filter((c) => {
+      const shortlistStatuses = ['Shortlisted', 'Screen', 'Screened'];
+      if (!shortlistStatuses.includes(c.status)) return false;
+      const ts = getStatusTimestamp(c, shortlistStatuses);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
+
+    const rejected = openJobUserCandidates.filter((c) => {
+      if (c.status !== 'Rejected' && c.status !== 'Reject') return false;
+      const ts = getStatusTimestamp(c, ['Rejected', 'Reject']);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
 
     return {
       totalApplications,
@@ -77,11 +118,15 @@ export default function Reports() {
       shortlisted,
       rejected,
     };
-  }, [candidates, user, startDate, endDate]);
+  }, [candidates, jobs, user, startDate, endDate]);
 
   // Calculate top positions
   const topPositions = useMemo(() => {
-    const userCandidates = candidates;
+    // Only consider candidates from OPEN jobs AND within date range
+    const userCandidates = candidates.filter(c =>
+      isOpenJobCandidate(c) &&
+      filterByRange(c.createdAt, startDate, endDate)
+    );
 
     const jobCounts = userCandidates.reduce((acc, candidate) => {
       const jobTitle = typeof candidate.jobId === 'string' ? 'Unknown Position' : (candidate.jobId as any)?.title || 'Unknown Position';
@@ -100,11 +145,12 @@ export default function Reports() {
             ? (count / stats.totalApplications) * 100
             : 0,
       }));
-  }, [candidates, user, stats.totalApplications, startDate, endDate]);
+  }, [candidates, jobs, user, stats.totalApplications]);
 
   // Calculate recent activity
   const recentActivity = useMemo(() => {
-    const userCandidates = candidates.filter(c => filterByRange(c.createdAt, startDate, endDate));
+    // Only consider OPEN job candidates
+    const userCandidates = candidates.filter(c => isOpenJobCandidate(c) && filterByRange(c.createdAt, startDate, endDate));
     const last7Days = new Date();
     last7Days.setDate(last7Days.getDate() - 7);
 
@@ -127,7 +173,7 @@ export default function Reports() {
         action: `CV uploaded for ${typeof candidates[0]?.jobId === 'string' ? 'position' : (candidates[0]?.jobId?.title || 'position')}`,
         count: candidates.length,
       }));
-  }, [candidates, user, startDate, endDate]);
+  }, [candidates, jobs, user, startDate, endDate]);
 
   if (loading) {
     return (

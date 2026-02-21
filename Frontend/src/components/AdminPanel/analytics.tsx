@@ -220,11 +220,30 @@ export default function AnalyticsTab() {
     }));
   }, [filteredData.users, dateRange]);
 
-  // Prepare Chart Data: Recruitment Funnel (Filtered)
+  // Prepare Chart Data: Candidate Status Distribution
+  // Filters: open jobs only + date range applied to status-change timestamp (not upload date)
   const recruitmentData = useMemo(() => {
     const statusCounts: Record<string, number> = {};
-    filteredData.candidates.forEach((c) => {
+
+    candidates.forEach((c) => {
+      // Only open-job candidates
+      if (!isOpenJobCandidate(c)) return;
+
       const status = c.status || "New";
+
+      // Use the timestamp when the current status was set
+      const statusTs =
+        status === "Joined"
+          ? getStatusTimestamp(c, "Joined", c.joiningDate)
+          : status === "Selected"
+            ? getStatusTimestamp(c, "Selected", c.selectionDate)
+            : getStatusTimestamp(c, status);
+
+      // Fall back to createdAt for "New" candidates that may lack a status history entry
+      const effectiveDate = statusTs || c.createdAt;
+
+      if (!isInRange(effectiveDate)) return;
+
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
 
@@ -232,7 +251,7 @@ export default function AnalyticsTab() {
       name: status,
       value: statusCounts[status],
     }));
-  }, [filteredData.candidates]);
+  }, [candidates, openJobIds, dateRange]);
 
   const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#f97316", "#8b5cf6", "#ef4444"];
 

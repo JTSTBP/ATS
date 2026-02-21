@@ -8,6 +8,7 @@ import { useJobContext } from "../../context/DataProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
 import { formatDate } from "../../utils/dateUtils";
 import PerformanceReportTable from "./PerformanceReportTable";
+import { getStatusTimestamp } from "../../utils/statusUtils";
 
 // Helper to get defaults
 const getDefaultStartDate = () => {
@@ -49,38 +50,53 @@ export default function Dashboard() {
     }
   }, [user]);
 
+  const { jobs } = useJobContext();
+
+  // Helper to check if a candidate belongs to an open job
+  const openJobIds = useMemo(() => {
+    return new Set(jobs.filter(j => j.status === 'Open').map(j => String(j._id)));
+  }, [jobs]);
+
+  const isOpenJobCandidate = (c: any) => {
+    const jid = c.jobId?._id || c.jobId;
+    return jid && openJobIds.has(String(jid));
+  };
+
   const stats = useMemo(() => {
     if (!candidates) return [];
 
-    // Filter candidates relevant to the selected month
-    // Strategy: 
-    // Total Lined Up -> Created in selected month
-    // Shortlisted -> Status Shortlisted AND (updatedAt in month OR createdAt in month) - sticking to createdAt/updatedAt logic
-    // Actually, usually "Count for Month X" means "Created in Month X" for Total
-    // For Statuses, it implies "Achieved status in Month X" ideally, but often "Currently in status X and touched in Month X" is used.
-    // Let's use isSelectedMonth(c.updatedAt || c.createdAt) as a general "Active/Relevant in Month" check for statuses
-    // For "Total", we use creation date.
+    // Filter by Open Jobs
+    const openJobCandidates = candidates.filter(c => isOpenJobCandidate(c));
 
-    const total = candidates.filter(c => filterByRange(c.createdAt, startDate, endDate)).length;
+    const total = openJobCandidates.filter(c => filterByRange(c.createdAt, startDate, endDate)).length;
 
-    const shortlisted = candidates.filter((c) =>
-      c.status === "Shortlisted" && filterByRange(c.updatedAt || c.createdAt, startDate, endDate)
-    ).length;
+    const shortlisted = openJobCandidates.filter((c) => {
+      const shortlistStatuses = ["Shortlisted", "Screen", "Screened"];
+      if (!shortlistStatuses.includes(c.status || "")) return false;
+      const ts = getStatusTimestamp(c, shortlistStatuses);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
 
-    // Interviews includes Interview, Interviewed
-    const interviews = candidates.filter((c) =>
-      ["Interview", "Interviewed"].includes(c.status || "") && filterByRange(c.dynamicFields?.interviewDate || c.updatedAt || c.createdAt, startDate, endDate)
-    ).length;
+    const interviews = openJobCandidates.filter((c) => {
+      const interviewStatuses = ["Interview", "Interviewed"];
+      if (!interviewStatuses.includes(c.status || "")) return false;
+      const ts = getStatusTimestamp(c, interviewStatuses);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
 
-    // Selected (Offer/Selected)
-    const selectedMonthCount = candidates.filter((c) =>
-      ["Offer", "Selected"].includes(c.status || "") && filterByRange(c.updatedAt || c.createdAt, startDate, endDate)
-    ).length;
+    const selectedMonthCount = openJobCandidates.filter((c) => {
+      const selectedStatuses = ["Offer", "Selected"];
+      if (!selectedStatuses.includes(c.status || "")) return false;
+      const ts = getStatusTimestamp(c, selectedStatuses, c.selectionDate);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
 
-    // Hired (Joined/Hired)
-    const hiredCandidates = candidates.filter((c) =>
-      ["Joined", "Hired"].includes(c.status || "") && filterByRange(c.updatedAt || c.createdAt, startDate, endDate)
-    ).length;
+    const hiredCandidates = openJobCandidates.filter((c) => {
+      const hiredStatuses = ["Joined", "Hired"];
+      if (!hiredStatuses.includes(c.status || "")) return false;
+      const ts = getStatusTimestamp(c, hiredStatuses, c.joiningDate);
+      return filterByRange(ts || c.createdAt, startDate, endDate);
+    }).length;
 
     return [
       {
@@ -124,7 +140,7 @@ export default function Dashboard() {
         route: "/Recruiter/candidates?status=Hired",
       },
     ];
-  }, [candidates, startDate, endDate]);
+  }, [candidates, jobs, startDate, endDate]);
 
   return (
     <motion.div
@@ -214,6 +230,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-4">
             {candidates
+              .filter(c => isOpenJobCandidate(c))
               .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
               .slice(0, 5)
               .map((candidate, index) => {
@@ -262,7 +279,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-4">
             {candidates
-              .filter((c) => c.status === "Shortlisted")
+              .filter((c) => c.status === "Shortlisted" && isOpenJobCandidate(c))
               .slice(0, 5)
               .map((candidate, index) => {
                 const name = candidate.dynamicFields?.candidateName ||

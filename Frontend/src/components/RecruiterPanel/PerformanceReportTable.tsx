@@ -1,11 +1,12 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Filter, Search, X, Check, Calendar } from 'lucide-react';
+import { Filter, Search, X, Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthProvider';
 import { useCandidateContext } from '../../context/CandidatesProvider';
 import { useJobContext } from '../../context/DataProvider';
 import { useClientsContext } from '../../context/ClientsProvider';
 import { formatDate } from '../../utils/dateUtils';
+import { getStatusTimestamp } from '../../utils/statusUtils';
 
 export default function PerformanceReportTable() {
     const { user } = useAuth();
@@ -32,6 +33,9 @@ export default function PerformanceReportTable() {
     const [filterSearch, setFilterSearch] = useState("");
     const [clientSearch, setClientSearch] = useState("");
     const [jobSearch, setJobSearch] = useState("");
+    // When true, status columns (New/Shortlisted/etc.) are counted by status-change timestamp
+    // When false (default), they are counted by candidate upload date (createdAt)
+    const [filterByStatusDate, setFilterByStatusDate] = useState(false);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -44,6 +48,8 @@ export default function PerformanceReportTable() {
             case "Joined":
             case "Hired": return "bg-emerald-100 text-emerald-700 border border-emerald-200";
             case "Rejected": return "bg-red-100 text-red-700 border border-red-200";
+            case "Dropped": return "bg-gray-100 text-gray-700 border border-gray-200";
+            case "Hold": return "bg-amber-100 text-amber-700 border border-amber-200";
             default: return "bg-slate-100 text-slate-700 border border-slate-200";
         }
     };
@@ -125,6 +131,50 @@ export default function PerformanceReportTable() {
         return job.assignedRecruiters.some((r: any) => {
             const rId = typeof r === 'object' ? r._id : r;
             return rId === user?._id;
+        });
+    };
+
+    // Helper: get candidates for Rejected/Dropped with a by-field qualifier
+    const getSpecialStatusCandidates = (jobCandidates: any[], mainStatus: string, byValue: 'Manager' | 'Client') => {
+        const byField = mainStatus === 'Rejected' ? 'rejectedBy' : 'droppedBy';
+
+        return jobCandidates.filter((c: any) => {
+            // Check for both "Rejected" and "Reject" / "Dropped" and "Drop"
+            const statusMatch = mainStatus === 'Rejected'
+                ? (c.status === 'Rejected' || c.status === 'Reject')
+                : (c.status === 'Dropped' || c.status === 'Drop');
+
+            if (!statusMatch) return false;
+
+            // 1. Explicit check (prioritize fields like rejectedBy/droppedBy)
+            const explicitBy = c[byField];
+            if (explicitBy) {
+                // Treat 'Mentor' and 'Manager' as the same for Recruiter/Admin alignment
+                if (byValue === 'Manager') {
+                    if (explicitBy !== 'Manager' && explicitBy !== 'Mentor') return false;
+                } else if (byValue === 'Client') {
+                    if (explicitBy !== 'Client') return false;
+                }
+            } else {
+                // 2. Inference check (matching Admin Panel logic)
+                const history = c.statusHistory || [];
+                const hasInterviewed = history.some((h: any) => (h.status === 'Interviewed' || h.status === 'Interview'));
+
+                if (byValue === 'Client') {
+                    // Attributed to Client if they ever reached Interview stage
+                    if (!hasInterviewed) return false;
+                } else if (byValue === 'Manager') {
+                    // Attributed to Manager/Mentor if they were rejected/dropped WITHOUT reaching Interview stage
+                    // (Note: removed strict 'hasShortlisted' check to capture immediate rejections)
+                    if (hasInterviewed) return false;
+                } else {
+                    return false;
+                }
+            }
+
+            if (!filterByStatusDate) return true;
+            const ts = getStatusTimestamp(c, mainStatus === 'Rejected' ? ['Rejected', 'Reject'] : ['Dropped', 'Drop']);
+            return isWithinDateRange(ts || c.createdAt);
         });
     };
 
@@ -277,10 +327,31 @@ export default function PerformanceReportTable() {
                             />
                         </div>
                     </div>
+
+                    {/* Filter Candidate Counts By Date toggle */}
+                    <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+                        <button
+                            onClick={() => setFilterByStatusDate(prev => !prev)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all ${filterByStatusDate
+                                ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100'
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                                }`}
+                        >
+                            {filterByStatusDate
+                                ? <ToggleRight size={16} />
+                                : <ToggleLeft size={16} />}
+                            Filter Candidate Counts By Date
+                        </button>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                            {filterByStatusDate
+                                ? 'Counting candidates by when their status was updated in the selected date range'
+                                : 'Counting all candidates regardless of status date (filtered by upload date only)'}
+                        </span>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto scrollbar-hide">
-                    <div className="min-w-[1000px]">
+                    <div className="min-w-[1200px]">
                         <table className="w-full text-sm text-left">
                             <thead className="bg-gray-50/50 text-gray-500 font-bold border-y border-gray-100 sticky top-0 z-10">
                                 <tr>
@@ -355,17 +426,23 @@ export default function PerformanceReportTable() {
                                     </th>
                                     <th className="py-4 px-4 text-center text-blue-600 uppercase tracking-widest text-[10px] font-mono">New</th>
                                     <th className="py-4 px-4 text-center text-orange-600 uppercase tracking-widest text-[10px] font-mono">Shortlisted</th>
-                                    <th className="py-4 px-4 text-center text-indigo-600 uppercase tracking-widest text-[10px] font-mono">Interview</th>
+                                    <th className="py-4 px-4 text-center text-gray-400 uppercase tracking-widest text-[10px] font-mono whitespace-nowrap">Drop (M)</th>
+                                    <th className="py-4 px-4 text-center text-red-400 uppercase tracking-widest text-[10px] font-mono whitespace-nowrap">Rej (M)</th>
+                                    <th className="py-4 px-4 text-center text-purple-600 uppercase tracking-widest text-[10px] font-mono whitespace-nowrap">Interview</th>
                                     <th className="py-4 px-4 text-center text-teal-600 uppercase tracking-widest text-[10px] font-mono">Selected</th>
                                     <th className="py-4 px-4 text-center text-emerald-600 uppercase tracking-widest text-[10px] font-mono">Joined</th>
-                                    <th className="py-4 px-4 text-center text-red-600 uppercase tracking-widest text-[10px] font-mono">Rejected</th>
+                                    <th className="py-4 px-4 text-center text-amber-600 uppercase tracking-widest text-[10px] font-mono whitespace-nowrap">Hold</th>
+                                    <th className="py-4 px-4 text-center text-slate-600 uppercase tracking-widest text-[10px] font-mono whitespace-nowrap">Drop (C)</th>
+                                    <th className="py-4 px-4 text-center text-red-700 uppercase tracking-widest text-[10px] font-mono whitespace-nowrap">Rej (C)</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {(() => {
                                     const reportRows: any[] = [];
 
+                                    // Only show OPEN jobs
                                     const relevantJobs = jobs.filter(job => {
+                                        if (job.status !== 'Open') return false;
                                         const isAssigned = isJobAssigned(job);
                                         const hasUploads = candidates.some(c => {
                                             const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
@@ -376,13 +453,13 @@ export default function PerformanceReportTable() {
 
                                     relevantJobs.forEach(job => {
                                         const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
+                                        // Total uploads row — always filtered by upload date (createdAt)
                                         const jobCandidates = candidates.filter(c => {
                                             const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
                                             return cJobId === job._id && (c.createdAt ? isWithinDateRange(c.createdAt) : true);
                                         });
 
                                         if (jobCandidates.length === 0 && !isJobAssigned(job)) {
-                                            // If not assigned and no candidates (after date filter), skip
                                             return;
                                         }
 
@@ -418,7 +495,7 @@ export default function PerformanceReportTable() {
                                         );
                                     }
 
-                                    return reportRows.map((row, i) => (
+                                    const rows = reportRows.map((row, i) => (
                                         <tr key={`${row.job._id}-${i}`} className="hover:bg-slate-50 transition-colors">
                                             <td className="py-4 px-6 text-slate-600">{row.jobDate}</td>
                                             <td className="py-4 px-6 text-slate-700 font-medium">{row.job.title}</td>
@@ -436,13 +513,37 @@ export default function PerformanceReportTable() {
                                             </td>
                                             {[
                                                 { key: "New", statuses: ["New", "Screening", "Under Review"] },
-                                                { key: "Shortlisted", statuses: ["Shortlisted"] },
+                                                { key: "Shortlisted", statuses: ["Shortlisted", "Screen", "Screened"] },
+                                                { key: "Drop (M)", special: true, status: "Dropped", type: "Manager" },
+                                                { key: "Rej (M)", special: true, status: "Rejected", type: "Manager" },
                                                 { key: "Interviewed", statuses: ["Interview", "Interviewed"] },
                                                 { key: "Selected", statuses: ["Selected", "Offer"] },
                                                 { key: "Joined", statuses: ["Joined", "Hired"] },
-                                                { key: "Rejected", statuses: ["Rejected"] }
+                                                { key: "Hold", statuses: ["Hold"] },
+                                                { key: "Drop (C)", special: true, status: "Dropped", type: "Client" },
+                                                { key: "Rej (C)", special: true, status: "Rejected", type: "Client" },
                                             ].map(statusGroup => {
-                                                const statusCandidates = row.jobCandidates.filter((c: any) => statusGroup.statuses.includes(c.status));
+                                                // All candidates for this job (not just date-filtered) for status matching
+                                                const allJobCandidates = candidates.filter((c: any) => {
+                                                    const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+                                                    return cJobId === row.job._id;
+                                                });
+
+                                                let statusCandidates: any[] = [];
+                                                if ('special' in statusGroup) {
+                                                    statusCandidates = getSpecialStatusCandidates(allJobCandidates, statusGroup.status as string, statusGroup.type as any);
+                                                } else {
+                                                    statusCandidates = allJobCandidates.filter((c: any) => {
+                                                        if (!statusGroup.statuses?.includes(c.status)) return false;
+                                                        if (!filterByStatusDate) return true;
+                                                        // Filter by when this status was actually set
+                                                        const ts =
+                                                            c.status === 'Joined' ? getStatusTimestamp(c, 'Joined', c.joiningDate)
+                                                                : c.status === 'Selected' || c.status === 'Offer' ? getStatusTimestamp(c, 'Selected', c.selectionDate)
+                                                                    : getStatusTimestamp(c, c.status);
+                                                        return isWithinDateRange(ts || c.createdAt);
+                                                    });
+                                                }
                                                 const count = statusCandidates.length;
                                                 return (
                                                     <td key={statusGroup.key} className="py-4 px-4 text-center">
@@ -450,7 +551,7 @@ export default function PerformanceReportTable() {
                                                             disabled={count === 0}
                                                             onClick={() => openCandidatePopup(row.job.title, row.clientName, statusGroup.key, statusCandidates)}
                                                             className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[32px] transition-all ${count > 0
-                                                                ? `${getStatusColor(statusGroup.key)} hover:scale-110`
+                                                                ? `${getStatusColor(statusGroup.key === 'Drop (M)' || statusGroup.key === 'Drop (C)' ? 'Dropped' : statusGroup.key === 'Rej (M)' || statusGroup.key === 'Rej (C)' ? 'Rejected' : statusGroup.key)} hover:scale-110`
                                                                 : "bg-slate-50 text-slate-300 border border-slate-100 cursor-default"}`}
                                                         >
                                                             {count}
@@ -460,6 +561,75 @@ export default function PerformanceReportTable() {
                                             })}
                                         </tr>
                                     ));
+
+                                    // Calculate totals for the footer row
+                                    const totals = {
+                                        totalUploads: reportRows.reduce((acc, row) => acc + row.jobCandidates.length, 0),
+                                        New: 0,
+                                        Shortlisted: 0,
+                                        'Drop (M)': 0,
+                                        'Rej (M)': 0,
+                                        Interviewed: 0,
+                                        Selected: 0,
+                                        Joined: 0,
+                                        Hold: 0,
+                                        'Drop (C)': 0,
+                                        'Rej (C)': 0,
+                                    };
+
+                                    const statusGroups = [
+                                        { key: "New", statuses: ["New", "Screening", "Under Review"] },
+                                        { key: "Shortlisted", statuses: ["Shortlisted", "Screen", "Screened"] },
+                                        { key: "Drop (M)", special: true, status: "Dropped", type: "Manager" },
+                                        { key: "Rej (M)", special: true, status: "Rejected", type: "Manager" },
+                                        { key: "Interviewed", statuses: ["Interview", "Interviewed"] },
+                                        { key: "Selected", statuses: ["Selected", "Offer"] },
+                                        { key: "Joined", statuses: ["Joined", "Hired"] },
+                                        { key: "Hold", statuses: ["Hold"] },
+                                        { key: "Drop (C)", special: true, status: "Dropped", type: "Client" },
+                                        { key: "Rej (C)", special: true, status: "Rejected", type: "Client" },
+                                    ];
+
+                                    reportRows.forEach(row => {
+                                        const jobCandidates = candidates.filter((c: any) => {
+                                            const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
+                                            return cJobId === row.job._id;
+                                        });
+
+                                        statusGroups.forEach(group => {
+                                            let count = 0;
+                                            if ('special' in group) {
+                                                count = getSpecialStatusCandidates(jobCandidates, group.status as string, group.type as any).length;
+                                            } else {
+                                                count = jobCandidates.filter((c: any) => {
+                                                    if (!group.statuses?.includes(c.status)) return false;
+                                                    if (!filterByStatusDate) return true;
+                                                    const ts =
+                                                        c.status === 'Joined' ? getStatusTimestamp(c, 'Joined', c.joiningDate)
+                                                            : c.status === 'Selected' || c.status === 'Offer' ? getStatusTimestamp(c, 'Selected', c.selectionDate)
+                                                                : getStatusTimestamp(c, c.status);
+                                                    return isWithinDateRange(ts || c.createdAt);
+                                                }).length;
+                                            }
+                                            (totals as any)[group.key] += count;
+                                        });
+                                    });
+
+                                    return (
+                                        <>
+                                            {rows}
+                                            {/* Total Row */}
+                                            <tr className="bg-slate-50 font-bold border-t border-slate-200 sticky bottom-0 z-10 shadow-sm">
+                                                <td colSpan={3} className="py-4 px-6 text-right text-slate-500 uppercase tracking-widest text-[10px]">Total</td>
+                                                <td className="py-4 px-4 text-center text-slate-800 text-xs">{totals.totalUploads}</td>
+                                                {statusGroups.map(group => (
+                                                    <td key={group.key} className="py-4 px-4 text-center text-slate-800 text-xs">
+                                                        {(totals as any)[group.key]}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        </>
+                                    );
                                 })()}
                             </tbody>
                         </table>
@@ -500,7 +670,8 @@ export default function PerformanceReportTable() {
                                                 <th className="py-3 px-4">Name</th>
                                                 <th className="py-3 px-4">Phone</th>
                                                 <th className="py-3 px-4">Status</th>
-                                                <th className="py-3 px-4 text-center">Applied On</th>
+                                                <th className="py-3 px-4 text-center">Upload Date</th>
+                                                <th className="py-3 px-4 text-center">Status Updated On</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
@@ -529,12 +700,21 @@ export default function PerformanceReportTable() {
                                                                 </span>
                                                             </td>
                                                             <td className="py-3 px-4 text-slate-600 text-center">{formatDate(c.createdAt)}</td>
+                                                            <td className="py-3 px-4 text-slate-600 text-center">
+                                                                {(() => {
+                                                                    const ts =
+                                                                        c.status === 'Joined' ? getStatusTimestamp(c, 'Joined', c.joiningDate)
+                                                                            : c.status === 'Selected' || c.status === 'Offer' ? getStatusTimestamp(c, 'Selected', c.selectionDate)
+                                                                                : getStatusTimestamp(c, c.status);
+                                                                    return ts ? formatDate(ts) : '—';
+                                                                })()}
+                                                            </td>
                                                         </tr>
                                                     );
                                                 })
                                             ) : (
                                                 <tr>
-                                                    <td colSpan={4} className="py-8 text-center text-slate-500">
+                                                    <td colSpan={5} className="py-8 text-center text-slate-500">
                                                         No candidates found.
                                                     </td>
                                                 </tr>

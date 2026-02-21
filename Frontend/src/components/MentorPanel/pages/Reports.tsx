@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BarChart3, TrendingUp, Users, CheckCircle, XCircle, UserPlus, ClipboardCheck, Clock } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, CheckCircle, UserPlus, ClipboardCheck, Clock } from 'lucide-react';
 import { useAuth } from '../../../context/AuthProvider';
 import { useUserContext } from '../../../context/UserProvider';
 import { useCandidateContext } from '../../../context/CandidatesProvider';
@@ -132,17 +132,35 @@ export const MentorReports = () => {
             ).length,
         });
 
-        // --- 4. Calculate Job Performance (within range) ---
+        // --- 4. Calculate Job Performance (within range, open jobs only) ---
         const performanceData = openJobs.map((job: any) => {
             const jobCandidates = scopedCandidates.filter((c: any) =>
-                (typeof c.jobId === 'object' ? c.jobId?._id : c.jobId) === job._id
+                (typeof c.jobId === 'object' ? c.jobId?._id : c.jobId)?.toString() === job._id?.toString()
             );
+
+            // totalCandidates: count candidates whose CURRENT status was set within the date range
+            const totalInRange = jobCandidates.filter((c: any) => {
+                const statusTs =
+                    c.status === 'Joined'
+                        ? getStatusTimestamp(c, 'Joined', c.joiningDate)
+                        : c.status === 'Selected'
+                            ? getStatusTimestamp(c, 'Selected', c.selectionDate)
+                            : getStatusTimestamp(c, c.status);
+                return filterByRange(statusTs || c.createdAt, startDate, endDate);
+            }).length;
+
+            // activePipeline: New/Shortlisted/Interviewed whose status was set within range
+            const activeInRange = jobCandidates.filter((c: any) => {
+                if (!['New', 'Shortlisted', 'Screen', 'Screened', 'Interviewed'].includes(c.status)) return false;
+                const statusTs = getStatusTimestamp(c, c.status);
+                return filterByRange(statusTs || c.createdAt, startDate, endDate);
+            }).length;
 
             return {
                 id: job._id,
                 title: job.title,
-                totalCandidates: jobCandidates.filter(c => filterByRange(c.createdAt || getStatusTimestamp(c, jobCandidates.map(jc => jc.status).filter((s): s is string => !!s)), startDate, endDate)).length,
-                activePipeline: jobCandidates.filter((c: any) => ['New', 'Shortlisted', 'Interviewed'].includes(c.status)).length,
+                totalCandidates: totalInRange,
+                activePipeline: activeInRange,
                 status: job.status
             };
         });
