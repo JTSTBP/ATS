@@ -318,37 +318,53 @@ router.get("/", async (req, res) => {
           {
             $addFields: {
               relevantTimestamp: {
-                $let: {
-                  vars: {
-                    historyMatch: {
-                      $arrayElemAt: [
-                        {
-                          $filter: {
-                            input: { $ifNull: ["$statusHistory", []] },
-                            as: "h",
-                            cond: (["Shortlisted", "Screen", "Screened"].includes(status))
-                              ? { $in: ["$$h.status", ["Shortlisted", "Screen", "Screened"]] }
-                              : { $eq: ["$$h.status", status] }
-                          }
-                        },
-                        -1
-                      ]
+                $switch: {
+                  branches: [
+                    {
+                      case: {
+                        $and: [
+                          { $eq: [status, "Selected"] },
+                          { $ne: ["$selectionDate", null] }
+                        ]
+                      },
+                      then: "$selectionDate"
+                    },
+                    {
+                      case: {
+                        $and: [
+                          { $eq: [status, "Joined"] },
+                          { $ne: ["$joiningDate", null] }
+                        ]
+                      },
+                      then: "$joiningDate"
                     }
-                  },
-                  in: {
-                    $cond: [
-                      { $not: ["$$historyMatch"] },
-                      {
-                        $switch: {
-                          branches: [
-                            { case: { $eq: ["$status", "Joined"] }, then: { $ifNull: ["$joiningDate", "$createdAt"] } },
-                            { case: { $eq: ["$status", "Selected"] }, then: { $ifNull: ["$selectionDate", "$createdAt"] } }
-                          ],
-                          default: "$createdAt"
+                  ],
+                  default: {
+                    $let: {
+                      vars: {
+                        historyMatch: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: { $ifNull: ["$statusHistory", []] },
+                                as: "h",
+                                cond: (["Shortlisted", "Screen", "Screened"].includes(status))
+                                  ? { $in: ["$$h.status", ["Shortlisted", "Screen", "Screened"]] }
+                                  : { $eq: ["$$h.status", status] }
+                              }
+                            },
+                            -1
+                          ]
                         }
                       },
-                      "$$historyMatch.timestamp"
-                    ]
+                      in: {
+                        $cond: [
+                          { $not: ["$$historyMatch"] },
+                          "$createdAt",
+                          "$$historyMatch.timestamp"
+                        ]
+                      }
+                    }
                   }
                 }
               }
@@ -815,37 +831,53 @@ router.get("/role-based-candidates", async (req, res) => {
           {
             $addFields: {
               relevantTimestamp: {
-                $let: {
-                  vars: {
-                    historyMatch: {
-                      $arrayElemAt: [
-                        {
-                          $filter: {
-                            input: { $ifNull: ["$statusHistory", []] },
-                            as: "h",
-                            cond: (["Shortlisted", "Screen", "Screened"].includes(status))
-                              ? { $in: ["$$h.status", ["Shortlisted", "Screen", "Screened"]] }
-                              : { $eq: ["$$h.status", status] }
-                          }
-                        },
-                        -1
-                      ]
+                $switch: {
+                  branches: [
+                    {
+                      case: {
+                        $and: [
+                          { $eq: [status, "Selected"] },
+                          { $ne: ["$selectionDate", null] }
+                        ]
+                      },
+                      then: "$selectionDate"
+                    },
+                    {
+                      case: {
+                        $and: [
+                          { $eq: [status, "Joined"] },
+                          { $ne: ["$joiningDate", null] }
+                        ]
+                      },
+                      then: "$joiningDate"
                     }
-                  },
-                  in: {
-                    $cond: [
-                      { $not: ["$$historyMatch"] },
-                      {
-                        $switch: {
-                          branches: [
-                            { case: { $eq: ["$status", "Joined"] }, then: { $ifNull: ["$joiningDate", "$createdAt"] } },
-                            { case: { $eq: ["$status", "Selected"] }, then: { $ifNull: ["$selectionDate", "$createdAt"] } }
-                          ],
-                          default: "$createdAt"
+                  ],
+                  default: {
+                    $let: {
+                      vars: {
+                        historyMatch: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: { $ifNull: ["$statusHistory", []] },
+                                as: "h",
+                                cond: (["Shortlisted", "Screen", "Screened"].includes(status))
+                                  ? { $in: ["$$h.status", ["Shortlisted", "Screen", "Screened"]] }
+                                  : { $eq: ["$$h.status", status] }
+                              }
+                            },
+                            -1
+                          ]
                         }
                       },
-                      "$$historyMatch.timestamp"
-                    ]
+                      in: {
+                        $cond: [
+                          { $not: ["$$historyMatch"] },
+                          "$createdAt",
+                          "$$historyMatch.timestamp"
+                        ]
+                      }
+                    }
                   }
                 }
               }

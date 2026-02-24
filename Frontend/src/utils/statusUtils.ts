@@ -19,6 +19,10 @@ export const getStatusTimestamp = (
 
     const statuses = Array.isArray(targetStatuses) ? targetStatuses : [targetStatuses];
 
+    // Priority for Joined/Selected: use their dedicated date fields if available
+    if (statuses.includes("Joined") && candidate.joiningDate) return candidate.joiningDate;
+    if (statuses.includes("Selected") && candidate.selectionDate) return candidate.selectionDate;
+
     // Look into statusHistory
     if (candidate.statusHistory && Array.isArray(candidate.statusHistory)) {
         // Filter history for target statuses and sort by timestamp descending
@@ -28,10 +32,6 @@ export const getStatusTimestamp = (
 
         if (match) return match.timestamp;
     }
-
-    // Fallback to specific date fields if provided for certain statuses
-    if (statuses.includes("Joined") && candidate.joiningDate) return candidate.joiningDate;
-    if (statuses.includes("Selected") && candidate.selectionDate) return candidate.selectionDate;
 
     return fallbackDate || candidate.createdAt || null;
 };

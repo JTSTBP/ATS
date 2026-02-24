@@ -142,10 +142,6 @@ export default function AdminDashboard() {
     // const selectedCandidates = candidates.filter((c) => c.status === "Selected" && filterByRange(c.selectionDate)).length;
     // const joinedCandidates = candidates.filter((c) => c.status === "Joined" && filterByRange(c.joiningDate)).length;
 
-    const totalCandidates = candidates.filter(c =>
-      filterByRange(getStatusTimestamp(c, (c.status as string) || "New")) &&
-      isOpenJobCandidate(c)
-    ).length;
 
     const newCandidates = candidates.filter(c =>
       c.status === "New" &&
@@ -167,6 +163,8 @@ export default function AdminDashboard() {
       isOpenJobCandidate(c)
     ).length;
 
+    const activeCandidates = newCandidates + shortlistedCandidates + interviewedCandidates;
+
     // Selection count based on selectionDate/statusHistory
     const selectedCandidates = candidates.filter(c =>
       c.status === "Selected" &&
@@ -174,15 +172,14 @@ export default function AdminDashboard() {
       isOpenJobCandidate(c)
     ).length;
 
-    // Joined count based on joiningDate/statusHistory
+    // Joined count based on joiningDate/statusHistory - Includes ALL jobs
     const joinedCandidates = candidates.filter(c =>
       c.status === "Joined" &&
-      filterByRange(getStatusTimestamp(c, "Joined", c.joiningDate)) &&
-      isOpenJobCandidate(c)
+      filterByRange(getStatusTimestamp(c, "Joined", c.joiningDate))
     ).length;
-    console.log(totalCandidates, "totalCandidates")
+    console.log(activeCandidates, "activeCandidates")
     return {
-      totalCandidates,
+      activeCandidates,
       activeJobs,
       totalPositions,
       remainingPositions,
@@ -239,12 +236,15 @@ export default function AdminDashboard() {
       }
 
       // 3. Joined - ONLY if current status is Joined/Selected AND timestamp is in range
+      // Joined: Includes ALL jobs
       if (c.status === "Joined") {
         const joinedTimestamp = getStatusTimestamp(c, "Joined", c.joiningDate);
         if (joinedTimestamp && filterByRange(joinedTimestamp)) {
           recruiterStats[creatorId].joined += 1;
         }
       } else if (c.status === "Selected") {
+        // Selected: ONLY if belongs to an OPEN job
+        if (!isOpenJobCandidate(c)) return;
         const selectedTimestamp = getStatusTimestamp(c, "Selected", c.selectionDate);
         if (selectedTimestamp && filterByRange(selectedTimestamp)) {
           // Selected counts as joined for this graph? User asked for "Joined", usually implies both final stages.
@@ -369,17 +369,17 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Total Candidates */}
+        {/* Active Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
           className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
             <p className="text-slate-500 text-sm font-medium group-hover:text-indigo-600 transition-colors">
-              Total Candidates
+              Active Candidates
             </p>
             <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.totalCandidates}
+              {stats.activeCandidates}
             </h2>
           </div>
           <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-100 transition-colors">

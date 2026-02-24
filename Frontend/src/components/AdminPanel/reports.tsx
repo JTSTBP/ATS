@@ -467,7 +467,7 @@ export default function ReportsTab() {
     // 1. Global (System Status) Statistics - Always based on current Open jobs
     const openJobs = jobs.filter(j => j.status === "Open");
     const activeJobs = openJobs.length;
-    const openJobIds = new Set(openJobs.map(job => job._id.toString()));
+    const openJobIds = new Set(openJobs.map(job => job._id?.toString()).filter(Boolean) as string[]);
 
     const getCandidateJobId = (c: any) => {
       const jid = c.jobId?._id || c.jobId;
@@ -500,17 +500,25 @@ export default function ReportsTab() {
 
     // 2. Activity Statistics - Based on filtered table data (date range applied)
     // To match dashboard perfectly:
-    const openJobCandidatesInRange = candidates.filter(c =>
-      isWithinGlobalRange(getStatusTimestamp(c, (c.status as string) || "New") || "") && isOpenJobCandidate(c)
-    );
-
-    const totalCandidates = openJobCandidatesInRange.length;
-    const newCandidates = openJobCandidatesInRange.filter(c => c.status === "New").length;
-    const shortlistedCandidates = openJobCandidatesInRange.filter(c =>
-      ["Screen", "Screened", "Shortlisted"].includes(c.status)
+    const newCandidates = candidates.filter(c =>
+      (c.status || "New") === "New" && isWithinGlobalRange(getStatusTimestamp(c, "New") || "") && isOpenJobCandidate(c)
     ).length;
-    const interviewedCandidates = openJobCandidatesInRange.filter(c => c.status === "Interviewed").length;
-    const holdCandidates = openJobCandidatesInRange.filter(c => c.status === "Hold").length;
+
+    const shortlistedCandidates = candidates.filter(c =>
+      ["Screen", "Screened", "Shortlisted"].includes(c.status || "") &&
+      isWithinGlobalRange(getStatusTimestamp(c, ["Screen", "Screened", "Shortlisted"]) || "") &&
+      isOpenJobCandidate(c)
+    ).length;
+
+    const interviewedCandidates = candidates.filter(c =>
+      (c.status || "") === "Interviewed" && isWithinGlobalRange(getStatusTimestamp(c, "Interviewed") || "") && isOpenJobCandidate(c)
+    ).length;
+
+    const activeCandidates = newCandidates + shortlistedCandidates + interviewedCandidates;
+
+    const holdCandidates = candidates.filter(c =>
+      c.status === "Hold" && isWithinGlobalRange(getStatusTimestamp(c, "Hold") || "") && isOpenJobCandidate(c)
+    ).length;
 
     // Selection/Join counts based on their specific event dates (from GLOBAL candidates)
     const selectedCandidates = candidates.filter(c =>
@@ -518,11 +526,11 @@ export default function ReportsTab() {
     ).length;
 
     const joinedCandidates = candidates.filter(c =>
-      c.status === "Joined" && isWithinGlobalRange(getStatusTimestamp(c, "Joined", c.joiningDate) || "") && isOpenJobCandidate(c)
+      c.status === "Joined" && isWithinGlobalRange(getStatusTimestamp(c, "Joined", c.joiningDate) || "")
     ).length;
 
     return {
-      totalCandidates,
+      activeCandidates,
       activeJobs,
       activeClients,
       remainingPositions,
@@ -756,17 +764,17 @@ export default function ReportsTab() {
           </div>
         </div>
 
-        {/* Total Candidates */}
+        {/* Active Candidates */}
         <div
           onClick={() => navigate("/Admin/candidates")}
           className="bg-white rounded-2xl shadow-sm hover:shadow-md p-5 flex justify-between items-start transition-all border border-slate-100 cursor-pointer group"
         >
           <div>
             <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-indigo-600 transition-colors">
-              Total Candidates
+              Active Candidates
             </p>
             <h2 className="text-3xl font-black mt-2 text-slate-800 tracking-tight">
-              {dashboardStats.totalCandidates}
+              {dashboardStats.activeCandidates}
             </h2>
           </div>
           <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:scale-110 shadow-sm">

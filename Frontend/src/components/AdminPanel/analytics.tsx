@@ -160,32 +160,38 @@ export default function AnalyticsTab() {
     const activeRequirements = activeJobs;
 
     // Candidate status breakdown (date-filtered and OPEN JOB candidates)
-    const openJobCandidatesInRange = candidates.filter(c =>
-      isInRange(c.createdAt) && isOpenJobCandidate(c)
-    );
-    const totalCandidates = openJobCandidatesInRange.length;
-
+    // For consistency with Dashboard, use status update timestamps
     const statusCounts = { New: 0, Screen: 0, Interviewed: 0, Selected: 0, Joined: 0 };
-    openJobCandidatesInRange.forEach(c => {
-      const s = c.status || "New";
-      if (s === "New") statusCounts.New++;
-      else if (s === "Screen" || s === "Screened" || s === "Shortlisted") statusCounts.Screen++;
-      else if (s === "Interviewed") statusCounts.Interviewed++;
-    });
+
+    statusCounts.New = candidates.filter(c =>
+      c.status === "New" && isInRange(getStatusTimestamp(c, "New")) && isOpenJobCandidate(c)
+    ).length;
+
+    statusCounts.Screen = candidates.filter(c =>
+      (c.status === "Shortlisted" || c.status === "Screen" || c.status === "Screened") &&
+      isInRange(getStatusTimestamp(c, ["Shortlisted", "Screen", "Screened"])) &&
+      isOpenJobCandidate(c)
+    ).length;
+
+    statusCounts.Interviewed = candidates.filter(c =>
+      c.status === "Interviewed" && isInRange(getStatusTimestamp(c, "Interviewed")) && isOpenJobCandidate(c)
+    ).length;
+
+    const activeCandidates = statusCounts.New + statusCounts.Screen + statusCounts.Interviewed;
 
     // To strictly match Dashboard logic for Selected/Joined (date filter on the status field itself):
     statusCounts.Selected = candidates.filter(c =>
-      c.status === "Selected" && isInRange(c.selectionDate) && isOpenJobCandidate(c)
+      c.status === "Selected" && isInRange(getStatusTimestamp(c, "Selected", c.selectionDate)) && isOpenJobCandidate(c)
     ).length;
     statusCounts.Joined = candidates.filter(c =>
-      c.status === "Joined" && isInRange(c.joiningDate) && isOpenJobCandidate(c)
+      c.status === "Joined" && isInRange(getStatusTimestamp(c, "Joined", c.joiningDate))
     ).length;
 
     return {
       activeClients,
       positionsLeft,
       activeRequirements,
-      totalCandidates,
+      activeCandidates,
       ...statusCounts
     };
   }, [filteredData, jobs, candidates, dateRange, openJobIds]);
@@ -226,10 +232,10 @@ export default function AnalyticsTab() {
     const statusCounts: Record<string, number> = {};
 
     candidates.forEach((c) => {
-      // Only open-job candidates
-      if (!isOpenJobCandidate(c)) return;
-
       const status = c.status || "New";
+
+      // JOINED: count for all jobs, OTHERS: only open jobs
+      if (status !== "Joined" && !isOpenJobCandidate(c)) return;
 
       // Use the timestamp when the current status was set
       const statusTs =
@@ -416,14 +422,14 @@ export default function AnalyticsTab() {
 
       {/* Summary Cards — Row 2: Total Candidates + Status Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-        {/* Total Candidates */}
+        {/* Active Candidates */}
         <div
           onClick={() => navigate("/Admin/reports")}
           className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:shadow-md transition-all hover:border-blue-200 col-span-2 sm:col-span-1"
         >
           <div>
-            <p className="text-slate-500 text-sm font-medium">Total Candidates</p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.totalCandidates}</h2>
+            <p className="text-slate-500 text-sm font-medium">Active Candidates</p>
+            <h2 className="text-3xl font-bold mt-1 text-slate-800">{stats.activeCandidates}</h2>
           </div>
           <div className="bg-blue-50 text-blue-600 p-3 rounded-lg">
             <Users size={22} />
