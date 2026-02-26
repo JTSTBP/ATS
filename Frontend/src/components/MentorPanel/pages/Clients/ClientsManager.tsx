@@ -161,20 +161,22 @@ const ClientDetailsModal = ({ client, onClose, user }: { client: Client, onClose
                                 </div>
                             </section>
 
-                            <section>
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-                                    Billing Sites ({client.billingDetails?.length || 0})
-                                </h3>
-                                <div className="space-y-3">
-                                    {client.billingDetails?.map((detail, idx) => (
-                                        <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100">
-                                            <p className="text-xs font-bold text-slate-700 mb-1 leading-snug">{detail.address}</p>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{detail.state}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </section>
+                            {user?.designation !== 'Mentor' && (
+                                <section>
+                                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                        Billing Sites ({client.billingDetails?.length || 0})
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {client.billingDetails?.map((detail, idx) => (
+                                            <div key={idx} className="bg-white p-4 rounded-2xl border border-slate-100">
+                                                <p className="text-xs font-bold text-slate-700 mb-1 leading-snug">{detail.address}</p>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{detail.state}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -356,6 +358,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                             <thead>
                                 <tr className="bg-slate-50/50 border-b border-slate-100">
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Company</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Industry</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Agreement</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">BD Lead</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
@@ -396,6 +399,7 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                                                     </div>
                                                 </div>
                                             </td>
+
                                             <td className="px-6 py-4 hidden md:table-cell">
                                                 <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-[11px] font-bold">
                                                     {client.industry}
@@ -406,8 +410,10 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                                                     {client.agreementPercentage ? `${client.agreementPercentage}%` : '-'}
                                                 </span>
                                             </td>
+
                                             <td className="px-6 py-4 hidden md:table-cell">
                                                 <span className="text-gray-600 font-medium text-sm">
+
                                                     {client.bdExecutive || '-'}
                                                 </span>
                                             </td>
@@ -426,8 +432,8 @@ export const ClientsManager = ({ initialFormOpen = false }: { initialFormOpen?: 
                                                     <option value="inactive">Inactive</option>
                                                 </select>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-1">
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-1">
                                                     <button
                                                         onClick={() => setSelectedClientForDetails(client)}
                                                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"

@@ -45,7 +45,6 @@ export interface Client {
     bdExecutive?: string;
     bdExecutiveEmail?: string;
     bdExecutivePhone?: string;
-    noOfRequirements?: number | string;
     createdAt?: string; // Added field
     createdBy?: string | {
         _id: string;
@@ -185,16 +184,15 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 formData.append('industry', clientData.industry);
                 formData.append('linkedinUrl', clientData.linkedinUrl);
                 formData.append('companyInfo', clientData.companyInfo);
-                if (clientData.agreementPercentage) formData.append('agreementPercentage', String(clientData.agreementPercentage));
-                if (clientData.payoutOption) formData.append('payoutOption', clientData.payoutOption);
-                if (clientData.flatPayAmount) formData.append('flatPayAmount', String(clientData.flatPayAmount));
-                if (clientData.gstNumber) formData.append('gstNumber', clientData.gstNumber);
+                if (clientData.agreementPercentage && clientData.agreementPercentage !== '') formData.append('agreementPercentage', String(clientData.agreementPercentage));
+                if (clientData.payoutOption !== undefined) formData.append('payoutOption', clientData.payoutOption);
+                if (clientData.flatPayAmount && clientData.flatPayAmount !== '') formData.append('flatPayAmount', String(clientData.flatPayAmount));
+                if (clientData.gstNumber !== undefined) formData.append('gstNumber', clientData.gstNumber);
                 formData.append('pocs', JSON.stringify(clientData.pocs));
                 formData.append('billingDetails', JSON.stringify(clientData.billingDetails || []));
                 if (clientData.bdExecutive) formData.append('bdExecutive', clientData.bdExecutive);
                 if (clientData.bdExecutiveEmail) formData.append('bdExecutiveEmail', clientData.bdExecutiveEmail);
                 if (clientData.bdExecutivePhone) formData.append('bdExecutivePhone', clientData.bdExecutivePhone);
-                if (clientData.noOfRequirements) formData.append('noOfRequirements', String(clientData.noOfRequirements));
                 formData.append('logo', logoFile);
 
                 if (clientData.createdBy) {
@@ -250,16 +248,15 @@ export const ClientsProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 formData.append('industry', clientData.industry);
                 formData.append('linkedinUrl', clientData.linkedinUrl);
                 formData.append('companyInfo', clientData.companyInfo);
-                if (clientData.agreementPercentage) formData.append('agreementPercentage', String(clientData.agreementPercentage));
-                if (clientData.payoutOption) formData.append('payoutOption', clientData.payoutOption);
-                if (clientData.flatPayAmount) formData.append('flatPayAmount', String(clientData.flatPayAmount));
-                if (clientData.gstNumber) formData.append('gstNumber', clientData.gstNumber);
+                if (clientData.agreementPercentage && clientData.agreementPercentage !== '') formData.append('agreementPercentage', String(clientData.agreementPercentage));
+                if (clientData.payoutOption !== undefined) formData.append('payoutOption', clientData.payoutOption);
+                if (clientData.flatPayAmount && clientData.flatPayAmount !== '') formData.append('flatPayAmount', String(clientData.flatPayAmount));
+                if (clientData.gstNumber !== undefined) formData.append('gstNumber', clientData.gstNumber);
                 formData.append('pocs', JSON.stringify(clientData.pocs));
                 formData.append('billingDetails', JSON.stringify(clientData.billingDetails || []));
                 if (clientData.bdExecutive) formData.append('bdExecutive', clientData.bdExecutive);
                 if (clientData.bdExecutiveEmail) formData.append('bdExecutiveEmail', clientData.bdExecutiveEmail);
                 if (clientData.bdExecutivePhone) formData.append('bdExecutivePhone', clientData.bdExecutivePhone);
-                if (clientData.noOfRequirements) formData.append('noOfRequirements', String(clientData.noOfRequirements));
                 if (clientData.active !== undefined) formData.append('active', String(clientData.active)); // Append active
                 if (clientData.createdAt) formData.append('createdAt', clientData.createdAt); // Append createdAt
                 formData.append('logo', logoFile);

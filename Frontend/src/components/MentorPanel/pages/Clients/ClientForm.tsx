@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useAuth } from '../../../../context/AuthProvider';
 import { useClientsContext } from '../../../../context/ClientsProvider';
@@ -36,7 +36,6 @@ interface ClientFormData {
     bdExecutive?: string;
     bdExecutiveEmail?: string;
     bdExecutivePhone?: string;
-    noOfRequirements?: number | string;
     createdAt?: string;
 }
 
@@ -45,6 +44,16 @@ interface ClientFormProps {
     onSuccess: () => void;
     initialData?: ClientFormData | null;
 }
+
+const INDIAN_STATES = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+    "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+    "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+    "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+    "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+    "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+];
 
 export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, initialData }) => {
     const { user } = useAuth();
@@ -64,7 +73,6 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
         bdExecutive: '',
         bdExecutiveEmail: '',
         bdExecutivePhone: '',
-        noOfRequirements: '',
         createdAt: '',
         billingDetails: [{ address: '', state: '', gstNumber: '' }],
         pocs: [{ name: '', email: '', phone: '', altPhone: '', linkedinUrl: '' }]
@@ -73,7 +81,7 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
     const [logoPreview, setLogoPreview] = useState<string | null>(initialData?.logo ? getImageUrl(initialData.logo) : null);
     const [logoFile, setLogoFile] = useState<File | null>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (bdExecutives.length === 0) {
             fetchBDExecutives();
         }
@@ -336,95 +344,85 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                             </div>
 
                             {(user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Manager' || user?.designation === 'Mentor') && (
-                                <>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Lead Executive</label>
-                                        <select
-                                            value={formData.bdExecutive}
-                                            onChange={(e) => {
-                                                const selectedName = e.target.value;
-                                                const selectedBD = bdExecutives.find(bd => bd.name === selectedName);
-                                                setFormData({
-                                                    ...formData,
-                                                    bdExecutive: selectedName,
-                                                    bdExecutiveEmail: selectedBD?.email || '',
-                                                    bdExecutivePhone: selectedBD?.phone || ''
-                                                });
-                                            }}
-                                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
-                                        >
-                                            <option value="">Choose Executive</option>
-                                            {bdExecutives.map((bd) => (
-                                                <option key={bd._id} value={bd.name}>{bd.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Requirement volume</label>
-                                        <input
-                                            type="number"
-                                            value={formData.noOfRequirements}
-                                            onChange={(e) => setFormData({ ...formData, noOfRequirements: e.target.value })}
-                                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
-                                            placeholder="e.g. 10"
-                                        />
-                                    </div>
-                                </>
+                                <div className="sm:col-span-2">
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 px-1">Lead Executive</label>
+                                    <select
+                                        value={formData.bdExecutive}
+                                        onChange={(e) => {
+                                            const selectedName = e.target.value;
+                                            const selectedBD = bdExecutives.find(bd => bd.name === selectedName);
+                                            setFormData({
+                                                ...formData,
+                                                bdExecutive: selectedName,
+                                                bdExecutiveEmail: selectedBD?.email || '',
+                                                bdExecutivePhone: selectedBD?.phone || ''
+                                            });
+                                        }}
+                                        className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
+                                    >
+                                        <option value="">Choose Executive</option>
+                                        {bdExecutives.map((bd) => (
+                                            <option key={bd._id} value={bd.name}>{bd.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             )}
 
-                            <div className="sm:col-span-2 border-t border-slate-100 pt-8 mt-4">
-                                <label className="block text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-6 px-1">Contract details</label>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Payout structure</label>
-                                        <select
-                                            value={formData.payoutOption}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                payoutOption: e.target.value as any,
-                                                agreementPercentage: e.target.value === 'Flat Pay' ? '' : formData.agreementPercentage,
-                                                flatPayAmount: e.target.value === 'Agreement Percentage' ? '' : formData.flatPayAmount
-                                            })}
-                                            className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
-                                        >
-                                            <option value="Agreement Percentage">Commission %</option>
-                                            <option value="Flat Pay">Fixed Fee</option>
-                                            <option value="Both">Hybrid</option>
-                                        </select>
+                            {user?.designation !== 'Mentor' && (
+                                <div className="sm:col-span-2 border-t border-slate-100 pt-8 mt-4">
+                                    <label className="block text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-6 px-1">Contract details</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Payout structure</label>
+                                            <select
+                                                value={formData.payoutOption}
+                                                onChange={(e) => setFormData({
+                                                    ...formData,
+                                                    payoutOption: e.target.value as any,
+                                                    agreementPercentage: e.target.value === 'Flat Pay' ? '' : formData.agreementPercentage,
+                                                    flatPayAmount: e.target.value === 'Agreement Percentage' ? '' : formData.flatPayAmount
+                                                })}
+                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
+                                            >
+                                                <option value="Agreement Percentage">Commission %</option>
+                                                <option value="Flat Pay">Fixed Fee</option>
+                                                <option value="Both">Hybrid</option>
+                                            </select>
+                                        </div>
+
+                                        {(formData.payoutOption === 'Agreement Percentage' || formData.payoutOption === 'Both') && (
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Fee %</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={formData.agreementPercentage}
+                                                    onChange={(e) => setFormData({ ...formData, agreementPercentage: e.target.value })}
+                                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                                    placeholder="8.33"
+                                                />
+                                            </div>
+                                        )}
+
+                                        {(formData.payoutOption === 'Flat Pay' || formData.payoutOption === 'Both') && (
+                                            <div>
+                                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Fixed Amount (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    value={formData.flatPayAmount}
+                                                    onChange={(e) => setFormData({ ...formData, flatPayAmount: e.target.value })}
+                                                    className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
+                                                    placeholder="50,000"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {(formData.payoutOption === 'Agreement Percentage' || formData.payoutOption === 'Both') && (
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Fee %</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                value={formData.agreementPercentage}
-                                                onChange={(e) => setFormData({ ...formData, agreementPercentage: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
-                                                placeholder="8.33"
-                                            />
-                                        </div>
-                                    )}
-
-                                    {(formData.payoutOption === 'Flat Pay' || formData.payoutOption === 'Both') && (
-                                        <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 px-1">Fixed Amount (₹)</label>
-                                            <input
-                                                type="number"
-                                                value={formData.flatPayAmount}
-                                                onChange={(e) => setFormData({ ...formData, flatPayAmount: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-bold text-slate-700"
-                                                placeholder="50,000"
-                                            />
-                                        </div>
-                                    )}
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
 
-                    {(user?.isAdmin || user?.designation === 'Admin' || user?.designation === 'Finance') && (
+                    {user?.designation !== 'Mentor' && (
                         <div className="space-y-6">
                             <div className="flex justify-between items-center px-1">
                                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -490,17 +488,20 @@ export const ClientForm: React.FC<ClientFormProps> = ({ onClose, onSuccess, init
                                                 </div>
                                                 <div>
                                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 px-1">State</label>
-                                                    <input
-                                                        type="text"
+                                                    <select
                                                         value={detail.state}
                                                         onChange={(e) => {
                                                             const newDetails = [...(formData.billingDetails || [])];
                                                             newDetails[index] = { ...newDetails[index], state: e.target.value };
                                                             setFormData({ ...formData, billingDetails: newDetails });
                                                         }}
-                                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700"
-                                                        placeholder="Region"
-                                                    />
+                                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 text-xs font-bold text-slate-700 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat"
+                                                    >
+                                                        <option value="">Select State</option>
+                                                        {INDIAN_STATES.map((state) => (
+                                                            <option key={state} value={state}>{state}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
                                             </div>
                                         </div>

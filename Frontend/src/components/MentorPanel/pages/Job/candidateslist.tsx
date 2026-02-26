@@ -1035,7 +1035,8 @@ const CandidatesList = () => {
                         { label: 'Skills', value: candidate.dynamicFields?.Skills },
                         { label: 'Experience', value: candidate.dynamicFields?.Experience ? `${candidate.dynamicFields.Experience} Years` : null },
                         { label: 'Current Company', value: candidate.dynamicFields?.currentCompany },
-                        { label: 'Upload Date', value: candidate.createdAt ? formatDate(candidate.createdAt) : null }
+                        { label: 'Upload Date', value: candidate.createdAt ? formatDate(candidate.createdAt) : null },
+                        { label: 'Recruiter', value: candidate.createdBy?.name || "System" }
                       ].filter(f => f.value).map((field, idx) => (
                         <div key={idx} className="bg-gray-50/50 rounded-xl p-3 border border-gray-100/50">
                           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{field.label}</p>
