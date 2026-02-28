@@ -18,7 +18,8 @@ import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../../utils/dateUtils";
-import { getFilePreviewUrl } from "../../../utils/imageUtils";
+import { getFilePreviewUrl, isWordDocument } from "../../../utils/imageUtils";
+import { handleFileDownload } from "../../../utils/downloadUtils";
 
 
 import { useSearchParams } from "react-router-dom";
@@ -586,14 +587,12 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
 
                         <td className="px-6 py-4 text-sm text-gray-700">
                           {candidate.offerLetter ? (
-                            <a
-                              href={getFilePreviewUrl(candidate.offerLetter)}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              onClick={() => handleFileDownload(getFilePreviewUrl(candidate.offerLetter), "Offer Letter")}
                               className="text-blue-600 hover:underline flex items-center"
                             >
                               <Upload className="w-4 h-4 mr-1" /> View
-                            </a>
+                            </button>
                           ) : (
                             "-"
                           )}
@@ -631,15 +630,13 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
 
                     <td className="px-6 py-4">
                       {candidate.resumeUrl ? (
-                        <a
-                          href={getFilePreviewUrl(candidate.resumeUrl)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          onClick={() => handleFileDownload(getFilePreviewUrl(candidate.resumeUrl), "Resume")}
                           className="flex items-center text-blue-600"
                         >
                           <Upload className="w-4 h-4 mr-1" />
                           View Resume
-                        </a>
+                        </button>
                       ) : (
                         <span className="text-gray-400 text-sm">No Resume</span>
                       )}

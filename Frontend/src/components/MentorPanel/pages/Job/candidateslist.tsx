@@ -29,6 +29,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { formatDate } from "../../../../utils/dateUtils";
 import { StatusUpdateModal } from "../../../Common/StatusUpdateModal";
+import { handleFileDownload } from "../../../../utils/downloadUtils";
 
 // interface Candidate {
 //   id: string;
@@ -619,14 +620,13 @@ const CandidatesList = () => {
                 Resume Preview
               </h3>
               <div className="flex items-center gap-2">
-                <a
-                  href={previewResumeUrl}
-                  download
+                <button
+                  onClick={() => handleFileDownload(previewResumeUrl, "Resume")}
                   className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition"
                   title="Download"
                 >
                   <Download className="w-5 h-5" />
-                </a>
+                </button>
                 <button
                   onClick={() => setPreviewResumeUrl(null)}
                   className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition"

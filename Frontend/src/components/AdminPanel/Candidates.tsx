@@ -19,7 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
 import { getImageUrl, getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
-
+import { handleFileDownload } from "../../utils/downloadUtils";
 
 // 🔹 Searchable Select Component
 const SearchableSelect = ({
@@ -728,16 +728,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         {/* RESUME */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {candidate.resumeUrl ? (
-                                                <a
-                                                    href={getFilePreviewUrl(candidate.resumeUrl)}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    download={isWordDocument(candidate.resumeUrl)}
+                                                <button
+                                                    onClick={() => handleFileDownload(getFilePreviewUrl(candidate.resumeUrl), "Resume")}
                                                     className="flex items-center text-blue-600"
                                                 >
                                                     <Upload className="w-4 h-4 mr-1" />
                                                     {isWordDocument(candidate.resumeUrl) ? 'Download Resume' : 'View Resume'}
-                                                </a>
+                                                </button>
 
                                             ) : (
                                                 <span className="text-gray-400 text-sm">No Resume</span>
@@ -909,15 +906,12 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 {/* OFFER LETTER */}
                                                 <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                                     {candidate.offerLetter ? (
-                                                        <a
-                                                            href={getFilePreviewUrl(candidate.offerLetter)}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            download={isWordDocument(candidate.offerLetter)}
+                                                        <button
+                                                            onClick={() => handleFileDownload(getFilePreviewUrl(candidate.offerLetter), "Offer Letter")}
                                                             className="text-blue-600 hover:underline flex items-center"
                                                         >
                                                             <Upload className="w-4 h-4 mr-1" /> {isWordDocument(candidate.offerLetter) ? 'Download' : 'View'}
-                                                        </a>
+                                                        </button>
                                                     ) : (
                                                         "-"
                                                     )}
