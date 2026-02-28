@@ -19,7 +19,6 @@ import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
 import { getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
 import { toast } from "react-toastify";
-import { handleFileDownload } from "../../utils/downloadUtils";
 
 // 🔹 Searchable Select Component
 const SearchableSelect = ({
@@ -569,16 +568,22 @@ export default function Candidates() {
                         </td>
                         <td className="px-6 py-4">
                           {candidate.resumeUrl ? (
-                            <button
+                            <a
+                              href={getFilePreviewUrl(candidate.resumeUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={isWordDocument(candidate.resumeUrl)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors border border-blue-100"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleFileDownload(getFilePreviewUrl(candidate.resumeUrl), "Resume");
+                                if (candidate.resumeUrl && isWordDocument(candidate.resumeUrl)) {
+                                  toast.info("File is downloaded");
+                                }
                               }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors border border-blue-100"
                             >
                               <Upload size={14} />
                               {isWordDocument(candidate.resumeUrl) ? 'Download' : 'View'}
-                            </button>
+                            </a>
                           ) : (
                             <span className="text-slate-300 text-xs font-medium">No Resume</span>
                           )}
@@ -602,16 +607,22 @@ export default function Candidates() {
                           <>
                             <td className="px-6 py-4">
                               {(candidate as any).offerLetter ? (
-                                <button
+                                <a
+                                  href={getFilePreviewUrl((candidate as any).offerLetter)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download={isWordDocument((candidate as any).offerLetter)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-lg text-xs font-bold hover:bg-teal-100 transition-colors border border-teal-100"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleFileDownload(getFilePreviewUrl((candidate as any).offerLetter), "Offer Letter");
+                                    if ((candidate as any).offerLetter && isWordDocument((candidate as any).offerLetter)) {
+                                      toast.info("File is downloaded");
+                                    }
                                   }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-600 rounded-lg text-xs font-bold hover:bg-teal-100 transition-colors border border-teal-100"
                                 >
                                   <Upload size={14} />
                                   {isWordDocument((candidate as any).offerLetter) ? 'Download' : 'View'}
-                                </button>
+                                </a>
                               ) : "--"}
                             </td>
                             <td className="px-6 py-4 text-sm font-medium text-slate-700">

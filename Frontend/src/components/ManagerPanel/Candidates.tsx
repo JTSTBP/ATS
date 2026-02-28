@@ -13,9 +13,8 @@ import {
   X,
   Clock,
 } from "lucide-react";
-import { getFilePreviewUrl } from "../../utils/imageUtils";
+import { getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
 import { formatDate } from "../../utils/dateUtils";
-import { handleFileDownload } from "../../utils/downloadUtils";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useJobContext } from "../../context/DataProvider";
@@ -623,13 +622,20 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                       </td>
                       <td className="px-6 py-4">
                         {candidate.resumeUrl ? (
-                          <button
-                            onClick={() => handleFileDownload(getFilePreviewUrl(candidate.resumeUrl), "Resume")}
+                          <a
+                            href={getFilePreviewUrl(candidate.resumeUrl)}
+                            target="_blank"
                             className="p-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center w-fit"
                             title="View Resume"
+                            download={isWordDocument(candidate.resumeUrl)}
+                            onClick={() => {
+                              if (candidate.resumeUrl && isWordDocument(candidate.resumeUrl)) {
+                                toast.info("File is downloaded");
+                              }
+                            }}
                           >
                             <FileText size={16} />
-                          </button>
+                          </a>
                         ) : <span className="text-slate-300">-</span>}
                       </td>
                       <td className="px-6 py-4">
@@ -703,13 +709,20 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                         <>
                           <td className="px-6 py-4">
                             {candidate.offerLetter ? (
-                              <button
-                                onClick={() => handleFileDownload(getFilePreviewUrl(candidate.offerLetter), "Offer Letter")}
+                              <a
+                                href={getFilePreviewUrl(candidate.offerLetter)}
+                                target="_blank"
                                 className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center w-fit"
                                 title="View Offer Letter"
+                                download={isWordDocument(candidate.offerLetter)}
+                                onClick={() => {
+                                  if (candidate.offerLetter && isWordDocument(candidate.offerLetter)) {
+                                    toast.info("File is downloaded");
+                                  }
+                                }}
                               >
                                 <Upload size={16} />
-                              </button>
+                              </a>
                             ) : <span className="text-slate-300">-</span>}
                           </td>
                           <td className="px-6 py-4 text-slate-600 font-medium">

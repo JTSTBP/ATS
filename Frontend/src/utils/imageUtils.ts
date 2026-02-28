@@ -21,7 +21,9 @@ export const getImageUrl = (path: string | undefined | null) => {
  */
 export const isWordDocument = (url: string | null | undefined): boolean => {
     if (!url) return false;
-    const extension = url.split('.').pop()?.toLowerCase();
+    // Remove query parameters or fragments if any, and trim whitespace
+    const pureUrl = url.trim().split(/[?#]/)[0];
+    const extension = pureUrl.split('.').pop()?.toLowerCase();
     return extension === 'doc' || extension === 'docx';
 };
 

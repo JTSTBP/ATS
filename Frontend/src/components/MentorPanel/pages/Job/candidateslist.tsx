@@ -18,7 +18,7 @@ import {
   CalendarCheck,
   FileText,
 } from "lucide-react";
-import { getImageUrl, getFilePreviewUrl } from "../../../../utils/imageUtils";
+import { getImageUrl, getFilePreviewUrl, isWordDocument } from "../../../../utils/imageUtils";
 import { useEffect, useState } from "react";
 import { useAuth } from "../../../../context/AuthProvider";
 import { useCandidateContext } from "../../../../context/CandidatesProvider";
@@ -29,7 +29,6 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { formatDate } from "../../../../utils/dateUtils";
 import { StatusUpdateModal } from "../../../Common/StatusUpdateModal";
-import { handleFileDownload } from "../../../../utils/downloadUtils";
 
 // interface Candidate {
 //   id: string;
@@ -610,42 +609,6 @@ const CandidatesList = () => {
         </div>
       )}
 
-      {/* Resume Preview Modal */}
-      {previewResumeUrl && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-5xl h-[85vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between p-4 border-b bg-gray-50">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-blue-600" />
-                Resume Preview
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleFileDownload(previewResumeUrl, "Resume")}
-                  className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition"
-                  title="Download"
-                >
-                  <Download className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setPreviewResumeUrl(null)}
-                  className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 bg-gray-100 p-4 overflow-hidden">
-              <iframe
-                src={previewResumeUrl}
-                className="w-full h-full rounded-xl border border-gray-200 bg-white shadow-sm"
-                title="Resume Preview"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -915,8 +878,12 @@ const CandidatesList = () => {
                   withResume.forEach((c: any) => {
                     const link = document.createElement("a");
                     link.href = getImageUrl(c.resumeUrl);
-                    link.download = `${c.dynamicFields?.candidateName || "candidate"} _resume.pdf`;
+                    const isWord = isWordDocument(c.resumeUrl);
+                    link.download = `${c.dynamicFields?.candidateName || "candidate"}_resume${isWord ? ".docx" : ".pdf"}`;
                     link.click();
+                    if (isWord) {
+                      toast.info("File is downloaded");
+                    }
                   });
                 }}
                 disabled={selectedCandidates.length === 0}
@@ -1294,7 +1261,20 @@ const CandidatesList = () => {
                   <div className="space-y-3">
                     {selectedCandidate.resumeUrl && (
                       <button
-                        onClick={() => setPreviewResumeUrl(getFilePreviewUrl(selectedCandidate.resumeUrl))}
+                        onClick={() => {
+                          const url = getFilePreviewUrl(selectedCandidate.resumeUrl);
+                          if (isWordDocument(selectedCandidate.resumeUrl)) {
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = "";
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            toast.info("File is downloaded");
+                          } else {
+                            setPreviewResumeUrl(url);
+                          }
+                        }}
                         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                       >
                         <Eye size={16} /> Preview Resume
@@ -1353,12 +1333,26 @@ const CandidatesList = () => {
                 </div>
                 <h3 className="text-sm sm:text-lg font-black text-slate-900 uppercase tracking-widest">Resume Preview</h3>
               </div>
-              <button
-                onClick={() => setPreviewResumeUrl(null)}
-                className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-500"
-              >
-                <X size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewResumeUrl}
+                  download={isWordDocument(previewResumeUrl)}
+                  onClick={() => {
+                    toast.info("File is downloaded");
+                    setPreviewResumeUrl(null);
+                  }}
+                  className="p-2 text-slate-500 hover:bg-slate-200 rounded-xl transition"
+                  title="Download"
+                >
+                  <Download className="w-6 h-6" />
+                </a>
+                <button
+                  onClick={() => setPreviewResumeUrl(null)}
+                  className="p-2 hover:bg-slate-200 rounded-xl transition-colors text-slate-500"
+                >
+                  <X size={24} />
+                </button>
+              </div>
             </div>
             <div className="flex-1 bg-slate-100">
               <iframe

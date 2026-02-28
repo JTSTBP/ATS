@@ -19,7 +19,7 @@ import { useSearchParams } from "react-router-dom";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
 import { formatDate } from "../../utils/dateUtils";
 import { getImageUrl, getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
-import { handleFileDownload } from "../../utils/downloadUtils";
+
 
 // 🔹 Searchable Select Component
 const SearchableSelect = ({
@@ -728,13 +728,21 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                         {/* RESUME */}
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             {candidate.resumeUrl ? (
-                                                <button
-                                                    onClick={() => handleFileDownload(getFilePreviewUrl(candidate.resumeUrl), "Resume")}
+                                                <a
+                                                    href={getFilePreviewUrl(candidate.resumeUrl)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    download={isWordDocument(candidate.resumeUrl)}
                                                     className="flex items-center text-blue-600"
+                                                    onClick={() => {
+                                                        if (candidate.resumeUrl && isWordDocument(candidate.resumeUrl)) {
+                                                            toast.info("File is downloaded");
+                                                        }
+                                                    }}
                                                 >
                                                     <Upload className="w-4 h-4 mr-1" />
                                                     {isWordDocument(candidate.resumeUrl) ? 'Download Resume' : 'View Resume'}
-                                                </button>
+                                                </a>
 
                                             ) : (
                                                 <span className="text-gray-400 text-sm">No Resume</span>
@@ -906,12 +914,20 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 {/* OFFER LETTER */}
                                                 <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
                                                     {candidate.offerLetter ? (
-                                                        <button
-                                                            onClick={() => handleFileDownload(getFilePreviewUrl(candidate.offerLetter), "Offer Letter")}
+                                                        <a
+                                                            href={getFilePreviewUrl(candidate.offerLetter)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            download={isWordDocument(candidate.offerLetter)}
                                                             className="text-blue-600 hover:underline flex items-center"
+                                                            onClick={() => {
+                                                                if (candidate.offerLetter && isWordDocument(candidate.offerLetter)) {
+                                                                    toast.info("File is downloaded");
+                                                                }
+                                                            }}
                                                         >
                                                             <Upload className="w-4 h-4 mr-1" /> {isWordDocument(candidate.offerLetter) ? 'Download' : 'View'}
-                                                        </button>
+                                                        </a>
                                                     ) : (
                                                         "-"
                                                     )}
