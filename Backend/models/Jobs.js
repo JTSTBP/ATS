@@ -53,6 +53,7 @@ const jobSchema = new mongoose.Schema(
     teamMembers: [String],
 
     assignedRecruiters: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], required: true },
+    assignedMentors: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }], default: [] },
     leadRecruiter: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
     candidateFields: [candidateFieldSchema],

@@ -60,6 +60,7 @@ type Job = {
   teamMembers?: string[];
   stages: { name: string; responsible: string; mandatory?: boolean }[];
   assignedRecruiters?: (string | { _id: string; name: string })[];
+  assignedMentors?: (string | { _id: string; name: string })[];
   leadRecruiter?: string | { _id: string; name: string };
   candidateFields: {
     id: string;
@@ -107,6 +108,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     screeningQuestions: [] as string[],
     teamMembers: [] as string[],
     assignedRecruiters: [] as any[],
+    assignedMentors: [] as any[],
     leadRecruiter: "",
     candidateFields: [
       {
@@ -318,7 +320,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     setFormData((prev) => ({
       ...prev,
       candidateFields: prev.candidateFields.filter(
-        (field) => field.id !== fieldId && !field.fixed
+        (field) => field.fixed || field.id !== fieldId
       ),
     }));
   };
@@ -769,33 +771,27 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 </FormControl>
               </Grid>
 
-              {/* Assign Mentors */}
-              {user?.designation?.toLowerCase() === "admin" && (
+              {/* Assign Mentors (Allocate to Mentors) */}
+              {(user?.designation?.toLowerCase() === "admin" || user?.designation?.toLowerCase() === "manager") && (
                 <Grid size={12}>
                   <FormControl fullWidth>
                     <InputLabel id="assignedMentors-label">
-                      Assign Mentors
+                      Assign Mentors (Job Allocation)
                     </InputLabel>
                     <Select
                       labelId="assignedMentors-label"
                       multiple
                       value={
-                        formData.assignedRecruiters?.filter(id => {
-                          const userId = typeof id === 'object' ? (id as any)._id : id;
-                          return mentorUsers.some(u => u._id === userId);
-                        }).map(id => typeof id === 'object' ? (id as any)._id : id) || []
+                        formData.assignedMentors?.map(id => typeof id === 'object' ? (id as any)._id : id) || []
                       }
                       onChange={(e) => {
                         const selectedMentorIds = e.target.value as string[];
                         setFormData((prev) => ({
                           ...prev,
-                          assignedRecruiters: selectedMentorIds,
-                          leadRecruiter: selectedMentorIds.includes(typeof prev.leadRecruiter === 'object' ? (prev.leadRecruiter as any)._id : prev.leadRecruiter)
-                            ? prev.leadRecruiter
-                            : "",
+                          assignedMentors: selectedMentorIds,
                         }));
                       }}
-                      input={<OutlinedInput label="Assign Mentors" />}
+                      input={<OutlinedInput label="Assign Mentors (Job Allocation)" />}
                       renderValue={(selected) => (
                         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                           {selected.map((id) => {
@@ -805,6 +801,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                                 key={id}
                                 label={mentor?.name || id}
                                 size="small"
+                                color="primary"
                               />
                             );
                           })}
@@ -813,7 +810,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     >
                       {mentorUsers?.map((mentor) => (
                         <MenuItem key={mentor._id} value={mentor._id}>
-                          <Checkbox checked={formData.assignedRecruiters?.some(id => (typeof id === 'object' ? (id as any)._id : id) === mentor._id)} />
+                          <Checkbox checked={formData.assignedMentors?.some(id => (typeof id === 'object' ? (id as any)._id : id) === mentor._id)} />
                           <ListItemText primary={mentor.name} />
                         </MenuItem>
                       ))}
@@ -821,6 +818,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   </FormControl>
                 </Grid>
               )}
+
 
               {/* Lead Person Responsible */}
               <Grid size={12}>

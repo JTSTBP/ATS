@@ -37,7 +37,6 @@ interface JobType {
   clientId?: { _id: string; companyName: string; logo?: string };
 }
 
-import { useNavigate } from "react-router-dom";
 
 interface JobsManagerProps {
   initialFormOpen?: boolean;
@@ -63,7 +62,7 @@ export const JobsManager = ({
   } = useJobContext();
 
   const { users, fetchUsers } = useUserContext(); // Added to get reportees for scoping
-  const { clients, fetchClients } = useClientsContext(); // Added
+  const { fetchClients } = useClientsContext(); // Added
   const { candidates, fetchallCandidates } = useCandidateContext(); // Get all candidates
 
   const { user } = useAuth();
@@ -97,14 +96,21 @@ export const JobsManager = ({
       const creatorId = job.CreatedBy?._id || job.CreatedBy;
       const isCreatorOrReportee = creatorId === user._id || allReporteeIds.includes(creatorId);
 
-      // Visibility for Assigned Recruiters (Mentor only as requested, but generally useful)
+      // Visibility for Assigned Recruiters and Assigned Mentors
       const assignedRecruiters = job.assignedRecruiters || [];
-      const isAssigned = assignedRecruiters.some((recId: any) => {
+      const assignedMentors = job.assignedMentors || [];
+
+      const isAssignedRecruiter = assignedRecruiters.some((recId: any) => {
         const id = typeof recId === 'object' ? recId._id : recId;
         return id === user._id;
       });
 
-      return isCreatorOrReportee || isAssigned;
+      const isAssignedMentor = assignedMentors.some((mId: any) => {
+        const id = typeof mId === 'object' ? mId._id : mId;
+        return id === user._id;
+      });
+
+      return isCreatorOrReportee || isAssignedRecruiter || isAssignedMentor;
     });
 
     const scopedCandidates = candidates.filter((c: any) => {
@@ -170,12 +176,6 @@ export const JobsManager = ({
     });
 
     const filteredJobIds = new Set(filteredJobsForStats.map(j => j._id));
-
-    // Filtered candidates for these jobs
-    const filteredCandidatesForStats = scopedCandidates.filter((c: any) => {
-      const jobId = c.jobId?._id || c.jobId;
-      return filteredJobIds.has(jobId);
-    });
 
     const openJobsInFiltered = filteredJobsForStats.filter(j => j.status === 'Open');
     const openJobIdsInFiltered = new Set(openJobsInFiltered.map(j => (j._id || "").toString()));

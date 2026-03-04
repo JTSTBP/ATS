@@ -54,6 +54,7 @@ router.get("/", async (req, res) => {
     if (!page || !limit) {
       const jobs = await Job.find()
         .populate("assignedRecruiters", "name email")
+        .populate("assignedMentors", "name email")
         .populate("leadRecruiter", "name email")
         .populate("CreatedBy", "name email")
         .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
@@ -107,7 +108,8 @@ router.get("/", async (req, res) => {
           andConditions.push({
             $or: [
               { CreatedBy: userId },
-              { assignedRecruiters: userId }
+              { assignedRecruiters: userId },
+              { assignedMentors: userId }
             ]
           });
         }
@@ -129,6 +131,7 @@ router.get("/", async (req, res) => {
     const jobs = await Job.find(query)
       .sort({ createdAt: -1 })
       .populate("assignedRecruiters", "name email")
+      .populate("assignedMentors", "name email")
       .populate("leadRecruiter", "name email")
       .populate("CreatedBy", "name email")
       .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
@@ -201,6 +204,7 @@ router.get("/createdby/:userId", async (req, res) => {
 
     const jobs = await Job.find({ CreatedBy: userId })
       .populate("assignedRecruiters", "name email")
+      .populate("assignedMentors", "name email")
       .populate("leadRecruiter", "name email")
       .populate("CreatedBy", "name email")
       .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
@@ -270,6 +274,7 @@ router.get("/assigned/:recruiterId", async (req, res) => {
     if (!page || !limit) {
       const jobs = await Job.find(query)
         .populate("assignedRecruiters", "name email")
+        .populate("assignedMentors", "name email")
         .populate("leadRecruiter", "name email")
         .populate("CreatedBy", "name email")
         .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
@@ -283,6 +288,7 @@ router.get("/assigned/:recruiterId", async (req, res) => {
 
     const jobs = await Job.find(query)
       .populate("assignedRecruiters", "name email")
+      .populate("assignedMentors", "name email")
       .populate("leadRecruiter", "name email")
       .populate("CreatedBy", "name email")
       .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
@@ -314,6 +320,7 @@ router.get("/:id", async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
       .populate("assignedRecruiters", "name email")
+      .populate("assignedMentors", "name email")
       .populate("leadRecruiter", "name email")
       .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo")
 
@@ -339,6 +346,7 @@ router.put("/:id", async (req, res) => {
       new: true,
     })
       .populate("assignedRecruiters", "name email")
+      .populate("assignedMentors", "name email")
       .populate("leadRecruiter", "name email")
       .populate("CreatedBy", "name email")
       .populate("clientId", "companyName websiteUrl industry linkedinUrl companyInfo pocs logo");
