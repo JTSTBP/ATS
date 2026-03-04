@@ -228,6 +228,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     return allUsers.filter((u) => u._id === loggedUser._id && !u.isDisabled);
   };
   const recruiterUsers = getAllowedRecruiters(user, users);
+  const mentorUsers = users.filter(u => u.designation?.toLowerCase() === "mentor" && !u.isDisabled);
 
 
   console.log(recruiterUsers, "recruiterUsers", users);
@@ -354,7 +355,8 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     if (!formData.salary?.currency) return "Currency is required";
     if (!formData.requirements?.trim()) return "Requirements are required";
     if (!formData.keySkills || formData.keySkills.length === 0) return "At least one Key Skill is required";
-    if (!formData.assignedRecruiters || formData.assignedRecruiters.length === 0) return "At least one Recruiter must be assigned";
+    if (!formData.assignedRecruiters || formData.assignedRecruiters.length === 0) return "At least one Recruiter or Mentor must be assigned";
+    if (!formData.leadRecruiter) return "Lead Person Responsible is required";
     if (!formData.stages || formData.stages.length === 0) return "At least one Interview Stage is required";
     if (formData.stages.some(stage => !stage.name.trim())) return "All Interview Stages must have a name";
     return null;
@@ -716,58 +718,41 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 </Typography>
               </Grid>
 
-              {/* Assign Multiple Recruiters */}
+              {/* Assign Recruiters */}
               <Grid size={12}>
                 <FormControl fullWidth>
                   <InputLabel id="assignedRecruiters-label">
-                    Assigned Recruiters <span className="text-red-500">*</span>
+                    Assign Recruiters
                   </InputLabel>
                   <Select
                     labelId="assignedRecruiters-label"
                     multiple
                     value={
-                      formData.assignedRecruiters?.map((r) =>
-                        typeof r === "object" ? r._id : r
-                      ) || []
+                      formData.assignedRecruiters?.filter(id => {
+                        const userId = typeof id === 'object' ? (id as any)._id : id;
+                        return recruiterUsers.some(u => u._id === userId);
+                      }).map(id => typeof id === 'object' ? (id as any)._id : id) || []
                     }
                     onChange={(e) => {
-                      const value = e.target.value;
-                      // Always store only the IDs (strings)
-                      const selectedIds = (value as any[]).map((v: any) =>
-                        typeof v === "object" ? v?._id : v
-                      );
+                      const selectedRecruiterIds = e.target.value as string[];
                       setFormData((prev) => ({
                         ...prev,
-                        assignedRecruiters: selectedIds,
-                        leadRecruiter: selectedIds.includes(prev.leadRecruiter)
+                        assignedRecruiters: selectedRecruiterIds,
+                        leadRecruiter: selectedRecruiterIds.includes(typeof prev.leadRecruiter === 'object' ? (prev.leadRecruiter as any)._id : prev.leadRecruiter)
                           ? prev.leadRecruiter
                           : "",
                       }));
                     }}
-                    input={<OutlinedInput label="Assigned Recruiters" />}
+                    input={<OutlinedInput label="Assign Recruiters" />}
                     renderValue={(selected) => (
                       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                         {selected.map((id) => {
-                          // First try to find in recruiterUsers, then in all users
-                          const recruiter =
-                            recruiterUsers?.find((u) => u._id === id) ||
-                            users?.find((u) => u._id === id);
-
+                          const recruiter = recruiterUsers.find((u) => u._id === id);
                           return (
                             <Chip
                               key={id}
-                              label={recruiter?.name || `User ${id.substring(0, 8)}...`}
+                              label={recruiter?.name || id}
                               size="small"
-                              color={
-                                formData.leadRecruiter === id
-                                  ? "primary"
-                                  : "default"
-                              }
-                              variant={
-                                formData.leadRecruiter === id
-                                  ? "filled"
-                                  : "outlined"
-                              }
                             />
                           );
                         })}
@@ -776,13 +761,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   >
                     {recruiterUsers?.map((recruiter) => (
                       <MenuItem key={recruiter._id} value={recruiter._id}>
-                        <Checkbox
-                          checked={formData.assignedRecruiters?.some(
-                            (r) =>
-                              (typeof r === "object" ? r._id : r) ===
-                              recruiter._id
-                          )}
-                        />
+                        <Checkbox checked={formData.assignedRecruiters?.some(id => (typeof id === 'object' ? (id as any)._id : id) === recruiter._id)} />
                         <ListItemText primary={recruiter.name} />
                       </MenuItem>
                     ))}
@@ -790,14 +769,63 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 </FormControl>
               </Grid>
 
-              {/* Lead Recruiter */}
+              {/* Assign Mentors */}
+              {user?.designation?.toLowerCase() === "admin" && (
+                <Grid size={12}>
+                  <FormControl fullWidth>
+                    <InputLabel id="assignedMentors-label">
+                      Assign Mentors
+                    </InputLabel>
+                    <Select
+                      labelId="assignedMentors-label"
+                      multiple
+                      value={
+                        formData.assignedRecruiters?.filter(id => {
+                          const userId = typeof id === 'object' ? (id as any)._id : id;
+                          return mentorUsers.some(u => u._id === userId);
+                        }).map(id => typeof id === 'object' ? (id as any)._id : id) || []
+                      }
+                      onChange={(e) => {
+                        const selectedMentorIds = e.target.value as string[];
+                        setFormData((prev) => ({
+                          ...prev,
+                          assignedRecruiters: selectedMentorIds,
+                          leadRecruiter: selectedMentorIds.includes(typeof prev.leadRecruiter === 'object' ? (prev.leadRecruiter as any)._id : prev.leadRecruiter)
+                            ? prev.leadRecruiter
+                            : "",
+                        }));
+                      }}
+                      input={<OutlinedInput label="Assign Mentors" />}
+                      renderValue={(selected) => (
+                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+                          {selected.map((id) => {
+                            const mentor = mentorUsers.find((u) => u._id === id);
+                            return (
+                              <Chip
+                                key={id}
+                                label={mentor?.name || id}
+                                size="small"
+                              />
+                            );
+                          })}
+                        </Box>
+                      )}
+                    >
+                      {mentorUsers?.map((mentor) => (
+                        <MenuItem key={mentor._id} value={mentor._id}>
+                          <Checkbox checked={formData.assignedRecruiters?.some(id => (typeof id === 'object' ? (id as any)._id : id) === mentor._id)} />
+                          <ListItemText primary={mentor.name} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
+
+              {/* Lead Person Responsible */}
               <Grid size={12}>
-                <FormControl
-                  fullWidth
-                  disabled={(formData.assignedRecruiters || []).length === 0
-                  }
-                >
-                  <InputLabel>Lead Recruiter</InputLabel>
+                <FormControl fullWidth disabled={!formData.assignedRecruiters || formData.assignedRecruiters.length === 0}>
+                  <InputLabel>Lead Person Responsible</InputLabel>
                   <Select
                     value={
                       formData.leadRecruiter && typeof formData.leadRecruiter === "object"
@@ -807,22 +835,17 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     onChange={(e) =>
                       setFormData((prev) => ({
                         ...prev,
-                        leadRecruiter:
-                          typeof e.target.value === "object" && e.target.value !== null
-                            ? (e.target.value as any)?._id
-                            : e.target.value,
+                        leadRecruiter: e.target.value,
                       }))
                     }
+                    input={<OutlinedInput label="Lead Person Responsible" />}
                   >
-                    {(formData.assignedRecruiters || []).map((r) => {
-                      const id = r && typeof r === "object" ? r._id : r;
-                      const recruiter = recruiterUsers?.find(
-                        (u: any) => u?._id === id
-                      ) || users?.find((u) => u._id === id);
+                    {formData.assignedRecruiters?.map((id) => {
+                      const userId = typeof id === 'object' ? (id as any)._id : id;
+                      const assignedUser = [...(recruiterUsers || []), ...(mentorUsers || []), ...(users || [])].find((u) => u._id === userId);
                       return (
-                        <MenuItem key={id} value={id}>
-                          {recruiter?.name ||
-                            (typeof r === "object" ? r.name : String(r))}
+                        <MenuItem key={userId} value={userId}>
+                          {assignedUser?.name || userId}
                         </MenuItem>
                       );
                     })}

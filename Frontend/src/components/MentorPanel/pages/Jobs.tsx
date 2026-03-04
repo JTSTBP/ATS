@@ -95,7 +95,16 @@ export const JobsManager = ({
 
     const scopedJobs = jobs.filter((job: any) => {
       const creatorId = job.CreatedBy?._id || job.CreatedBy;
-      return creatorId === user._id || allReporteeIds.includes(creatorId);
+      const isCreatorOrReportee = creatorId === user._id || allReporteeIds.includes(creatorId);
+
+      // Visibility for Assigned Recruiters (Mentor only as requested, but generally useful)
+      const assignedRecruiters = job.assignedRecruiters || [];
+      const isAssigned = assignedRecruiters.some((recId: any) => {
+        const id = typeof recId === 'object' ? recId._id : recId;
+        return id === user._id;
+      });
+
+      return isCreatorOrReportee || isAssigned;
     });
 
     const scopedCandidates = candidates.filter((c: any) => {

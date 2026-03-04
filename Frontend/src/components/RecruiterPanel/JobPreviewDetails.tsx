@@ -9,7 +9,6 @@ import {
   Calendar,
   User,
   Layers,
-  Users,
   FileText,
   CheckCircle2,
 } from "lucide-react";
@@ -259,60 +258,6 @@ export default function JobPreviewDetails() {
             </section>
           )}
 
-          {/* Lead Recruiter */}
-          {job.leadRecruiter && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <User className="text-blue-500" size={20} />
-                <h3 className="text-lg font-bold text-slate-800">
-                  Lead Recruiter
-                </h3>
-              </div>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <p className="font-medium text-slate-800">
-                  {typeof job.leadRecruiter === "object"
-                    ? (job.leadRecruiter as any).name
-                    : "Lead Recruiter"}
-                </p>
-                <p className="text-sm text-slate-500">
-                  {typeof job.leadRecruiter === "object"
-                    ? (job.leadRecruiter as any).email
-                    : ""}
-                </p>
-              </div>
-            </section>
-          )}
-
-          {/* Assigned Recruiters */}
-          {job.assignedRecruiters && job.assignedRecruiters.length > 0 && (
-            <section>
-              <div className="flex items-center gap-2 mb-3">
-                <Users className="text-green-500" size={20} />
-                <h3 className="text-lg font-bold text-slate-800">
-                  Assigned Recruiters
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {job.assignedRecruiters.map(
-                  (recruiter: any, index: number) => (
-                    <div
-                      key={index}
-                      className="bg-slate-50 p-4 rounded-xl border border-slate-100"
-                    >
-                      <p className="font-medium text-slate-800">
-                        {typeof recruiter === "object"
-                          ? recruiter.name
-                          : "Recruiter"}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {typeof recruiter === "object" ? recruiter.email : ""}
-                      </p>
-                    </div>
-                  )
-                )}
-              </div>
-            </section>
-          )}
           {/* Screening Questions */}
           {job.screeningQuestions && job.screeningQuestions.length > 0 && (
             <section>

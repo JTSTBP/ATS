@@ -66,23 +66,24 @@ router.get("/", async (req, res) => {
     const skip = (pageNum - 1) * limitNum;
 
     // Build Query
-    let query = {};
+    let andConditions = [];
 
     // 1️⃣ Status Filter
     if (status && status !== "all") {
-      query.status = status;
+      andConditions.push({ status });
     }
 
     // 2️⃣ Search Filter (Title, Dept, Location names)
     if (search) {
       const searchRegex = new RegExp(search, "i");
-
-      query.$or = [
-        { title: searchRegex },
-        { department: searchRegex },
-        { employmentType: searchRegex },
-        { "location.name": searchRegex }
-      ];
+      andConditions.push({
+        $or: [
+          { title: searchRegex },
+          { department: searchRegex },
+          { employmentType: searchRegex },
+          { "location.name": searchRegex }
+        ]
+      });
     }
 
     // 3️⃣ Client Search Filter
@@ -90,21 +91,10 @@ router.get("/", async (req, res) => {
       const clientSearchRegex = new RegExp(req.query.clientSearch, "i");
       const matchedClients = await Client.find({ companyName: clientSearchRegex }).select("_id");
       const matchedClientIds = matchedClients.map(c => c._id);
-
-      if (query.$or) {
-        query = {
-          $and: [
-            { $or: query.$or },
-            { clientId: { $in: matchedClientIds } }
-          ],
-          ...Object.fromEntries(Object.entries(query).filter(([key]) => key !== '$or'))
-        };
-      } else {
-        query.clientId = { $in: matchedClientIds };
-      }
+      andConditions.push({ clientId: { $in: matchedClientIds } });
     }
 
-    // 3️⃣ Role-Based Filtering
+    // 4️⃣ Role-Based Filtering
     if (role) {
       const userRole = role.toLowerCase();
 
@@ -112,25 +102,28 @@ router.get("/", async (req, res) => {
         // Admin sees all - no extra filter
       }
       else if (userRole === "mentor") {
-        // Mentor sees ONLY their own jobs
+        // Mentor sees their own jobs OR jobs they are assigned to
         if (userId) {
-          query.CreatedBy = userId;
+          andConditions.push({
+            $or: [
+              { CreatedBy: userId },
+              { assignedRecruiters: userId }
+            ]
+          });
         }
       }
       else if (userRole === "manager") {
         // Manager sees Own Jobs + Direct Reportees' Jobs
         if (userId) {
-          // Find reportees
           const reportees = await User.find({ reporter: userId }).select("_id");
           const reporteeIds = reportees.map(u => u._id);
-
-          // Add Manager's own ID
           const allowedIds = [userId, ...reporteeIds];
-
-          query.CreatedBy = { $in: allowedIds };
+          andConditions.push({ CreatedBy: { $in: allowedIds } });
         }
       }
     }
+
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
 
     // Execute Query with Pagination
     const jobs = await Job.find(query)
