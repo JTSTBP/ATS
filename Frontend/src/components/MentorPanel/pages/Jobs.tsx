@@ -81,10 +81,12 @@ export const JobsManager = ({
     // Admin sees all
     if (user.designation === "Admin") return { scopedJobs: jobs, scopedCandidates: candidates };
 
-    // Get reportees
     const directReportees = users.filter((u: any) => u?.reporter?._id === user._id || u?.reporter === user._id);
-    let allReporteeIds = directReportees.map((u: any) => u._id);
 
+    const directMentors = directReportees.filter((u: any) => u.designation === "Mentor");
+    const directMentorIds = directMentors.map((u: any) => u._id);
+
+    let allReporteeIds = [...directReportees.map((u: any) => u._id)];
     if (user.designation === "Manager") {
       directReportees.forEach((mentor: any) => {
         const mentorReportees = users.filter((u: any) => u?.reporter?._id === mentor._id || u?.reporter === mentor._id);
@@ -94,7 +96,18 @@ export const JobsManager = ({
 
     const scopedJobs = jobs.filter((job: any) => {
       const creatorId = job.CreatedBy?._id || job.CreatedBy;
-      const isCreatorOrReportee = creatorId === user._id || allReporteeIds.includes(creatorId);
+
+      let isCreatorOrReportee = false;
+      let checkIds = allReporteeIds;
+
+      if (user.designation === "Manager") {
+        // Manager: strictly see jobs CREATED by Manager + Mentors (direct reportees)
+        isCreatorOrReportee = creatorId === user._id || directMentorIds.includes(creatorId);
+        checkIds = directMentorIds; // For Mentors, check direct Mentors
+      } else {
+        // Mentor/Recruiter
+        isCreatorOrReportee = creatorId === user._id || allReporteeIds.includes(creatorId);
+      }
 
       // Visibility for Assigned Recruiters and Assigned Mentors
       const assignedRecruiters = job.assignedRecruiters || [];
@@ -102,12 +115,12 @@ export const JobsManager = ({
 
       const isAssignedRecruiter = assignedRecruiters.some((recId: any) => {
         const id = typeof recId === 'object' ? recId._id : recId;
-        return id === user._id;
+        return id === user._id || allReporteeIds.includes(id);
       });
 
       const isAssignedMentor = assignedMentors.some((mId: any) => {
         const id = typeof mId === 'object' ? mId._id : mId;
-        return id === user._id;
+        return id === user._id || checkIds.includes(id); // checkIds contains directMentors for Manager
       });
 
       return isCreatorOrReportee || isAssignedRecruiter || isAssignedMentor;
@@ -174,8 +187,6 @@ export const JobsManager = ({
 
       return true;
     });
-
-    const filteredJobIds = new Set(filteredJobsForStats.map(j => j._id));
 
     const openJobsInFiltered = filteredJobsForStats.filter(j => j.status === 'Open');
     const openJobIdsInFiltered = new Set(openJobsInFiltered.map(j => (j._id || "").toString()));

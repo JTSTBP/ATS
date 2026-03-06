@@ -43,6 +43,7 @@ import OrphanCandidates from "./components/AdminPanel/OrphanCandidates";
 import Finance from "./components/AdminPanel/Finance";
 import { AdminCandidates } from "./components/AdminPanel/Candidates";
 import { ManagerCandidates } from "./components/ManagerPanel/Candidates";
+import MentorsList from "./components/ManagerPanel/MentorsList";
 import Attendance from "./components/AdminPanel/attendance";
 import JobPreviewPage from "./components/RecruiterPanel/JobPreviewPage";
 import JobPreviewDetails from "./components/RecruiterPanel/JobPreviewDetails";
@@ -168,6 +169,7 @@ function App() {
               element={<ManagerCandidates initialFormOpen={true} />}
             />
             <Route path="applications" element={<ApplicationsManager />} />
+            <Route path="mentors" element={<MentorsList />} />
             <Route path="clients" element={<ClientsManager />} />
             <Route path="reports" element={<ManagerReports />} />
             <Route

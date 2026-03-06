@@ -686,14 +686,13 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                           const newStatus = e.target.value;
                           let droppedByVal = undefined;
                           if (newStatus === "Dropped") {
-                            if (candidate.status === "Shortlisted") droppedByVal = "Mentor";
-                            else if (["Interviewed", "Selected", "Joined"].includes(candidate.status || "")) droppedByVal = "Client";
+                            if (["Interviewed", "Selected", "Joined"].includes(candidate.status || "")) droppedByVal = "Client";
+                            else droppedByVal = "Mentor";
                           }
 
                           let rejectedByVal = undefined;
                           if (newStatus === "Rejected") {
-                            if (candidate.status === "Shortlisted") rejectedByVal = "Mentor";
-                            else if (candidate.status === "Interviewed") rejectedByVal = "Client";
+                            rejectedByVal = candidate.status === "Interviewed" ? "Client" : "Mentor";
                           }
 
                           handleStatusChange(

@@ -13,6 +13,7 @@ import {
   Calendar,
   Building2,
   UserCircle,
+  UserCheck,
 } from "lucide-react";
 
 export default function ManagerPanel() {
@@ -39,6 +40,7 @@ export default function ManagerPanel() {
     { path: "/Manager/jobs", label: "Requirements", icon: Briefcase },
     { path: "/Manager/candidates", label: "Candidates", icon: Users },
     { path: "/Manager/applications", label: "Applications", icon: FileText },
+    { path: "/Manager/mentors", label: "Mentors", icon: UserCheck },
     {
       path: "/Manager/leave-applications",
       label: "Leave Applications",

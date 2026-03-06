@@ -230,7 +230,34 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     return allUsers.filter((u) => u._id === loggedUser._id && !u.isDisabled);
   };
   const recruiterUsers = getAllowedRecruiters(user, users);
-  const mentorUsers = users.filter(u => u.designation?.toLowerCase() === "mentor" && !u.isDisabled);
+  // Filter only users whose designation is 'Mentor'
+  const getAllowedMentors = (loggedUser: any, allUsers: any[]) => {
+    const designation = loggedUser?.designation?.toLowerCase();
+
+    // 1️⃣ ADMIN → all active mentors
+    if (designation === "admin") {
+      return allUsers.filter(u => u.designation?.toLowerCase() === "mentor" && !u.isDisabled);
+    }
+
+    // 2️⃣ MANAGER → only active mentors directly reporting to this manager
+    if (designation === "manager") {
+      return allUsers.filter(
+        (u) =>
+          u.designation?.toLowerCase() === "mentor" &&
+          (u.reporter?._id === loggedUser._id || u.reporter === loggedUser._id) &&
+          !u.isDisabled
+      );
+    }
+
+    // 3️⃣ MENTOR/RECRUITER → typically don't allocate to other mentors, but if they do, show only themselves if they are a mentor
+    return allUsers.filter(
+      (u) =>
+        u.designation?.toLowerCase() === "mentor" &&
+        u._id === loggedUser._id &&
+        !u.isDisabled
+    );
+  };
+  const mentorUsers = getAllowedMentors(user, users);
 
 
   console.log(recruiterUsers, "recruiterUsers", users);

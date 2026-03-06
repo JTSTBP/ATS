@@ -1034,14 +1034,13 @@ const CandidatesList = () => {
 
                           let droppedByVal = undefined;
                           if (newStatus === "Dropped") {
-                            if (currentStatus === "Shortlisted") droppedByVal = "Mentor";
-                            else if (["Interviewed", "Selected", "Joined"].includes(currentStatus)) droppedByVal = "Client";
+                            if (["Interviewed", "Selected", "Joined"].includes(currentStatus)) droppedByVal = "Client";
+                            else droppedByVal = "Mentor";
                           }
 
                           let rejectedByVal = undefined;
                           if (newStatus === "Rejected") {
-                            if (currentStatus === "Shortlisted") rejectedByVal = "Mentor";
-                            else if (currentStatus === "Interviewed") rejectedByVal = "Client";
+                            rejectedByVal = currentStatus === "Interviewed" ? "Client" : "Mentor";
                           }
 
                           if (newStatus.startsWith("MOVE_TO_")) {

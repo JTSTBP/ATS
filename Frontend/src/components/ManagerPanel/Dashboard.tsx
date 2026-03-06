@@ -72,9 +72,13 @@ export default function ManagerDashboard() {
 
     // Designation-agnostic recursive reporting
     const directReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === user._id);
-    let allReporteeIds = directReportees.map((u: any) => u._id);
+
+    // Only Mentors for Job checking
+    const directMentors = directReportees.filter((u: any) => u.designation === "Mentor");
+    const directMentorIds = directMentors.map((u: any) => u._id);
 
     // Get 2nd level reportees (e.g., Recruiters reporting to Mentors)
+    let allReporteeIds = [...directReportees.map((u: any) => u._id)];
     directReportees.forEach((reportee: any) => {
       const childReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === reportee._id);
       allReporteeIds = [...allReporteeIds, ...childReportees.map((u: any) => u._id)];
@@ -82,11 +86,29 @@ export default function ManagerDashboard() {
 
     const scopedJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
-      return creatorId === user._id || allReporteeIds.includes(creatorId);
+
+      const isCreatorOrReportee = creatorId === user._id || directMentorIds.includes(creatorId);
+
+      const assignedMentors = job.assignedMentors || [];
+      const isAssignedMentor = assignedMentors.some((mId: any) => {
+        const id = typeof mId === 'object' ? mId._id : mId;
+        return id === user._id || directMentorIds.includes(id);
+      });
+
+      const assignedRecruiters = job.assignedRecruiters || [];
+      const isAssignedRecruiter = assignedRecruiters.some((rId: any) => {
+        const id = typeof rId === 'object' ? rId._id : rId;
+        return id === user._id || allReporteeIds.includes(id);
+      });
+
+      // Jobs where CreatedBy (Manager/Mentors), assignedMentors (Manager/Mentors), 
+      // or assignedRecruiters (Team Recruiters) match.
+      return isCreatorOrReportee || isAssignedMentor || isAssignedRecruiter;
     });
 
     const scopedCandidates = candidates.filter((c: any) => {
       const creatorId = c.createdBy?._id || c.createdBy;
+      // Candidates are scoped to Manager, Mentors, AND Recruiters (all reportees)
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 

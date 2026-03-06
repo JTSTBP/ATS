@@ -803,14 +803,13 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                     // Determine roles based on current status
                                                     const currentStatus = candidate.status || "New";
                                                     if (newStatus === "Dropped") {
-                                                        if (currentStatus === "Shortlisted") droppedByVal = "Mentor";
-                                                        else if (["Interviewed", "Selected", "Joined"].includes(currentStatus)) droppedByVal = "Client";
+                                                        if (["Interviewed", "Selected", "Joined"].includes(currentStatus)) droppedByVal = "Client";
+                                                        else droppedByVal = "Admin";
                                                     }
 
                                                     let rejectedByVal = undefined;
                                                     if (newStatus === "Rejected") {
-                                                        if (currentStatus === "Shortlisted") rejectedByVal = "Mentor";
-                                                        else if (currentStatus === "Interviewed") rejectedByVal = "Client";
+                                                        rejectedByVal = currentStatus === "Interviewed" ? "Client" : "Admin";
                                                     }
 
                                                     // Auto-select first interview stage for New -> Interviewed

@@ -115,12 +115,24 @@ router.get("/", async (req, res) => {
         }
       }
       else if (userRole === "manager") {
-        // Manager sees Own Jobs + Direct Reportees' Jobs
+        // Manager strictly sees jobs CREATED BY or ASSIGNED TO Manager + Mentors (direct reportees)
+        // OR ASSIGNED TO any of their entire team (Mentors + Recruiters) via assignedRecruiters
         if (userId) {
-          const reportees = await User.find({ reporter: userId }).select("_id");
-          const reporteeIds = reportees.map(u => u._id);
-          const allowedIds = [userId, ...reporteeIds];
-          andConditions.push({ CreatedBy: { $in: allowedIds } });
+          const directMentors = await User.find({ reporter: userId, designation: "Mentor" }).select("_id");
+          const mentorIds = directMentors.map(u => u._id);
+          const mentorAllowedIds = [userId, ...mentorIds];
+
+          // Sub-reportees for recruiters
+          const subReportees = await User.find({ reporter: { $in: mentorAllowedIds } }).select("_id");
+          const allReporteeIds = [...new Set([...mentorAllowedIds, ...subReportees.map(u => u._id)])];
+
+          andConditions.push({
+            $or: [
+              { CreatedBy: { $in: mentorAllowedIds } },
+              { assignedMentors: { $in: mentorAllowedIds } },
+              { assignedRecruiters: { $in: allReporteeIds } }
+            ]
+          });
         }
       }
     }

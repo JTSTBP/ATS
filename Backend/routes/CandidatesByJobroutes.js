@@ -738,19 +738,24 @@ router.get("/role-based-candidates", async (req, res) => {
       allowedUserIds = [userId];
     } else if (lowerDesignation === "mentor" || lowerDesignation === "manager") {
       const allUsers = await User.find({}).select("_id reporter designation");
+      const userIdStr = userId.toString();
 
       // Get direct reportees (designation-agnostic)
-      const directReportees = allUsers.filter(u => u.reporter?.toString() === userId);
-      const directReporteeIds = directReportees.map(u => u._id.toString());
+      const directReporteeIds = allUsers
+        .filter(u => u.reporter && u.reporter.toString() === userIdStr)
+        .map(u => u._id.toString());
 
       if (lowerDesignation === "manager") {
-        // Get indirect reportees (designation-agnostic, 2 levels deep)
-        const indirectReportees = allUsers.filter(u =>
-          u.reporter && directReporteeIds.includes(u.reporter.toString())
-        );
-        allowedUserIds = [userId, ...directReporteeIds, ...indirectReportees.map(u => u._id.toString())];
+        // Get indirect reportees (e.g., Recruiters reporting to Mentors who report to this Manager)
+        const indirectReporteeIds = allUsers
+          .filter(u => u.reporter && directReporteeIds.includes(u.reporter.toString()))
+          .map(u => u._id.toString());
+
+        // Full team: Self + Direct reportees + Indirect reportees
+        allowedUserIds = [...new Set([userIdStr, ...directReporteeIds, ...indirectReporteeIds])];
       } else {
-        allowedUserIds = [userId, ...directReporteeIds];
+        // Mentor: Self + Direct reportees (Recruiters)
+        allowedUserIds = [userIdStr, ...directReporteeIds];
       }
     }
 
