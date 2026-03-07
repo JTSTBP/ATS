@@ -31,6 +31,11 @@ const AttendanceSchema = new mongoose.Schema({
                 type: Boolean,
                 default: true,
             },
+            deviceType: {
+                type: String,
+                enum: ["Phone", "System"],
+                default: "System",
+            },
         },
     ],
     totalWorkingHours: {

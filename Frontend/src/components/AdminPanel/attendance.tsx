@@ -9,6 +9,8 @@ import {
     Download,
     Filter,
     Search,
+    Smartphone,
+    Monitor,
 } from "lucide-react";
 import { formatDate, formatTime } from "../../utils/dateUtils";
 import { getImageUrl } from "../../utils/imageUtils";
@@ -19,6 +21,7 @@ interface Session {
     logoutTime?: string;
     duration: string;
     isActive: boolean;
+    deviceType?: "Phone" | "System";
 }
 
 interface AttendanceRecord {
@@ -490,6 +493,9 @@ export default function Attendance() {
                                                                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                                                             Status
                                                                         </th>
+                                                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                                                            Device
+                                                                        </th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody className="bg-white divide-y divide-gray-200">
@@ -521,6 +527,21 @@ export default function Attendance() {
                                                                                         Completed
                                                                                     </span>
                                                                                 )}
+                                                                            </td>
+                                                                            <td className="px-4 py-2 text-sm">
+                                                                                <div className="flex items-center gap-2 text-gray-600">
+                                                                                    {session.deviceType === "Phone" ? (
+                                                                                        <>
+                                                                                            <Smartphone className="w-4 h-4 text-orange-500" />
+                                                                                            <span className="text-xs font-medium">Phone</span>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <Monitor className="w-4 h-4 text-blue-500" />
+                                                                                            <span className="text-xs font-medium">System</span>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
                                                                             </td>
                                                                         </tr>
                                                                     ))}

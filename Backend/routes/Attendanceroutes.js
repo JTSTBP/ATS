@@ -144,6 +144,11 @@ router.post("/login", async (req, res) => {
             });
         }
 
+        // Detect device type from User-Agent
+        const userAgent = req.headers["user-agent"] || "";
+        const isMobile = /Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+        const deviceType = isMobile ? "Phone" : "System";
+
         // Verify user exists
         const user = await User.findById(userId);
         if (!user) {
@@ -194,6 +199,7 @@ router.post("/login", async (req, res) => {
             attendance.sessions.push({
                 loginTime: currentTime,
                 isActive: true,
+                deviceType: deviceType,
             });
 
             await attendance.save();
@@ -214,6 +220,7 @@ router.post("/login", async (req, res) => {
                 {
                     loginTime: currentTime,
                     isActive: true,
+                    deviceType: deviceType,
                 },
             ],
         });
