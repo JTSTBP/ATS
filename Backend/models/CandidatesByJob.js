@@ -39,7 +39,7 @@ const candidateSchema = new mongoose.Schema(
     },
     rejectedBy: {
       type: String,
-      enum: ["Client", "Mentor"],
+      enum: ["Client", "Mentor", "Manager", "Admin"],
       default: null,
     },
     rejectionReason: {
@@ -48,7 +48,7 @@ const candidateSchema = new mongoose.Schema(
     },
     droppedBy: {
       type: String,
-      enum: ["Client", "Mentor"],
+      enum: ["Client", "Mentor", "Manager", "Admin"],
       default: null,
     },
     dynamicFields: {

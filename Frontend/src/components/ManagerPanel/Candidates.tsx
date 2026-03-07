@@ -766,8 +766,10 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                       )}
                       <td className="px-6 py-4 text-slate-600">
                         <div className="max-w-[200px]" title={candidate.notes}>
-                          {candidate.status === "Rejected" && candidate.rejectionReason && (
-                            <div className="text-[10px] text-red-600 font-bold uppercase mb-0.5">Rejected: {candidate.rejectionReason}</div>
+                          {candidate.status === "Rejected" && (
+                            <div className="text-[10px] text-red-600 font-bold uppercase mb-0.5">
+                              Rejected {candidate.rejectedBy ? `By ${candidate.rejectedBy}` : ""}: {candidate.rejectionReason || "N/A"}
+                            </div>
                           )}
                           <div className="truncate text-slate-500">
                             {candidate.notes || "-"}

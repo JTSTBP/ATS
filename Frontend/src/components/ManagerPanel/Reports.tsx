@@ -123,9 +123,10 @@ export default function ManagerReports() {
 
     // Designation-agnostic recursive reporting
     const directReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === user._id);
-    let allReporteeIds = directReportees.map((u: any) => u._id);
+    const directMentorIds = directReportees.filter((u: any) => u.designation === "Mentor").map((u: any) => u._id);
 
-    // Get 2nd level reportees (e.g., Recruiters reporting to Mentors)
+    // Get all levels of reportees (allReporteeIds)
+    let allReporteeIds = [...directReportees.map((u: any) => u._id)];
     directReportees.forEach((reportee: any) => {
       const childReportees = users.filter((u: any) => (u?.reporter?._id || u?.reporter) === reportee._id);
       allReporteeIds = [...allReporteeIds, ...childReportees.map((u: any) => u._id)];
@@ -133,7 +134,25 @@ export default function ManagerReports() {
 
     const scopedJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
-      return creatorId === user._id || allReporteeIds.includes(creatorId);
+
+      // 1. Created by Manager or their direct Mentors
+      const isCreatorOrReportee = creatorId === user._id || directMentorIds.includes(creatorId);
+
+      // 2. Assigned to Manager or their direct Mentors
+      const assignedMentors = job.assignedMentors || [];
+      const isAssignedMentor = assignedMentors.some((mId: any) => {
+        const id = typeof mId === 'object' ? mId._id : mId;
+        return id === user._id || directMentorIds.includes(id);
+      });
+
+      // 3. Assigned to any reportee (Recruiters/Mentors)
+      const assignedRecruiters = job.assignedRecruiters || [];
+      const isAssignedRecruiter = assignedRecruiters.some((rId: any) => {
+        const id = typeof rId === 'object' ? rId._id : rId;
+        return id === user._id || allReporteeIds.includes(id);
+      });
+
+      return isCreatorOrReportee || isAssignedMentor || isAssignedRecruiter;
     });
 
     const scopedCandidates = candidates.filter((c: any) => {
@@ -141,7 +160,7 @@ export default function ManagerReports() {
       return creatorId === user._id || allReporteeIds.includes(creatorId);
     });
 
-    return { scopedJobs, scopedCandidates };
+    return { scopedJobs, scopedCandidates, allReporteeIds };
   }, [user, users, jobs, candidates]);
 
   const { scopedJobs, scopedCandidates } = scopedData;
@@ -230,12 +249,14 @@ export default function ManagerReports() {
       });
 
       acc.rejectByMentor = (acc.rejectByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Mentor").length;
+      acc.rejectByManager = (acc.rejectByManager || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Manager").length;
+      acc.rejectByAdmin = (acc.rejectByAdmin || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Admin").length;
       acc.rejectByClient = (acc.rejectByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Rejected" && c.rejectedBy === "Client").length;
       acc.dropByMentor = (acc.dropByMentor || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Mentor").length;
       acc.dropByClient = (acc.dropByClient || 0) + row.jobCandidates.filter((c: any) => c.status === "Dropped" && c.droppedBy === "Client").length;
 
       return acc;
-    }, { positions: 0, uploads: 0, New: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0, rejectByMentor: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
+    }, { positions: 0, uploads: 0, New: 0, Shortlisted: 0, Interviewed: 0, Selected: 0, Joined: 0, Hold: 0, rejectByMentor: 0, rejectByManager: 0, rejectByAdmin: 0, rejectByClient: 0, dropByMentor: 0, dropByClient: 0 } as Record<string, number>);
 
     return { reportRows, totals };
   }, [scopedJobs, scopedCandidates, clients, users, clientSearch, recruiterSearch, jobSearch, startDate, endDate, selectedFilters]);
@@ -609,6 +630,7 @@ export default function ManagerReports() {
                 <th className="py-3 px-4 text-center">New</th>
                 <th className="py-3 px-4 text-center">Screen</th>
                 <th className="py-3 px-4 text-center bg-red-50 text-red-700">Reject by Mentor</th>
+
                 <th className="py-3 px-4 text-center">Interviewed</th>
                 <th className="py-3 px-4 text-center">Selected</th>
                 <th className="py-3 px-4 text-center font-bold bg-indigo-50/50 text-indigo-700 font-bold">Joined</th>
@@ -672,6 +694,7 @@ export default function ManagerReports() {
                         );
                       })()}
                     </td>
+
                     {["Interviewed", "Selected"].map(status => {
                       const list = row.jobCandidates.filter((c: any) => c.status === status);
                       return (
@@ -751,6 +774,8 @@ export default function ManagerReports() {
                 <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.New}</td>
                 <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.Shortlisted}</td>
                 <td className="py-4 px-4 text-center text-red-600 font-bold">{clientJobReportData.totals.rejectByMentor}</td>
+                <td className="py-4 px-4 text-center text-red-600 font-bold">{clientJobReportData.totals.rejectByManager}</td>
+                <td className="py-4 px-4 text-center text-red-600 font-bold">{clientJobReportData.totals.rejectByAdmin}</td>
                 <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.Interviewed}</td>
                 <td className="py-4 px-4 text-center text-slate-800">{clientJobReportData.totals.Selected}</td>
                 <td className="py-4 px-4 text-center text-slate-800 font-bold">{clientJobReportData.totals.Joined}</td>

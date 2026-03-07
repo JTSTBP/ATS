@@ -749,9 +749,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
 
                     {/* REMARKS */}
                     <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px]" title={candidate.notes}>
-                      {candidate.status === "Rejected" && candidate.rejectionReason && (
+                      {candidate.status === "Rejected" && (
                         <div className="text-xs text-red-600 font-semibold mb-1">
-                          Reason: {candidate.rejectionReason}
+                          Rejected {candidate.rejectedBy ? `By ${candidate.rejectedBy}` : ""}: {candidate.rejectionReason || "N/A"}
                         </div>
                       )}
                       <div className="truncate text-slate-500">

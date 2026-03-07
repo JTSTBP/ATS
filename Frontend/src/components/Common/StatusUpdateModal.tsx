@@ -260,11 +260,19 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             <div className="mb-4 space-y-4 p-4 bg-red-50 rounded-lg border border-red-100">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Rejected By
+                                        Rejected By <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-700 font-medium">
-                                        {effectiveRejectedBy || "Not set"}
-                                    </div>
+                                    <select
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        value={rejectedBy || effectiveRejectedBy || ""}
+                                        onChange={(e) => setRejectedBy(e.target.value)}
+                                    >
+                                        <option value="">Select Who Rejected</option>
+                                        <option value="Client">Client</option>
+                                        <option value="Mentor">Mentor</option>
+                                        <option value="Manager">Manager</option>
+                                        <option value="Admin">Admin</option>
+                                    </select>
                                 </div>
 
                                 <div>
@@ -289,11 +297,19 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                             <div className="mb-4 space-y-4 p-4 bg-orange-50 rounded-lg border border-orange-100">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Dropped By
+                                        Dropped By <span className="text-red-500">*</span>
                                     </label>
-                                    <div className="p-3 bg-white border border-gray-200 rounded-lg text-gray-700 font-medium">
-                                        {effectiveDroppedBy || "Not set"}
-                                    </div>
+                                    <select
+                                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                                        value={droppedBy || effectiveDroppedBy || ""}
+                                        onChange={(e) => setDroppedBy(e.target.value)}
+                                    >
+                                        <option value="">Select Who Dropped</option>
+                                        <option value="Client">Client</option>
+                                        <option value="Mentor">Mentor</option>
+                                        <option value="Manager">Manager</option>
+                                        <option value="Admin">Admin</option>
+                                    </select>
                                 </div>
                             </div>
                         )}
@@ -350,13 +366,16 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                 }
 
                                 // Pass additional stage details if applicable
+                                const finalRejectedBy = isRejected ? (rejectedBy || effectiveRejectedBy) : undefined;
+                                const finalDroppedBy = isDropped ? (droppedBy || effectiveDroppedBy) : undefined;
+
                                 onConfirm(
                                     comment,
                                     joiningDate,
                                     offerLetter,
                                     selectionDate,
                                     expectedJoiningDate,
-                                    (isDropped || (isInterviewUpdate && stageStatus === "Rejected")) ? "Client" : effectiveRejectedBy, // Default to Client for Interview Rejection
+                                    finalRejectedBy || finalDroppedBy, // The onConfirm prop expects one 'rejectedBy' string which handles both cases in this context
                                     ctc,
                                     rejectionReason,
                                     isInterviewUpdate ? stageNameForHistory : undefined, // Pass stage name for history
