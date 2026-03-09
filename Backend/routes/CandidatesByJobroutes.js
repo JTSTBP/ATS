@@ -1571,11 +1571,25 @@ router.patch("/:id/status", offerLetterUpload.single("offerLetter"), async (req,
       updateData.notes = comment;
     }
 
-    // Handle RejectedBy
-    if (status === "Rejected" && rejectedBy) {
-      updateData.rejectedBy = rejectedBy;
+    // Handle RejectedBy and File Deletion
+    if (status === "Rejected") {
+      if (rejectedBy) {
+        updateData.rejectedBy = rejectedBy;
+      }
       if (rejectionReason) {
         updateData.rejectionReason = rejectionReason;
+      }
+
+      // Delete files (resume, offer letter) if candidate is rejected
+      if (existingCandidate.resumeUrl) {
+        console.log('🗑️ Deleting candidate resume due to rejection');
+        await deleteFile(existingCandidate.resumeUrl);
+        updateData.resumeUrl = null;
+      }
+      if (existingCandidate.offerLetter) {
+        console.log('🗑️ Deleting candidate offer letter due to rejection');
+        await deleteFile(existingCandidate.offerLetter);
+        updateData.offerLetter = null;
       }
     }
 

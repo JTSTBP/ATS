@@ -10,9 +10,11 @@ import {
   Upload,
   ChevronLeft,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
 import { CandidateForm } from "./CandidatesForm";
 import { StatusUpdateModal } from "../../Common/StatusUpdateModal";
+import { CommentModal } from "../../Common/CommentModal";
 import { useCandidateContext } from "../../../context/CandidatesProvider";
 import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
@@ -73,6 +75,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
     stageNameForHistory?: string;
     nextStageName?: string;
   } | null>(null);
+
+  // Comment Modal State
+  const [commentModal, setCommentModal] = useState<{ candidateId: string; candidateName: string; comments: any[] } | null>(null);
 
   const handleStatusChange = (
     candidateId: string,
@@ -763,13 +768,34 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                       <button
                         onClick={() => handleEdit(candidate)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                        title="Edit"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
 
                       <button
+                        onClick={() =>
+                          setCommentModal({
+                            candidateId: candidate._id,
+                            candidateName: candidate.dynamicFields?.candidateName || "Candidate",
+                            comments: candidate.comments || [],
+                          })
+                        }
+                        className="p-2 text-orange-500 hover:bg-orange-50 rounded-lg transition relative"
+                        title="Add / View Comments"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        {candidate.comments?.length > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5">
+                            {candidate.comments.length}
+                          </span>
+                        )}
+                      </button>
+
+                      <button
                         onClick={() => handleDelete(candidate._id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -864,6 +890,15 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         stageNameForHistory={pendingStatusChange?.stageNameForHistory}
         nextStageName={pendingStatusChange?.nextStageName}
       />
+      {/* Comment Modal */}
+      {commentModal && (
+        <CommentModal
+          candidateId={commentModal.candidateId}
+          candidateName={commentModal.candidateName}
+          existingComments={commentModal.comments}
+          onClose={() => setCommentModal(null)}
+        />
+      )}
     </div >
   );
 };

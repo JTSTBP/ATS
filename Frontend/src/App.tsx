@@ -34,6 +34,7 @@ import MentorLeaveApplications from "./components/MentorPanel/pages/LeaveApplica
 import { ClientsManager } from "./components/MentorPanel/pages/Clients/ClientsManager";
 
 import CandidatesList from "./components/MentorPanel/pages/Job/candidateslist";
+import TeamRecruiters from "./components/MentorPanel/pages/TeamRecruiters";
 import ManagerDashboard from "./components/ManagerPanel/Dashboard";
 import ManagerReports from "./components/ManagerPanel/Reports";
 import { MentorReports } from "./components/MentorPanel/pages/Reports";
@@ -92,6 +93,7 @@ function App() {
             <Route path="/Mentor/clients" element={<ClientsManager />} />
             <Route path="/Mentor/reports" element={<MentorReports />} />
             <Route path="/Mentor/activity" element={<ActivityLog />} />
+            <Route path="/Mentor/team" element={<TeamRecruiters />} />
             <Route path="/Mentor/profile" element={<Profile />} />
           </Route>
           {/* admin */}

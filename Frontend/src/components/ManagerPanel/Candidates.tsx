@@ -12,6 +12,7 @@ import {
   FileText,
   X,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import { getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
 import { formatDate } from "../../utils/dateUtils";
@@ -22,6 +23,7 @@ import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { useSearchParams } from "react-router-dom";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
+import { CommentModal } from "../Common/CommentModal";
 
 const SearchableSelect = ({
   options,
@@ -155,6 +157,9 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
     stageNameForHistory?: string;
     nextStageName?: string;
   } | null>(null);
+
+  // Comment Modal State
+  const [commentModal, setCommentModal] = useState<{ candidateId: string; candidateName: string; comments: any[] } | null>(null);
 
   useEffect(() => {
     const jobTitleFromUrl = searchParams.get("jobTitle");
@@ -778,8 +783,26 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => handleEdit(candidate)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit size={16} /></button>
-                          <button onClick={() => handleDelete(candidate._id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+                          <button onClick={() => handleEdit(candidate)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors" title="Edit"><Edit size={16} /></button>
+                          <button
+                            onClick={() =>
+                              setCommentModal({
+                                candidateId: candidate._id,
+                                candidateName: candidate.dynamicFields[nameKey] || "Candidate",
+                                comments: candidate.comments || [],
+                              })
+                            }
+                            className="p-2 text-orange-400 hover:text-orange-600 transition-colors relative"
+                            title="Comments"
+                          >
+                            <MessageSquare size={16} />
+                            {candidate.comments?.length > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5">
+                                {candidate.comments.length}
+                              </span>
+                            )}
+                          </button>
+                          <button onClick={() => handleDelete(candidate._id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors" title="Delete"><Trash2 size={16} /></button>
                         </div>
                       </td>
                     </tr>
@@ -861,6 +884,16 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         stageNameForHistory={pendingStatusChange?.stageNameForHistory}
         nextStageName={pendingStatusChange?.nextStageName}
       />
+
+      {/* Comment Modal */}
+      {commentModal && (
+        <CommentModal
+          candidateId={commentModal.candidateId}
+          candidateName={commentModal.candidateName}
+          existingComments={commentModal.comments}
+          onClose={() => setCommentModal(null)}
+        />
+      )}
     </div>
   );
 };

@@ -7,7 +7,8 @@ import {
   Mail,
   Phone,
   Upload,
-  ChevronDown
+  ChevronDown,
+  MessageSquare,
 } from "lucide-react";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useAuth } from "../../context/AuthProvider";
@@ -16,6 +17,7 @@ import { useSearchParams } from "react-router-dom";
 import { useJobContext } from "../../context/DataProvider";
 import CandidateModal from "./CandidateModal";
 import { StatusUpdateModal } from "../Common/StatusUpdateModal";
+import { CommentModal } from "../Common/CommentModal";
 import { formatDate } from "../../utils/dateUtils";
 import { getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
 import { toast } from "react-toastify";
@@ -150,6 +152,9 @@ export default function Candidates() {
     currentExpectedJoiningDate?: string;
   } | null>(null);
   const [statusLoading, setStatusLoading] = useState(false);
+
+  // Comment Modal State
+  const [commentModal, setCommentModal] = useState<{ candidateId: string; candidateName: string; comments: any[] } | null>(null);
 
   // Debounce Search
   useEffect(() => {
@@ -647,6 +652,21 @@ export default function Candidates() {
                           {candidate.status === "Rejected" && (candidate as any).rejectionReason && (
                             <div className="text-[10px] text-red-600 font-bold mt-1 uppercase">Reason: {(candidate as any).rejectionReason}</div>
                           )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCommentModal({
+                                candidateId: candidate._id as string,
+                                candidateName: (candidate.dynamicFields as any)?.[Object.keys(candidate.dynamicFields || {}).find((k) => k.toLowerCase().includes("name")) || ""] || "Candidate",
+                                comments: (candidate as any).comments || [],
+                              });
+                            }}
+                            className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-orange-500 hover:text-orange-700 transition relative"
+                            title="Add / View Comments"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            Comment{(candidate as any).comments?.length > 0 ? ` (${(candidate as any).comments.length})` : ""}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -754,6 +774,16 @@ export default function Candidates() {
         currentExpectedJoiningDate={pendingStatusChange?.currentExpectedJoiningDate}
         isLoading={statusLoading}
       />
+
+      {/* Comment Modal */}
+      {commentModal && (
+        <CommentModal
+          candidateId={commentModal.candidateId}
+          candidateName={commentModal.candidateName}
+          existingComments={commentModal.comments}
+          onClose={() => setCommentModal(null)}
+        />
+      )}
     </>
   );
 }

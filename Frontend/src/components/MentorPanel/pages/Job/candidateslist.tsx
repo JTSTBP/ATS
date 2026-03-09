@@ -1118,6 +1118,12 @@ const CandidatesList = () => {
                           </>
                         )}
                       </select>
+                      {candidate.notes && (
+                        <div className="mt-2 text-[10px] text-gray-500 italic font-medium line-clamp-2" title={candidate.notes}>
+                          <span className="font-bold text-gray-400 not-italic uppercase tracking-tighter mr-1 text-[9px]">Remarks:</span>
+                          {candidate.notes}
+                        </div>
+                      )}
 
                       {candidate.status === "Interviewed" && (
                         <button

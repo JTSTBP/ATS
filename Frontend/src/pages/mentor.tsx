@@ -6,10 +6,7 @@ import {
   LayoutDashboard,
   Users,
   FileText,
-  Settings,
   BarChart3,
-  Shield,
-  X,
   Briefcase,
   Calendar,
   Activity,
@@ -49,6 +46,7 @@ export default function MentorLayout() {
     { path: "/Mentor/clients", label: "Clients", icon: Building2 },
     { path: "/Mentor/reports", label: "Reports", icon: BarChart3 },
     { path: "/Mentor/activity", label: "Activity Log", icon: Activity },
+    { path: "/Mentor/team", label: "Team", icon: Users },
     { path: "/Mentor/profile", label: "Profile", icon: UserCircle },
   ];
 
