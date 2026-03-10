@@ -66,32 +66,30 @@ export default function Dashboard() {
     if (!candidates) return [];
 
     // Filter by Open Jobs
-    const openJobCandidates = candidates.filter(c => isOpenJobCandidate(c));
+    const total = candidates.filter(c => filterByRange(c.createdAt, startDate, endDate)).length;
 
-    const total = openJobCandidates.filter(c => filterByRange(c.createdAt, startDate, endDate)).length;
-
-    const shortlisted = openJobCandidates.filter((c) => {
+    const shortlisted = candidates.filter((c) => {
       const shortlistStatuses = ["Shortlisted", "Screen", "Screened"];
       if (!shortlistStatuses.includes(c.status || "")) return false;
       const ts = getStatusTimestamp(c, shortlistStatuses);
       return filterByRange(ts || c.createdAt, startDate, endDate);
     }).length;
 
-    const interviews = openJobCandidates.filter((c) => {
+    const interviews = candidates.filter((c) => {
       const interviewStatuses = ["Interview", "Interviewed"];
       if (!interviewStatuses.includes(c.status || "")) return false;
       const ts = getStatusTimestamp(c, interviewStatuses);
       return filterByRange(ts || c.createdAt, startDate, endDate);
     }).length;
 
-    const selectedMonthCount = openJobCandidates.filter((c) => {
+    const selectedMonthCount = candidates.filter((c) => {
       const selectedStatuses = ["Offer", "Selected"];
       if (!selectedStatuses.includes(c.status || "")) return false;
       const ts = getStatusTimestamp(c, selectedStatuses, c.selectionDate);
       return filterByRange(ts || c.createdAt, startDate, endDate);
     }).length;
 
-    const hiredCandidates = openJobCandidates.filter((c) => {
+    const hiredCandidates = candidates.filter((c) => {
       const hiredStatuses = ["Joined", "Hired"];
       if (!hiredStatuses.includes(c.status || "")) return false;
       const ts = getStatusTimestamp(c, hiredStatuses, c.joiningDate);
@@ -230,7 +228,6 @@ export default function Dashboard() {
           </div>
           <div className="space-y-4">
             {candidates
-              .filter(c => isOpenJobCandidate(c))
               .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
               .slice(0, 5)
               .map((candidate, index) => {
@@ -279,7 +276,7 @@ export default function Dashboard() {
           </div>
           <div className="space-y-4">
             {candidates
-              .filter((c) => c.status === "Shortlisted" && isOpenJobCandidate(c))
+              .filter((c) => c.status === "Shortlisted")
               .slice(0, 5)
               .map((candidate, index) => {
                 const name = candidate.dynamicFields?.candidateName ||

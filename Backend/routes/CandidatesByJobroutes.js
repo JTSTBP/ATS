@@ -1083,17 +1083,15 @@ router.get("/user/:userId", async (req, res) => {
       userId, page, limit, search, status, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate
     });
 
-
     // 1️⃣ Base Query: Candidates created by this user
     const query = { createdBy: userId };
 
     // 2️⃣ Filter by Status
     if (status && status !== "all" && status !== "All Status") {
-      // Handle special composite statuses from frontend if any, or just direct match
       query.status = new RegExp(`^${status}$`, "i");
     }
 
-    // 3️⃣ Search Filter (Name, Email, Phone, Skills, Job Title)
+    // 3️⃣ Search Filter
     if (search) {
       const searchRegex = new RegExp(search, "i");
       query.$or = [
@@ -1108,7 +1106,33 @@ router.get("/user/:userId", async (req, res) => {
       ];
     }
 
-    // Convert to Aggregation for Status History Logic
+    // A. Backward Compatibility / Non-Paginated Fetch
+    if (!page || !limit) {
+      const candidates = await Candidate.find(query)
+        .populate({
+          path: "jobId",
+          select: "title _id clientId status stages",
+          populate: {
+            path: "clientId",
+            select: "companyName"
+          }
+        })
+        .populate("createdBy", "name email reporter designation")
+        .sort({ createdAt: -1 });
+
+      const candidatesWithSignedUrls = candidates.map(candidate => {
+        const candidateObj = candidate.toObject();
+        return {
+          ...candidateObj,
+          resumeUrl: getSignedUrl(candidateObj.resumeUrl),
+          offerLetter: getSignedUrl(candidateObj.offerLetter)
+        };
+      });
+
+      return res.json({ success: true, candidates: candidatesWithSignedUrls });
+    }
+
+    // B. Paginated Logic (Aggregation)
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
@@ -1127,7 +1151,7 @@ router.get("/user/:userId", async (req, res) => {
                   $arrayElemAt: [
                     {
                       $filter: {
-                        input: "$statusHistory",
+                        input: { $ifNull: ["$statusHistory", []] },
                         as: "h",
                         cond: {
                           $cond: [
@@ -1199,7 +1223,7 @@ router.get("/user/:userId", async (req, res) => {
       // Status and Search (Remaining query logic)
       {
         $match: (() => {
-          const { createdBy, createdAt, joiningDate, selectionDate, ...rest } = query;
+          const { createdBy, ...rest } = query;
           return rest;
         })()
       },
@@ -1245,7 +1269,11 @@ router.get("/user/:userId", async (req, res) => {
     ];
 
     const result = await Candidate.aggregate(pipeline);
-    const paginatedCandidates = result[0].candidates;
+    const paginatedCandidates = result[0].candidates.map(candidate => ({
+      ...candidate,
+      resumeUrl: getSignedUrl(candidate.resumeUrl),
+      offerLetter: getSignedUrl(candidate.offerLetter)
+    }));
     const totalCandidates = result[0].totalCount[0] ? result[0].totalCount[0].count : 0;
 
     return res.json({

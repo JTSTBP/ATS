@@ -440,9 +440,8 @@ export default function PerformanceReportTable() {
                                 {(() => {
                                     const reportRows: any[] = [];
 
-                                    // Only show OPEN jobs
+                                    // Show jobs where recruiter is assigned OR has activity
                                     const relevantJobs = jobs.filter(job => {
-                                        if (job.status !== 'Open') return false;
                                         const isAssigned = isJobAssigned(job);
                                         const hasUploads = candidates.some(c => {
                                             const cJobId = typeof c.jobId === 'object' ? (c.jobId as any)?._id : c.jobId;
