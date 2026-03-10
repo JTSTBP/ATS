@@ -1415,7 +1415,7 @@ export default function ReportsTab() {
                 </th>
                 <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
                   <div className="flex items-center justify-between gap-2">
-                    <span>Source Date</span>
+                    <span>Date of Joining</span>
                     <button
                       onClick={() => { setOpenFilter(openFilter === 'daily_source' ? null : 'daily_source'); setFilterSearch(""); }}
                       className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_source.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
@@ -1528,7 +1528,9 @@ export default function ReportsTab() {
                     {reportRows.map((row: any, i: number) => (
                       <tr key={`${row.job._id}-${row.recruiter._id}-${row.sourceDate}-${i}`} className="hover:bg-slate-50/80 transition-colors group">
                         <td className="py-4 px-6 text-slate-600 text-xs font-bold">{row.dateReceived}</td>
-                        <td className="py-4 px-6 text-slate-600 text-xs font-bold">{row.sourceDate}</td>
+                        <td className="py-4 px-6 text-slate-600 text-xs font-bold">
+                          {formatDate(row?.recruiter?.dateOfJoining || row?.recruiter?.createdAt)}
+                        </td>
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-bold">
@@ -1757,7 +1759,7 @@ export default function ReportsTab() {
                           <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
                             <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10 shadow-sm">
                               <tr>
-                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Source Date</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Date of Joining</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Name</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Phone</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Recruiter</th>
@@ -1809,17 +1811,17 @@ export default function ReportsTab() {
                                         {candidate.status === 'Interviewed' && (
                                           <div className="flex flex-col gap-1">
                                             <span className="font-bold text-slate-700">R{candidate.interviewRound}</span>
-                                            <span className="text-slate-500">{candidate.interviewDate ? new Date(candidate.interviewDate).toLocaleDateString() : '-'}</span>
+                                            <span className="text-slate-500">{formatDate(candidate.interviewDate)}</span>
                                           </div>
                                         )}
                                         {candidate.status === 'Selected' && (
                                           <div className="flex flex-col gap-1">
-                                            <span className="font-bold text-slate-700">Select: {candidate.selectionDate ? new Date(candidate.selectionDate).toLocaleDateString() : '-'}</span>
+                                            <span className="font-bold text-slate-700">Select: {formatDate(candidate.selectionDate)}</span>
                                           </div>
                                         )}
                                         {candidate.status === 'Joined' && (
                                           <div className="flex flex-col gap-1">
-                                            <span className="font-bold text-slate-700">Join: {candidate.joiningDate ? new Date(candidate.joiningDate).toLocaleDateString() : '-'}</span>
+                                            <span className="font-bold text-slate-700">Join: {formatDate(candidate.joiningDate)}</span>
                                           </div>
                                         )}
                                         {candidate.status === 'Rejected' && (

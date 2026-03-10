@@ -825,7 +825,7 @@ export default function ManagerReports() {
                     <table className="w-full text-sm text-left">
                       <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0">
                         <tr>
-                          <th className="py-3 px-4 text-center">Source Date</th>
+                          <th className="py-3 px-4 text-center">Date of Joining</th>
                           <th className="py-3 px-4">Name</th>
                           <th className="py-3 px-4">Phone</th>
                           <th className="py-3 px-4">Recruiter</th>
