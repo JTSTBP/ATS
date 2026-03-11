@@ -104,12 +104,17 @@ router.get("/", async (req, res) => {
       }
       else if (userRole === "mentor") {
         // Mentor sees their own jobs OR jobs they are assigned to
+        // OR jobs assigned to any of their reportees (recruiters)
         if (userId) {
+          const reportees = await User.find({ reporter: userId }).select("_id");
+          const reporteeIds = reportees.map(u => u._id);
+          const allowedIds = [userId, ...reporteeIds];
+
           andConditions.push({
             $or: [
               { CreatedBy: userId },
-              { assignedRecruiters: userId },
-              { assignedMentors: userId }
+              { assignedMentors: userId },
+              { assignedRecruiters: { $in: allowedIds } }
             ]
           });
         }

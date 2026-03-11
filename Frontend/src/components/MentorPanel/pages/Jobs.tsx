@@ -104,9 +104,16 @@ export const JobsManager = ({
         // Manager: strictly see jobs CREATED by Manager + Mentors (direct reportees)
         isCreatorOrReportee = creatorId === user._id || directMentorIds.includes(creatorId);
         checkIds = directMentorIds; // For Mentors, check direct Mentors
+      } else if (user.designation === "Mentor") {
+        // Mentor: specifically see jobs created by themselves,
+        // OR where they are assigned as mentors,
+        // OR where they or their team are assigned as recruiters
+        isCreatorOrReportee = creatorId === user._id;
+        checkIds = []; // No extra checkIds for assignedMentors (only themselves)
       } else {
-        // Mentor/Recruiter
+        // Recruiter and others
         isCreatorOrReportee = creatorId === user._id || allReporteeIds.includes(creatorId);
+        checkIds = allReporteeIds;
       }
 
       // Visibility for Assigned Recruiters and Assigned Mentors
@@ -120,7 +127,7 @@ export const JobsManager = ({
 
       const isAssignedMentor = assignedMentors.some((mId: any) => {
         const id = typeof mId === 'object' ? mId._id : mId;
-        return id === user._id || checkIds.includes(id); // checkIds contains directMentors for Manager
+        return id === user._id || checkIds.includes(id);
       });
 
       return isCreatorOrReportee || isAssignedRecruiter || isAssignedMentor;
