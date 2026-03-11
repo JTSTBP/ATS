@@ -81,7 +81,20 @@ export const MentorReports = () => {
 
         const scopedJobs = jobs.filter((job: any) => {
             const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
-            return creatorId === user._id || allReporteeIds.includes(creatorId);
+            const assignedMentors = Array.isArray(job.assignedMentors)
+                ? job.assignedMentors.map((m: any) => (typeof m === 'object' ? m._id : m))
+                : [];
+            const assignedRecruiters = Array.isArray(job.assignedRecruiters)
+                ? job.assignedRecruiters.map((r: any) => (typeof r === 'object' ? r._id : r))
+                : job.assignedRecruiter
+                    ? [typeof job.assignedRecruiter === 'object' ? job.assignedRecruiter._id : job.assignedRecruiter]
+                    : [];
+
+            const isCreatorOrReportee = creatorId === user._id || allReporteeIds.includes(creatorId);
+            const isAssignedMentor = assignedMentors.includes(user._id);
+            const isAssignedRecruiter = assignedRecruiters.some((id: string) => id === user._id || allReporteeIds.includes(id));
+
+            return isCreatorOrReportee || isAssignedMentor || isAssignedRecruiter;
         });
 
         const openJobs = scopedJobs.filter((j: any) => j.status === 'Open');
@@ -99,7 +112,7 @@ export const MentorReports = () => {
 
         // Filter candidates by DATE RANGE + OPEN JOBS (for general stats)
         const candidatesInRange = scopedCandidates.filter(c =>
-            filterByRange(getStatusTimestamp(c, (c.status as string) || "New"), startDate, endDate) && isOpenJobCandidate(c)
+            filterByRange(getStatusTimestamp(c, (c.status as string) || "New") || null, startDate, endDate) && isOpenJobCandidate(c)
         );
 
         // --- 3. Calculate Overall Stats ---
@@ -111,7 +124,7 @@ export const MentorReports = () => {
                 isOpenJobCandidate(c)
             ).length,
             shortlisted: scopedCandidates.filter((c: any) =>
-                ['Shortlisted', 'Screen', 'Screened'].includes(c.status) &&
+                c.status && ['Shortlisted', 'Screen', 'Screened'].includes(c.status) &&
                 filterByRange(getStatusTimestamp(c, ['Shortlisted', 'Screen', 'Screened']), startDate, endDate) &&
                 isOpenJobCandidate(c)
             ).length,

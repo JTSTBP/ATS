@@ -98,7 +98,20 @@ export const Dashboard = () => {
 
     const scopedJobs = jobs.filter((job: any) => {
       const creatorId = typeof job.CreatedBy === 'object' ? job.CreatedBy?._id : job.CreatedBy;
-      return creatorId === user._id || allReporteeIds.includes(creatorId);
+      const assignedMentors = Array.isArray(job.assignedMentors)
+        ? job.assignedMentors.map((m: any) => (typeof m === 'object' ? m._id : m))
+        : [];
+      const assignedRecruiters = Array.isArray(job.assignedRecruiters)
+        ? job.assignedRecruiters.map((r: any) => (typeof r === 'object' ? r._id : r))
+        : job.assignedRecruiter
+          ? [typeof job.assignedRecruiter === 'object' ? job.assignedRecruiter._id : job.assignedRecruiter]
+          : [];
+
+      const isCreatorOrReportee = creatorId === user._id || allReporteeIds.includes(creatorId);
+      const isAssignedMentor = assignedMentors.includes(user._id);
+      const isAssignedRecruiter = assignedRecruiters.some((id: string) => id === user._id || allReporteeIds.includes(id));
+
+      return isCreatorOrReportee || isAssignedMentor || isAssignedRecruiter;
     });
 
     const scopedCandidates = candidates.filter((c: any) => {
@@ -137,7 +150,7 @@ export const Dashboard = () => {
     const remainingPositions = Math.max(0, totalPositionsGlobal - totalJoinedInOpenJobs);
 
     // C. Range-based Statistics
-    const candidatesInRange = scopedCandidates.filter(c => filterByRange(getStatusTimestamp(c, (c.status as string) || "New"), startDate, endDate) && isOpenJobCandidate(c));
+    const candidatesInRange = scopedCandidates.filter(c => filterByRange(getStatusTimestamp(c, (c.status as string) || "New") || null, startDate, endDate) && isOpenJobCandidate(c));
 
     const newStats: Stats = {
       totalJobs: openJobs.length,
@@ -224,7 +237,7 @@ export const Dashboard = () => {
       }
 
       // Shortlisted — filtered by when shortlist status was actually set
-      if (['Shortlisted', 'Screen', 'Screened'].includes(c.status)) {
+      if (c.status && ['Shortlisted', 'Screen', 'Screened'].includes(c.status)) {
         const shortlistedTs = getStatusTimestamp(c, ['Shortlisted', 'Screen', 'Screened']);
         if (shortlistedTs && filterByRange(shortlistedTs, startDate, endDate)) {
           recruiterStats[creatorId].shortlisted += 1;

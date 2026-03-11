@@ -762,10 +762,35 @@ router.get("/role-based-candidates", async (req, res) => {
     // 2️⃣ Construct Match Query
     const matchStage = {};
 
-    // A. Visibility Filter (Admin sees all, others strictly by creator)
+    // A. Visibility Filter (Admin sees all, others strictly by creator or assigned job)
     if (lowerDesignation !== "admin") {
       if (allowedUserIds && allowedUserIds.length > 0) {
-        matchStage.createdBy = { $in: allowedUserIds.map(id => new mongoose.Types.ObjectId(id)) };
+        const creatorCondition = {
+          createdBy: { $in: allowedUserIds.map(id => new mongoose.Types.ObjectId(id)) }
+        };
+
+        // For Mentors and Managers, also include candidates for jobs they are assigned to
+        if (lowerDesignation === "mentor" || lowerDesignation === "manager") {
+          const userIdStr = userId.toString();
+
+          // Find jobs where the user or their reportees are assigned
+          const assignedJobs = await Job.find({
+            $or: [
+              { assignedMentors: new mongoose.Types.ObjectId(userIdStr) },
+              { assignedRecruiters: { $in: allowedUserIds.map(id => new mongoose.Types.ObjectId(id)) } },
+              { assignedRecruiter: { $in: allowedUserIds.map(id => new mongoose.Types.ObjectId(id)) } }
+            ]
+          }).select('_id');
+
+          const assignedJobIds = assignedJobs.map(j => j._id);
+
+          matchStage.$or = [
+            creatorCondition,
+            { jobId: { $in: assignedJobIds } }
+          ];
+        } else {
+          matchStage.createdBy = creatorCondition.createdBy;
+        }
       } else if (allowedUserIds && allowedUserIds.length === 0) {
         // Safety: If somehow no users found, restrict to self
         matchStage.createdBy = new mongoose.Types.ObjectId(userId);
