@@ -55,7 +55,8 @@ export default function ReportsTab() {
     daily_recruiter: [],
     daily_client: [],
     daily_job: [],
-    daily_total: []
+    daily_total: [],
+    daily_reporter: []
   });
   const [filterSearch, setFilterSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
@@ -64,7 +65,8 @@ export default function ReportsTab() {
   const [dailyReportsSearch, setDailyReportsSearch] = useState({
     client: "",
     recruiter: "",
-    job: ""
+    job: "",
+    reporter: ""
   });
 
   useEffect(() => {
@@ -401,8 +403,10 @@ export default function ReportsTab() {
       const matchesClientSearch = dailyReportsSearch.client ? row.clientName.toLowerCase().includes(dailyReportsSearch.client.toLowerCase()) : true;
       const matchesRecruiterSearch = dailyReportsSearch.recruiter ? row.recruiter.name.toLowerCase().includes(dailyReportsSearch.recruiter.toLowerCase()) : true;
       const matchesJobSearch = dailyReportsSearch.job ? row.job.title.toLowerCase().includes(dailyReportsSearch.job.toLowerCase()) : true;
+      const matchesReporterSearch = dailyReportsSearch.reporter ? row.recruiter.reporter?.name?.toLowerCase().includes(dailyReportsSearch.reporter.toLowerCase()) : true;
+      const matchesDailyReporter = selectedFilters.daily_reporter.length > 0 ? (row.recruiter.reporter?.name && selectedFilters.daily_reporter.includes(row.recruiter.reporter.name)) : true;
 
-      return matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal && matchesLocalFilter && matchesSource && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch;
+      return matchesReq && matchesRecruiter && matchesClient && matchesJob && matchesTotal && matchesLocalFilter && matchesSource && matchesClientSearch && matchesRecruiterSearch && matchesJobSearch && matchesReporterSearch && matchesDailyReporter;
     });
 
     const totals = reportRows.reduce((acc, row) => {
@@ -433,6 +437,7 @@ export default function ReportsTab() {
       if (column !== 'daily_recruiter' && selectedFilters.daily_recruiter.length > 0 && !selectedFilters.daily_recruiter.includes(row.recruiter.name)) return false;
       if (column !== 'daily_client' && selectedFilters.daily_client.length > 0 && !selectedFilters.daily_client.includes(row.clientName)) return false;
       if (column !== 'daily_job' && selectedFilters.daily_job.length > 0 && !selectedFilters.daily_job.includes(row.job.title)) return false;
+      if (column !== 'daily_reporter' && selectedFilters.daily_reporter.length > 0 && (!row.recruiter.reporter?.name || !selectedFilters.daily_reporter.includes(row.recruiter.reporter.name))) return false;
       const filteredTotal = getTotalCandidates(row.jobCandidates, dlCandFilterMode, dlCandStartDate, dlCandEndDate);
       if (column !== 'daily_total' && selectedFilters.daily_total.length > 0 && !selectedFilters.daily_total.includes(filteredTotal.length.toString())) return false;
       return true;
@@ -457,6 +462,9 @@ export default function ReportsTab() {
         break;
       case 'daily_total':
         options = Array.from(new Set(relevantRows.map(r => getTotalCandidates(r.jobCandidates, dlCandFilterMode, dlCandStartDate, dlCandEndDate).length.toString()))).sort((a, b) => parseInt(a) - parseInt(b));
+        break;
+      case 'daily_reporter':
+        options = Array.from(new Set(relevantRows.map(r => r.recruiter.reporter?.name).filter(Boolean) as string[])).sort();
         break;
     }
     return options;
@@ -1349,6 +1357,22 @@ export default function ReportsTab() {
                 className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600"
               />
             </div>
+            <div className="relative group w-full sm:w-auto md:min-w-[200px]">
+              <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+              <select
+                value={dailyReportsSearch.reporter}
+                onChange={(e) => setDailyReportsSearch(prev => ({ ...prev, reporter: e.target.value }))}
+                className="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all w-full text-slate-600 appearance-none cursor-pointer"
+              >
+                <option value="">All Reporters</option>
+                {getDailyLineupOptions('daily_reporter').map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <Filter size={10} />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1441,6 +1465,21 @@ export default function ReportsTab() {
                   <FilterDropdown
                     column="daily_recruiter"
                     options={getDailyLineupOptions('daily_recruiter')}
+                  />
+                </th>
+                <th className="py-4 px-6 min-w-[150px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Reporter</span>
+                    <button
+                      onClick={() => { setOpenFilter(openFilter === 'daily_reporter' ? null : 'daily_reporter'); setFilterSearch(""); }}
+                      className={`p-1 rounded hover:bg-slate-200 transition-colors ${selectedFilters.daily_reporter.length > 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
+                    >
+                      <Filter size={12} fill={selectedFilters.daily_reporter.length > 0 ? "currentColor" : "none"} />
+                    </button>
+                  </div>
+                  <FilterDropdown
+                    column="daily_reporter"
+                    options={getDailyLineupOptions('daily_reporter')}
                   />
                 </th>
                 <th className="py-4 px-6 min-w-[180px] relative text-[10px] uppercase tracking-widest font-black text-slate-400">
@@ -1538,6 +1577,9 @@ export default function ReportsTab() {
                             </div>
                             <span className="text-slate-700 font-bold text-xs">{row?.recruiter?.name || 'Unknown'}</span>
                           </div>
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="text-slate-700 font-bold text-xs">{row?.recruiter?.reporter?.name || '-'}</span>
                         </td>
                         <td className="py-4 px-6 font-bold text-slate-700 text-xs">{row.clientName}</td>
                         <td className="py-4 px-6 text-slate-700 font-bold text-xs">{row.job.title}</td>
@@ -1759,12 +1801,12 @@ export default function ReportsTab() {
                           <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
                             <thead className="bg-slate-50 text-slate-700 font-semibold sticky top-0 z-10 shadow-sm">
                               <tr>
-                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Date of Joining</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Date of Upload</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Name</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Phone</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Recruiter</th>
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status</th>
-                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status Updated</th>
+                                <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Last Status Updated</th>
                                 {hasStatusDetails && <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500">Status Details</th>}
                                 <th className="py-4 px-6 text-xs uppercase tracking-wider font-black text-slate-500 min-w-[200px]">Notes</th>
                               </tr>
