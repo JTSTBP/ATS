@@ -119,6 +119,7 @@ export default function UserManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [showAppPassword, setShowAppPassword] = useState(false);
   const [reporterFilter, setReporterFilter] = useState("");
+  const [disabledFilter, setDisabledFilter] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPendingFetch, setIsPendingFetch] = useState(false);
 
@@ -176,24 +177,17 @@ export default function UserManagement() {
   useEffect(() => {
     setIsPendingFetch(true);
     const timer = setTimeout(() => {
-      fetchPaginatedUsers(
-        currentPage,
-        limit,
-        searchTerm,
-        effectiveRole,
-        adminFilter || "",
-        reporterFilter
-      ).finally(() => {
+      fetchPaginatedUsers(currentPage, limit, searchTerm, effectiveRole, adminFilter || "", reporterFilter, disabledFilter ? "true" : "").finally(() => {
         setIsPendingFetch(false);
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [currentPage, searchTerm, effectiveRole, adminFilter, reporterFilter]);
+  }, [currentPage, searchTerm, effectiveRole, adminFilter, reporterFilter, disabledFilter]);
 
   // Reset to page 1 when filters change (but not when page changes)
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, effectiveRole, adminFilter, reporterFilter]);
+  }, [searchTerm, effectiveRole, adminFilter, reporterFilter, disabledFilter]);
 
   // Fetch assigned jobs for recruiters in view
   useEffect(() => {
@@ -443,7 +437,7 @@ export default function UserManagement() {
             />
           </div>
 
-          <div className="w-full sm:w-56">
+                    <div className="w-full sm:w-56">
             <SearchableSelect
               options={[
                 { value: "", label: "All Reporters" },
@@ -465,6 +459,16 @@ export default function UserManagement() {
               placeholder="Filter by Reporter"
             />
           </div>
+          
+          <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+            <input 
+              type="checkbox" 
+              className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500" 
+              checked={disabledFilter}
+              onChange={(e) => setDisabledFilter(e.target.checked)}
+            />
+            Only Disabled
+          </label>
 
           <div className="flex items-center gap-2 order-first sm:order-last">
             <button

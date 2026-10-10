@@ -122,7 +122,8 @@ interface UserContextType {
     search?: string,
     role?: string,
     isAdmin?: string,
-    reporter?: string
+    reporter?: string,
+    disabled?: string
   ) => Promise<void>;
   toggleUserStatus: (id: string) => Promise<boolean>;
 }
@@ -224,12 +225,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     search = "",
     role = "",
     isAdmin = "",
-    reporter = ""
+    reporter = "",
+    disabled = ""
   ) => {
     try {
       setLoading(true);
       const res = await axios.get(`${API_BASE_URL}/api/users`, {
-        params: { page, limit, search, role, isAdmin, reporter },
+        params: { page, limit, search, role, isAdmin, reporter, disabled },
       });
 
       setPaginatedUsers(res.data.users);
