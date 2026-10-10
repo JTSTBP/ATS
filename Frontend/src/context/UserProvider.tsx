@@ -34,6 +34,11 @@ interface User {
   dateOfBirth?: string;
   appPassword?: string;
   isDisabled: boolean;
+  disabledAt?: string;
+  disabledBy?: {
+    _id: string;
+    name: string;
+  };
 }
 
 interface UserFormData {
@@ -125,7 +130,7 @@ interface UserContextType {
     reporter?: string,
     disabled?: string
   ) => Promise<void>;
-  toggleUserStatus: (id: string) => Promise<boolean>;
+  toggleUserStatus: (id: string, disabledBy?: string) => Promise<boolean>;
 }
 
 const API_BASE_URL =
@@ -248,15 +253,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const toggleUserStatus = async (id: string) => {
+  const toggleUserStatus = async (id: string, disabledBy?: string) => {
     try {
-      const res = await axios.patch(`${API_BASE_URL}/api/users/${id}/toggle-status`);
+      const res = await axios.patch(`${API_BASE_URL}/api/users/${id}/toggle-status`, { disabledBy });
       if (res.data.success) {
         setUsers((prev) =>
-          prev.map((u) => (u._id === id ? { ...u, isDisabled: res.data.isDisabled } : u))
+          prev.map((u) => (u._id === id ? { ...u, isDisabled: res.data.isDisabled, disabledBy: res.data.disabledBy, disabledAt: res.data.disabledAt } : u))
         );
         setPaginatedUsers((prev) =>
-          prev.map((u) => (u._id === id ? { ...u, isDisabled: res.data.isDisabled } : u))
+          prev.map((u) => (u._id === id ? { ...u, isDisabled: res.data.isDisabled, disabledBy: res.data.disabledBy, disabledAt: res.data.disabledAt } : u))
         );
         toast.success(res.data.message);
         return true;

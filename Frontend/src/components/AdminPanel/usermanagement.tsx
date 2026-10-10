@@ -3,6 +3,7 @@ import axios from "axios";
 import { Plus, X, Search, Edit, Trash, Check, Shield, Briefcase, User as UserIcon, Users, Phone, Mail, Calendar, Eye, EyeOff, Banknote, ChevronDown, ChevronUp, Loader2, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserContext } from "../../context/UserProvider";
+import { useAuth } from "../../context/AuthProvider";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
 
@@ -108,6 +109,7 @@ const SearchableSelect = ({
 export default function UserManagement() {
   const { users, loading, addUser, updateUser, deleteUser, paginatedUsers, pagination, fetchPaginatedUsers, toggleUserStatus } = useUserContext();
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -668,13 +670,25 @@ export default function UserManagement() {
 
                     {/* Status Column */}
                     <td className="px-4 sm:px-6 py-4 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs font-medium border ${user.isDisabled
-                        ? "bg-rose-50 text-rose-700 border-rose-100"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-100"
-                        }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${user.isDisabled ? "bg-rose-500" : "bg-emerald-500"}`}></span>
-                        {user.isDisabled ? "Disabled" : "Active"}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-full text-xs font-medium border ${user.isDisabled
+                          ? "bg-rose-50 text-rose-700 border-rose-100"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                          }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${user.isDisabled ? "bg-rose-500" : "bg-emerald-500"}`}></span>
+                          {user.isDisabled ? "Disabled" : "Active"}
+                        </span>
+                        {user.isDisabled && (user as any).disabledBy?.name && (
+                          <span className="text-[10px] text-rose-500 font-medium">
+                            by {(user as any).disabledBy.name}
+                            {(user as any).disabledAt && (
+                              <span className="text-slate-400 font-normal ml-1">
+                                on {new Date((user as any).disabledAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Actions Column */}
@@ -695,7 +709,7 @@ export default function UserManagement() {
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => toggleUserStatus(user._id)}
+                          onClick={() => toggleUserStatus(user._id, currentUser?._id)}
                           className={`p-2 rounded-lg transition-colors ${user.isDisabled
                             ? "text-emerald-500 hover:bg-emerald-50"
                             : "text-rose-500 hover:bg-rose-50"
