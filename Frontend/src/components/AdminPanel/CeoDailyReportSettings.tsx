@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Clock, Download, Eye, Mail, RefreshCw, Save, Send } from "lucide-react";
+import { Clock, Download, Eye, Mail, RefreshCw, Save, Send, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 
 const API_URL = import.meta.env.VITE_BACKEND_URL;
@@ -70,6 +70,9 @@ export default function CeoDailyReportSettings() {
   const [selectedReport, setSelectedReport] = useState<ReportLog | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState("");
+  const [deletingId, setDeletingId] = useState("");
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const loadSettings = async () => {
     const response = await axios.get(`${API_URL}/api/ceo-daily-reports/settings`);
@@ -81,7 +84,9 @@ export default function CeoDailyReportSettings() {
 
   const loadHistory = async () => {
     const response = await axios.get(`${API_URL}/api/ceo-daily-reports/history`);
-    setHistory(response.data.logs || []);
+    const logs = response.data.logs || [];
+    setHistory(logs);
+    setSelectedHistoryIds((current) => current.filter((id) => logs.some((log: ReportLog) => log._id === id)));
   };
 
   const refresh = async () => {
@@ -189,6 +194,67 @@ export default function CeoDailyReportSettings() {
     }
   };
 
+  const deleteReportHistory = async (report: ReportLog) => {
+    const reportLabel = report.reportSlot === "7PM" ? "7 PM" : "12 PM";
+    const confirmed = window.confirm(`Clear this ${reportLabel} report history for ${formatDate(report.reportDate)}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeletingId(report._id);
+    try {
+      await axios.delete(`${API_URL}/api/ceo-daily-reports/history/${report._id}`);
+      if (selectedReport?._id === report._id) setSelectedReport(null);
+      setHistory((current) => current.filter((item) => item._id !== report._id));
+      setSelectedHistoryIds((current) => current.filter((id) => id !== report._id));
+      toast.success("Report history cleared");
+    } catch (error) {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : "";
+      toast.error(message || "Unable to clear report history");
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  const toggleHistorySelection = (id: string) => {
+    setSelectedHistoryIds((current) =>
+      current.includes(id) ? current.filter((selectedId) => selectedId !== id) : [...current, id]
+    );
+  };
+
+  const toggleAllHistorySelection = () => {
+    const visibleIds = history.map((report) => report._id);
+    const allSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedHistoryIds.includes(id));
+    setSelectedHistoryIds(allSelected ? [] : visibleIds);
+  };
+
+  const bulkDeleteReportHistory = async () => {
+    if (selectedHistoryIds.length === 0) {
+      toast.info("Select report history rows first");
+      return;
+    }
+
+    const confirmed = window.confirm(`Clear ${selectedHistoryIds.length} selected report history record${selectedHistoryIds.length === 1 ? "" : "s"}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      const response = await axios.delete(`${API_URL}/api/ceo-daily-reports/history/bulk`, {
+        data: { ids: selectedHistoryIds },
+      });
+      const deletedIds = new Set(selectedHistoryIds);
+      if (selectedReport && deletedIds.has(selectedReport._id)) setSelectedReport(null);
+      setHistory((current) => current.filter((item) => !deletedIds.has(item._id)));
+      setSelectedHistoryIds([]);
+      toast.success(response.data.message || "Selected report history cleared");
+    } catch (error) {
+      const message = axios.isAxiosError(error) ? error.response?.data?.message : "";
+      toast.error(message || "Unable to clear selected report history");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const allHistorySelected = history.length > 0 && history.every((report) => selectedHistoryIds.includes(report._id));
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -267,12 +333,36 @@ export default function CeoDailyReportSettings() {
 
       <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 p-5">
-          <h2 className="font-black text-slate-900">Report History</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-black text-slate-900">Report History</h2>
+              <p className="mt-1 text-xs font-medium text-slate-500">
+                {selectedHistoryIds.length > 0 ? `${selectedHistoryIds.length} selected` : "Select rows to clear multiple history records"}
+              </p>
+            </div>
+            <button
+              onClick={bulkDeleteReportHistory}
+              disabled={selectedHistoryIds.length === 0 || bulkDeleting}
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bulkDeleting ? <RefreshCw size={16} className="animate-spin" /> : <Trash2 size={16} />}
+              Clear Selected
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[900px] w-full text-sm">
+          <table className="min-w-[960px] w-full text-sm">
             <thead className="bg-slate-50 text-left text-xs uppercase text-slate-500">
               <tr>
+                <th className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allHistorySelected}
+                    onChange={toggleAllHistorySelection}
+                    aria-label="Select all report history"
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Report</th>
                 <th className="px-4 py-3">Generated Time</th>
@@ -284,6 +374,15 @@ export default function CeoDailyReportSettings() {
             <tbody className="divide-y divide-slate-100">
               {history.map((report) => (
                 <tr key={report._id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedHistoryIds.includes(report._id)}
+                      onChange={() => toggleHistorySelection(report._id)}
+                      aria-label={`Select ${report.reportSlot} report from ${formatDate(report.reportDate)}`}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium text-slate-900">{formatDate(report.reportDate)}</td>
                   <td className="px-4 py-3">{report.reportSlot === "7PM" ? "7 PM" : "12 PM"}</td>
                   <td className="px-4 py-3">{formatTime(report.generatedAt)}</td>
@@ -294,12 +393,20 @@ export default function CeoDailyReportSettings() {
                       <button onClick={() => openReport(report._id)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="View report"><Eye size={16} /></button>
                       <button onClick={() => downloadReportPdf(report)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="Download PDF"><Download size={16} /></button>
                       <button onClick={() => sendAction("Send Again", `/api/ceo-daily-reports/history/${report._id}/resend`, {})} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="Send again"><Send size={16} /></button>
+                      <button
+                        onClick={() => deleteReportHistory(report)}
+                        disabled={deletingId === report._id}
+                        className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Clear history"
+                      >
+                        {deletingId === report._id ? <RefreshCw size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {history.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">No CEO daily reports generated yet.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">No CEO daily reports generated yet.</td></tr>
               )}
             </tbody>
           </table>
