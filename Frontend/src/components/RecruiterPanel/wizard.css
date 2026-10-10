@@ -1,0 +1,41 @@
+.wizard-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border-radius: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  padding: 2rem;
+  max-width: 620px;
+  margin: 2rem auto;
+  position: relative;
+}
+
+/* Gradient border effect using pseudo-element */
+.wizard-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #0ea5e9, #7c3aed, #10b981);
+  z-index: -1;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: destination-out;
+}
+
+/* Stage indicator styling */
+.wizard-card .stage-indicator {
+  font-size: 0.875rem;
+  color: #94a3b8; /* slate-400 */
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+/* Ensure inputs have glassy focus */
+.wizard-card input:focus,
+.wizard-card textarea:focus,
+.wizard-card select:focus {
+  outline: none;
+  ring: 2px solid #0ea5e9; /* blue-500 */
+  background: rgba(255, 255, 255, 0.12);
+}

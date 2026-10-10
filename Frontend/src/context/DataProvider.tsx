@@ -1,0 +1,386 @@
+import axios from "axios";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import { toast } from "react-toastify";
+
+const API_BASE_URL =
+  import.meta.env.VITE_BACKEND_URL;
+const API_URL = `${API_BASE_URL}/api/jobs`;
+
+export type Job = {
+  _id?: string;
+  title: string;
+  description: string;
+  department: string;
+  location: any[];
+  employmentType: string;
+  noOfPositions?: number;
+  status: string;
+  keySkills?: string[];
+  salary?: { min: string; max: string; currency: string };
+  experience?: { min: string; max: string; unit: string };
+  industry?: string;
+  functionalArea?: string;
+  education?: string[];
+  requirements?: string;
+  recruiterDetails?: { name: string; email: string; phone: string };
+  brandingOptions?: { isFeatured: boolean; isHighlighted: boolean };
+  screeningQuestions?: string[];
+  teamMembers?: string[];
+  assignedRecruiters?: string[];
+  leadRecruiter?: string;
+  createdAt?: string;
+  clientId?: any;
+  CreatedBy?: any;
+  candidateFields?: any[];
+  stages?: any[];
+  candidateCount?: number;
+  newResponses?: number;
+  shortlisted?: number;
+  interviewed?: number;
+  selected?: number;
+  joined?: number;
+  jdFile?: string;
+  jdFileName?: string;
+};
+
+type JobContextType = {
+  jobs: Job[];
+  loading: boolean;
+  error: string | null;
+  fetchJobs: () => Promise<void>;
+  fetchJobById: (id: string) => Promise<Job | null>;
+  createJob: (job: any) => Promise<void>;
+  updateJob: (id: string, job: Partial<Job>) => Promise<void>;
+  updateJobStatus: (id: string, status: string, userId: string) => Promise<void>;
+  deleteJob: (id: string, role: string) => Promise<void>;
+  jobsByUser: Job[];
+  fetchJobsByCreator: (userId: string) => Promise<void>;
+  assignedJobs: Job[];
+  fetchAssignedJobs: (recruiterId: string) => Promise<void>;
+  fetchPaginatedAssignedJobs: (
+    recruiterId: string,
+    page: number,
+    limit: number,
+    filters?: any
+  ) => Promise<void>;
+
+  // 🔹 Pagination
+  paginatedJobs: Job[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalJobs: number;
+  };
+  fetchPaginatedJobs: (
+    page: number,
+    limit: number,
+    filters?: {
+      search?: string;
+      clientSearch?: string;
+      status?: string;
+      userId?: string;
+      role?: string;
+    }
+  ) => Promise<void>;
+};
+
+const JobContext = createContext<JobContextType | undefined>(undefined);
+
+export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [jobsByUser, setJobsByUser] = useState<Job[]>([]);
+  const [assignedJobs, setAssignedJobs] = useState<Job[]>([]);
+
+  // Pagination State
+  const [paginatedJobs, setPaginatedJobs] = useState<Job[]>([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalJobs: 0,
+  });
+
+  // 🔹 Fetch paginated jobs
+  const fetchPaginatedJobs = useCallback(async (
+    page: number,
+    limit: number,
+    filters: any = {}
+  ) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit,
+        ...filters
+      };
+
+      const queryParams = new URLSearchParams(params as any).toString();
+      const res = await fetch(`${API_URL}?${queryParams}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setPaginatedJobs(data.jobs);
+        setPagination({
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalJobs: data.totalJobs
+        });
+      } else {
+        throw new Error(data.message || "Failed to load jobs");
+      }
+    } catch (err: any) {
+      setError(err.message);
+      toast.error("Failed to load jobs");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 🔹 Fetch all jobs
+  const fetchJobs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      if (data.success) setJobs(data.jobs);
+      else throw new Error(data.message || "Failed to fetch jobs");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 🔹 Fetch single job
+  const fetchJobById = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/${id}`);
+      const data = await res.json();
+      if (data.success) return data.job;
+      throw new Error(data.message);
+    } catch (err) {
+      console.error("Failed to fetch job:", err);
+      return null;
+    }
+  }, []);
+
+  // 🔹 Create a new job
+  const createJob = useCallback(async (jobData: any): Promise<void> => {
+    try {
+      setLoading(true);
+      const isFormData = jobData instanceof FormData;
+      const res = await fetch(`${API_URL}`, {
+        method: "POST",
+        headers: isFormData ? {} : { "Content-Type": "application/json" },
+        body: isFormData ? jobData : JSON.stringify(jobData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create job");
+      setJobs((prev) => [data.job, ...prev]);
+      toast.success("Job created successfully!");
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || "Failed to create job");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 🔹 Update a job
+  const updateJob = useCallback(async (id: string, jobData: any): Promise<void> => {
+    try {
+      setLoading(true);
+      const isFormData = jobData instanceof FormData;
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: isFormData ? {} : { "Content-Type": "application/json" },
+        body: isFormData ? jobData : JSON.stringify(jobData),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update job");
+      setJobs((prev) => prev.map((job) => (job._id === id ? data.job : job)));
+      toast.success("Job updated successfully!");
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || "Failed to update job");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const updateJobStatus = useCallback(async (id: string, status: string, userId: string): Promise<void> => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, UpdatedBy: userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to update job status");
+
+      // Update both lists to ensure UI consistency
+      setJobs((prev) => prev.map((job) => (job._id === id ? data.job : job)));
+      setPaginatedJobs((prev) => prev.map((job) => (job._id === id ? { ...job, status: data.job.status } : job)));
+
+      toast.success(`Job status updated to ${status}`);
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || "Failed to update job status");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 🔹 Delete a job
+  const deleteJob = useCallback(async (id: string, role: string): Promise<void> => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/${id}/${role}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to delete job");
+      setJobs((prev) => prev.filter((job) => job._id !== id));
+      toast.success(data.message || "Job deleted successfully!");
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || "Failed to delete job");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchJobsByCreator = useCallback(async (userId: string) => {
+    try {
+      setLoading(true);
+      const { data } = await axios.get(`${API_URL}/createdby/${userId}`);
+      setJobsByUser(data.jobs || []);
+    } catch (err: any) {
+      if (err.response?.status === 404) {
+        setJobsByUser([]);
+      } else {
+        setError(err.message || "Failed to fetch jobs by user");
+        console.error(err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 🔹 Fetch jobs assigned to a recruiter (Legacy/All)
+  const fetchAssignedJobs = useCallback(async (recruiterId: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_URL}/assigned/${recruiterId}`);
+      const data = await res.json();
+      if (data.success) {
+        setAssignedJobs(data.jobs);
+      } else {
+        setAssignedJobs([]);
+      }
+    } catch (err: any) {
+      console.error("Failed to fetch assigned jobs:", err);
+      setAssignedJobs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // 🔹 Fetch jobs assigned to a recruiter (Paginated)
+  const fetchPaginatedAssignedJobs = useCallback(async (
+    recruiterId: string,
+    page: number,
+    limit: number,
+    filters: any = {}
+  ) => {
+    setLoading(true);
+    try {
+      const params = {
+        page,
+        limit,
+        ...filters
+      };
+      const queryParams = new URLSearchParams(params as any).toString();
+      const res = await fetch(`${API_URL}/assigned/${recruiterId}?${queryParams}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setPaginatedJobs(data.jobs);
+        setPagination({
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalJobs: data.totalJobs
+        });
+      } else {
+        throw new Error(data.message || "Failed to load assigned jobs");
+      }
+
+    } catch (err: any) {
+      console.error("Failed to fetch assigned jobs:", err);
+      setError(err.message);
+      toast.error("Failed to load assigned jobs");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Auto-fetch jobs on mount
+  useEffect(() => {
+    fetchJobs();
+  }, [fetchJobs]);
+
+  const contextValue = useMemo(() => ({
+    jobs,
+    loading,
+    error,
+    fetchJobs,
+    fetchJobById,
+    createJob,
+    updateJob,
+    updateJobStatus,
+    deleteJob,
+    jobsByUser,
+    fetchJobsByCreator,
+    assignedJobs,
+    fetchAssignedJobs,
+    fetchPaginatedAssignedJobs,
+    paginatedJobs,
+    pagination,
+    fetchPaginatedJobs,
+  }), [
+    jobs,
+    loading,
+    error,
+    fetchJobs,
+    fetchJobById,
+    createJob,
+    updateJob,
+    updateJobStatus,
+    deleteJob,
+    jobsByUser,
+    fetchJobsByCreator,
+    assignedJobs,
+    fetchAssignedJobs,
+    fetchPaginatedAssignedJobs,
+    paginatedJobs,
+    pagination,
+    fetchPaginatedJobs,
+  ]);
+
+  return (
+    <JobContext.Provider value={contextValue}>
+      {children}
+    </JobContext.Provider>
+  );
+};
+
+// 🔹 Custom hook for using the context
+export const useJobContext = () => {
+  const context = useContext(JobContext);
+  if (!context)
+    throw new Error("useJobContext must be used within a JobProvider");
+  return context;
+};

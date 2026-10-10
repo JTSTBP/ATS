@@ -1,0 +1,540 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useJobContext } from "../../../context/DataProvider";
+import { useAuth } from "../../../context/AuthProvider";
+import { useCandidateContext } from "../../../context/CandidatesProvider";
+import { toast } from "react-toastify";
+import { Upload, ArrowLeft } from "lucide-react";
+import { formatDate } from "../../../utils/dateUtils";
+import { useUserContext } from "../../../context/UserProvider";
+import { allIndianCities } from "./data/locationData";
+
+export const CandidateForm = ({ isOpen, onClose, candidate }) => {
+  const { jobs, fetchJobs } = useJobContext();
+  const { user } = useAuth();
+  const { users } = useUserContext();
+  const { createCandidate, updateCandidate } = useCandidateContext();
+  const isFinance = user?.role === 'Finance' || user?.designation === 'Finance';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [selectedJob, setSelectedJob] = useState<any>(null);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [formData, setFormData] = useState({
+    jobId: "",
+    createdBy: user?._id,
+    dynamicFields: {},
+    linkedinUrl: "",
+    portfolioUrl: "",
+    notes: "",
+    resumeUrl: "",
+  });
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  // Initialize form when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (candidate) {
+      // Find the full job object from jobs list
+      const jobObj = jobs.find(
+        (j: any) => (j._id === candidate.jobId?._id || j._id === candidate.jobId)
+      );
+      setSelectedJob(jobObj || null);
+
+      // Merge job's candidateFields with existing values
+      const dynamicFields = {};
+      jobObj?.candidateFields?.forEach((field) => {
+        if (field.name) {
+          dynamicFields[field.name] =
+            candidate.dynamicFields?.[field.name] || "";
+        }
+      });
+
+      setFormData({
+        jobId: jobObj?._id || candidate.jobId,
+        createdBy: candidate.createdBy?._id || user?._id,
+        dynamicFields,
+        linkedinUrl: candidate.linkedinUrl || "",
+        portfolioUrl: candidate.portfolioUrl || "",
+        notes: candidate.notes || "",
+        resumeUrl: candidate.resumeUrl || "",
+      });
+    } else {
+      // CREATE MODE
+      setSelectedJob(null);
+      setFormData({
+        jobId: "",
+        createdBy: user?._id,
+        dynamicFields: {},
+        linkedinUrl: "",
+        portfolioUrl: "",
+        notes: "",
+        resumeUrl: "",
+      });
+    }
+  }, [isOpen, candidate, jobs, user?._id]);
+
+  let filteredJobs: any[] = [];
+  const designation = user?.designation?.toLowerCase() || "";
+
+  if (designation === "admin" || designation === "finance") {
+    // ADMIN or FINANCE → Get ALL jobs
+    filteredJobs = jobs;
+
+  } else if (designation === "manager") {
+    // MANAGER → Own jobs + jobs created by ALL reportees (mentors + their recruiters)
+
+    const isReportee = (u: any, parentId: string) => {
+      if (!parentId) return false;
+      const pidStr = String(parentId);
+      const isDirect = String(u?.reporter?._id || u?.reporter) === pidStr;
+      const isSecondary = Array.isArray(u?.secondary_managers) && 
+        u.secondary_managers.some((sm: any) => String(sm?._id || sm) === pidStr);
+      return isDirect || isSecondary;
+    };
+
+    // 1. Find direct reportees (mentors + any direct recruiters)
+    const directReportees = users.filter((u) => isReportee(u, user?._id));
+    let allReporteeIds = directReportees.map((u) => u._id);
+
+    // 2. Also include 2nd-level reportees (recruiters under mentors)
+    directReportees.forEach((reportee) => {
+      const subReportees = users.filter((u) => isReportee(u, reportee._id));
+      allReporteeIds = [...allReporteeIds, ...subReportees.map((u) => u._id)];
+    });
+
+    // 3. Filter jobs
+    filteredJobs = jobs.filter((job) => {
+      const createdById = job?.CreatedBy?._id || job?.CreatedBy;
+      return createdById === user?._id || allReporteeIds.includes(createdById);
+    });
+
+
+  } else if (designation === "mentor") {
+
+    const isReportee = (u: any, parentId: string) => {
+      if (!parentId) return false;
+      const isDirect = u?.reporter?._id === parentId || u?.reporter === parentId;
+      const isSecondary = Array.isArray(u?.secondary_managers) && 
+        u.secondary_managers.some((sm: any) => (sm?._id || sm) === parentId);
+      return isDirect || isSecondary;
+    };
+
+    // 1️⃣ Get all users reporting to this mentor
+    const mentorReportees = users.filter(
+      (u) => isReportee(u, user?._id)
+    );
+
+    const mentorReporteeIds = mentorReportees.map((u) => u._id);
+
+    filteredJobs = jobs.filter((job) => {
+      const createdById =
+        job?.CreatedBy?._id || job?.CreatedBy;
+
+      // 2️⃣ Mentor created this job
+      const isCreatedByMentor = createdById === user?._id;
+
+      // 3️⃣ Job assigned to any mentor reportee
+      const isJobAssignedToMentorTeam =
+        Array.isArray(job.assignedRecruiters) &&
+        job.assignedRecruiters.some(
+          (r: any) => mentorReporteeIds.includes(r._id)
+        );
+
+      // 4️⃣ Final allow-or-deny
+      return isCreatedByMentor || isJobAssignedToMentorTeam;
+    });
+
+  } else if (designation === "recruiter") {
+    // RECRUITER → Only jobs created by or assigned to user AND must be "Open"
+    filteredJobs = jobs.filter((job) => {
+      const isCreatedByUser = job?.CreatedBy === user?._id || job?.CreatedBy?._id === user?._id;
+
+      const isAssignedToUser =
+        Array.isArray(job.assignedRecruiters) &&
+        job.assignedRecruiters.some(
+          (r: any) => (r._id === user?._id || r === user?._id)
+        );
+
+      return (isCreatedByUser || isAssignedToUser) && job.status === "Open";
+    });
+
+  } else {
+    // DEFAULT → Only jobs created by user
+    filteredJobs = jobs.filter(
+      (job) => job?.CreatedBy === user?._id || job?.CreatedBy?._id === user?._id
+    );
+  }
+
+
+  const handleJobChange = (e) => {
+    const jobId = e.target.value;
+    const jobObj = jobs.find((j: any) => j._id === jobId) || null;
+    setSelectedJob(jobObj);
+
+    setFormData((prev) => ({
+      ...prev,
+      jobId,
+      dynamicFields: jobObj?.candidateFields
+        ? jobObj.candidateFields.reduce((acc: any, field: any) => {
+          if (field.name) {
+            // Keep existing value if editing, else initialize empty
+            acc[field.name] = candidate?.dynamicFields?.[field.name] || "";
+          }
+          return acc;
+        }, {})
+        : {},
+    }));
+  };
+
+  const handleDynamicFieldChange = (fieldName, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      dynamicFields: { ...prev.dynamicFields, [fieldName]: value },
+    }));
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase();
+    const allowedExtensions = ['pdf', 'doc', 'docx'];
+
+    if (!allowedExtensions.includes(fileExtension || "")) {
+      toast.error('Only PDF and Word documents (.doc, .docx) are allowed for resumes.');
+      e.target.value = ''; // Clear the input
+      return;
+    }
+
+    setResumeFile(file);
+    setFormData((prev) => ({ ...prev, resumeUrl: file.name }));
+  };
+
+  const renderDynamicField = (field) => {
+    if (!field.name) return null;
+
+    const value = formData.dynamicFields[field.name] || "";
+
+    if (field.name === 'currentLocation' || field.name === 'preferredLocation') {
+      return (
+        <select
+          className="w-full p-2 border rounded-lg bg-white"
+          value={value}
+          required={!isFinance && field.required}
+          onChange={(e) =>
+            handleDynamicFieldChange(field.name, e.target.value)
+          }
+        >
+          <option value="">Select</option>
+          {allIndianCities.map((city, idx) => (
+            <option key={idx} value={city.name}>
+              {city.name}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    switch (field.type) {
+      case "text":
+      case "email":
+      case "tel":
+      case "number":
+        return (
+          <input
+            type={field.type}
+            className="w-full p-2 border rounded-lg"
+            value={value}
+            required={!isFinance && field.required}
+            onChange={(e) =>
+              handleDynamicFieldChange(field.name, e.target.value)
+            }
+          />
+        );
+
+      case "longtext":
+        return (
+          <textarea
+            className="w-full p-2 border rounded-lg"
+            value={value}
+            required={!isFinance && field.required}
+            rows={3}
+            onChange={(e) =>
+              handleDynamicFieldChange(field.name, e.target.value)
+            }
+          />
+        );
+
+      case "select":
+        return (
+          <select
+            className="w-full p-2 border rounded-lg"
+            value={value}
+            required={!isFinance && field.required}
+            onChange={(e) =>
+              handleDynamicFieldChange(field.name, e.target.value)
+            }
+          >
+            <option value="">Select</option>
+            {field.options?.map((op) => (
+              <option key={op} value={op}>
+                {op}
+              </option>
+            ))}
+          </select>
+        );
+
+      case "tags":
+        return (
+          <input
+            type="text"
+            className="w-full p-2 border rounded-lg"
+            placeholder="Comma separated values"
+            required={!isFinance && field.required}
+            value={value}
+            onChange={(e) =>
+              handleDynamicFieldChange(field.name, e.target.value)
+            }
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      let result;
+      if (candidate?._id) {
+        result = await updateCandidate(candidate._id, formData, resumeFile);
+      } else {
+        result = await createCandidate(formData, resumeFile);
+      }
+
+      if (result) {
+        toast.success(candidate ? "Candidate updated!" : "Candidate created!");
+        setSelectedJob(null);
+        setFormData({
+          jobId: "",
+          createdBy: user?._id,
+          dynamicFields: {},
+          linkedinUrl: "",
+          portfolioUrl: "",
+          notes: "",
+          resumeUrl: "",
+        });
+        onClose();
+      }
+    } catch (error) {
+      console.error("Form submit error:", error);
+      toast.error("An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  // Utility function to format field names professionally
+  const formatFieldName = (fieldName) => {
+    // Handle special cases like CTC
+    if (fieldName.toLowerCase().includes('ctc')) {
+      return fieldName.replace(/ctc/i, 'CTC')
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, (str) => str.toUpperCase())
+        .trim();
+    }
+
+    // Convert camelCase/snake_case to Sentence Case
+    return fieldName
+      .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+      .replace(/_/g, ' ') // Replace underscores with spaces
+      .replace(/^./, (str) => str.toUpperCase()) // Capitalize first letter
+      .trim();
+  };
+
+  return (
+    <div className="bg-white max-w-4xl mx-auto p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 animate-fadeIn">
+      <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
+        <h2 className="text-2xl font-bold text-gray-800">
+          {candidate ? "Edit Candidate Application" : "Candidate Application Form"}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Back to Candidates
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Job Selection */}
+            <div>
+              <h3 className="font-semibold mb-2 text-lg">Job Details</h3>
+              <label>Select Job Role {!isFinance && <span className="text-red-500">*</span>}</label>
+              <select
+                className="w-full p-2 border rounded-lg"
+                value={formData.jobId}
+                onChange={handleJobChange}
+                required={!isFinance}
+              >
+                <option value="">Select Job</option>
+                {filteredJobs.map((job) => (
+                  <option key={job._id} value={job._id}>
+                    {job.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Dynamic Fields */}
+            {selectedJob?.candidateFields?.length > 0 && (
+              <div className="border p-4 rounded-lg">
+                <h3 className="font-semibold text-lg mb-3">
+                  {selectedJob.title} Specific Fields
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {selectedJob.candidateFields.map((field) => (
+                    <div key={field.id || field.name}>
+                      <label className="block mb-1 text-sm font-medium">
+                        {formatFieldName(field.name)}{" "}
+                        {!isFinance && field.required && (
+                          <span className="text-red-500">*</span>
+                        )}
+                      </label>
+                      {renderDynamicField(field)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Personal Details */}
+            <div>
+              <h3 className="font-semibold mb-2 text-lg">Personal Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium">
+                    LinkedIn Profile URL
+                  </label>
+                  <input
+                    type="url"
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="https://linkedin.com/in/username"
+                    value={formData.linkedinUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, linkedinUrl: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium">
+                    Portfolio / Website
+                  </label>
+                  <input
+                    type="url"
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="https://yourportfolio.com"
+                    value={formData.portfolioUrl}
+                    onChange={(e) =>
+                      setFormData({ ...formData, portfolioUrl: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="col-span-1 md:col-span-2">
+                  <label className="block text-sm font-medium">Notes</label>
+                  <textarea
+                    rows={3}
+                    className="w-full p-2 border rounded-lg"
+                    placeholder="Add any notes..."
+                    value={formData.notes}
+                    onChange={(e) =>
+                      setFormData({ ...formData, notes: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* Resume Upload */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium">Resume / CV</label>
+                <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-slate-100 rounded-lg"
+                  >
+                    Upload Resume
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  {formData.resumeUrl && (
+                    <span className="text-green-600 text-sm">
+                      Resume uploaded
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Status History Section */}
+            {candidate?.statusHistory && candidate.statusHistory.length > 0 && (
+              <div className="border p-4 rounded-lg">
+                <h3 className="font-semibold text-lg mb-3">Status History</h3>
+                <div className="space-y-4">
+                  <div className="relative border-l-2 border-slate-200 ml-3 space-y-6">
+                    {candidate.statusHistory.slice().reverse().map((history: any, index: number) => (
+                      <div key={index} className="relative pl-6">
+                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-sm"></div>
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start">
+                          <div>
+                            <span className="inline-block px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-700 mb-1">
+                              {history.status}
+                            </span>
+                            <p className="text-sm text-slate-600 mt-1">
+                              {history.comment || <span className="italic text-slate-400">No comment provided</span>}
+                            </p>
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1 sm:mt-0 text-right">
+                            <p>{formatDate(history.timestamp)}</p>
+                            <p>{new Date(history.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                            <p className="text-slate-500 font-medium mt-0.5">
+                              by {history.updatedBy?.name || "Unknown"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`w-full bg-blue-600 font-bold text-white py-2 rounded-lg mt-4 hover:bg-blue-700 transition flex items-center justify-center gap-2 ${isSubmitting ? "opacity-70 cursor-not-allowed" : ""}`}
+            >
+              {isSubmitting && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {isSubmitting ? "Submitting..." : (candidate ? "Update Candidate" : "Submit Application")}
+            </button>
+          </form>
+    </div>
+  );
+};
