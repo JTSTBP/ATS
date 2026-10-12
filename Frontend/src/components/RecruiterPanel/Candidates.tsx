@@ -396,6 +396,7 @@ export default function Candidates() {
                     "Rejected",
                     "Dropped",
                     "Hold",
+                    "Not responding",
                   ].map((status) => (
                     <button
                       key={status}

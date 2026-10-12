@@ -533,6 +533,7 @@ export const ApplicationForm = ({
                 <option value="Selected">Selected</option>
                 <option value="Joined">Joined</option>
                 <option value="Rejected">Rejected</option>
+                <option value="Not responding">Not responding</option>
               </select>
             </div>
 

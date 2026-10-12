@@ -688,7 +688,8 @@ const CandidatesList = () => {
               { id: 'Interviewed', label: 'Interviewed' },
               { id: 'Selected', label: 'Selected' },
               { id: 'Joined', label: 'Joined' },
-              { id: 'Rejected', label: 'Rejected' }
+              { id: 'Rejected', label: 'Rejected' },
+              { id: 'Not responding', label: 'Not responding' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1189,12 +1190,14 @@ const CandidatesList = () => {
                             <option value="Selected">Selected</option>
                             <option value="Joined">Joined</option>
                             <option value="Hold">Hold</option>
+                            <option value="Not responding">Not responding</option>
                             <option value="Dropped">Dropped</option>
                           </>
                         ) : candidate.status === "Joined" ? (
                           <>
                             <option value="Joined">Joined</option>
                             <option value="Dropped">Dropped</option>
+                            <option value="Not responding">Not responding</option>
                           </>
                         ) : candidate.status === "Interviewed" ? (
                           <>
@@ -1215,6 +1218,7 @@ const CandidatesList = () => {
                             })()}
                             <option value="Rejected">Rejected</option>
                             <option value="Hold">Hold</option>
+                            <option value="Not responding">Not responding</option>
                             <option value="Dropped">Dropped</option>
                           </>
                         ) : (
@@ -1227,6 +1231,7 @@ const CandidatesList = () => {
                             <option value="Rejected">Rejected</option>
                             <option value="Dropped">Dropped</option>
                             <option value="Hold">Hold</option>
+                            <option value="Not responding">Not responding</option>
                           </>
                         )}
                       </select>

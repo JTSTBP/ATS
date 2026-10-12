@@ -26,6 +26,7 @@ export const ApplicationCard = ({
     "Selected",
     "Joined",
     "Rejected",
+    "Not responding",
   ];
   const toggleNotes = () => setShowNotes(!showNotes);
 

@@ -95,6 +95,7 @@ export const ApplicationsManager = () => {
     Selected: finalApplications.filter((a) => a.status === "Selected"),
     Joined: finalApplications.filter((a) => a.status === "Joined"),
     Rejected: finalApplications.filter((a) => a.status === "Rejected"),
+    "Not responding": finalApplications.filter((a) => a.status === "Not responding"),
   };
 
   const sortedGroups = Object.entries(groupedByStatus).sort((a, b) => {
@@ -167,6 +168,7 @@ export const ApplicationsManager = () => {
             <option value="Selected">Selected</option>
             <option value="Joined">Joined</option>
             <option value="Rejected">Rejected</option>
+            <option value="Not responding">Not responding</option>
           </select>
 
           <select
@@ -189,6 +191,7 @@ export const ApplicationsManager = () => {
             Selected: "from-purple-400 to-purple-500",
             Joined: "from-green-400 to-green-500",
             Rejected: "from-red-400 to-red-500",
+            "Not responding": "from-slate-400 to-slate-500",
           };
 
           return (

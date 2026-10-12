@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import {
+  AlertTriangle,
   ArrowLeft,
   CalendarClock,
   CheckCircle,
+  Copy,
+  ExternalLink,
   Eye,
   Mail,
   MessageCircle,
@@ -14,6 +17,7 @@ import {
   Search,
   Send,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 
@@ -121,9 +125,50 @@ export default function FollowUps() {
     recipient: "",
     subject: "",
     body: "",
+    htmlBody: "",
   });
 
+  const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
+  const [duplicateCheckLoading, setDuplicateCheckLoading] = useState(false);
+  const [duplicateModalCandidate, setDuplicateModalCandidate] = useState<any | null>(null);
+  const [candidateFilter, setCandidateFilter] = useState<"all" | "duplicates" | "mine">("all");
+  const [candidateSearch, setCandidateSearch] = useState("");
+
   const selectedCandidateId = selectedCandidate?._id;
+
+  useEffect(() => {
+    if (modal !== "candidate" || !selectedRequirement) {
+      setDuplicateWarning(null);
+      return;
+    }
+    const email = candidateForm.email?.trim();
+    const phone = candidateForm.phone?.trim();
+    if (!email && !phone) {
+      setDuplicateWarning(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        setDuplicateCheckLoading(true);
+        const { data } = await axios.get(
+          `${API_URL}/requirements/${selectedRequirement._id}/candidates/check-duplicate`,
+          { params: { email, phone } }
+        );
+        if (data.hasDuplicate) {
+          setDuplicateWarning(data);
+        } else {
+          setDuplicateWarning(null);
+        }
+      } catch {
+        // ignore check error
+      } finally {
+        setDuplicateCheckLoading(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [candidateForm.email, candidateForm.phone, modal, selectedRequirement]);
 
   const loadRequirements = async () => {
     setLoading(true);
@@ -200,12 +245,34 @@ export default function FollowUps() {
     return followUps.filter((item) => item.requirementId?._id === selectedRequirement._id || item.requirementId === selectedRequirement._id);
   }, [followUps, selectedRequirement]);
 
-  const resetCandidateForm = () => setCandidateForm({
-    candidateName: "",
-    email: "",
-    phone: "",
-    resume: null,
-  });
+  const filteredCandidates = useMemo(() => {
+    return candidates.filter((candidate) => {
+      if (candidateFilter === "duplicates" && !candidate.isDuplicate) return false;
+      if (candidateFilter === "mine" && !candidate.isOwner) return false;
+      if (candidateSearch.trim()) {
+        const query = candidateSearch.toLowerCase();
+        const matchName = String(candidate.name || "").toLowerCase().includes(query);
+        const matchEmail = String(candidate.email || "").toLowerCase().includes(query);
+        const matchPhone = String(candidate.phone || "").toLowerCase().includes(query);
+        const matchRecruiter = String(candidate.addedBy?.name || "").toLowerCase().includes(query);
+        const matchCompany = String(candidate.currentCompany || "").toLowerCase().includes(query);
+        if (!matchName && !matchEmail && !matchPhone && !matchRecruiter && !matchCompany) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [candidates, candidateFilter, candidateSearch]);
+
+  const resetCandidateForm = () => {
+    setCandidateForm({
+      candidateName: "",
+      email: "",
+      phone: "",
+      resume: null,
+    });
+    setDuplicateWarning(null);
+  };
 
   const addCandidate = async () => {
     if (!selectedRequirement) return;
@@ -216,8 +283,12 @@ export default function FollowUps() {
         if (key === "resume" && value) formData.append("resume", value);
         else if (key !== "resume") formData.append(key, value || "");
       });
-      await axios.post(`${API_URL}/requirements/${selectedRequirement._id}/candidates`, formData);
-      toast.success("Candidate added");
+      const { data } = await axios.post(`${API_URL}/requirements/${selectedRequirement._id}/candidates`, formData);
+      if (data.isDuplicate) {
+        toast.info(data.message || `Candidate profile added! (Previously added by ${data.previouslyAddedBy})`);
+      } else {
+        toast.success(data.message || "Candidate added successfully");
+      }
       setModal("");
       resetCandidateForm();
       await refreshCurrent();
@@ -292,6 +363,7 @@ export default function FollowUps() {
       ...prev,
       subject: template.subject || prev.subject,
       body: template.body || "",
+      htmlBody: template.htmlBody || "",
       recipient: prev.recipient || (modal === "email" ? selectedCandidate?.email : selectedCandidate?.phone) || "",
     }));
   };
@@ -420,50 +492,233 @@ export default function FollowUps() {
   };
 
   const CandidatesTable = () => (
-    <div className="overflow-x-auto">
-      <table className="min-w-[1100px] w-full text-left text-sm">
-        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr>
-            <th className="px-4 py-3">Candidate</th>
-            <th className="px-4 py-3">Contact</th>
-            <th className="px-4 py-3">Experience</th>
-            <th className="px-4 py-3">Company</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Last Call</th>
-            <th className="px-4 py-3">Next Follow-up</th>
-            <th className="px-4 py-3 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100">
-          {candidates.map((candidate) => (
-            <tr key={candidate._id} className="hover:bg-slate-50">
-              <td className="px-4 py-3 font-bold text-slate-900">
-                {candidate.name}
-                {candidate.resumeUrl && <a href={candidate.resumeUrl} target="_blank" className="ml-2 text-xs text-blue-600">Resume</a>}
-              </td>
-              <td className="px-4 py-3 text-slate-600">
-                <div>{candidate.email || "-"}</div>
-                <div className="text-xs text-slate-400">{candidate.phone || "-"}</div>
-              </td>
-              <td className="px-4 py-3">{candidate.experience || "-"}</td>
-              <td className="px-4 py-3">{candidate.currentCompany || "-"}</td>
-              <td className="px-4 py-3"><span className={statusBadge(candidate.status)}>{candidate.status}</span></td>
-              <td className="px-4 py-3">{candidate.lastCall ? `${candidate.lastCall.status} (${formatDate(candidate.lastCall.callDate)})` : "-"}</td>
-              <td className="px-4 py-3">{candidate.nextFollowUp ? `${candidate.nextFollowUp.type} - ${formatDate(candidate.nextFollowUp.dueDate)} ${candidate.nextFollowUp.dueTime}` : "-"}</td>
-              <td className="px-4 py-3">
-                <div className="flex justify-end gap-2">
-                  <button onClick={() => openCandidateContext(candidate, "call")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="Call"><Phone size={16} /></button>
-                  <button onClick={() => { openCandidateContext(candidate, "email"); setComposer((p: any) => ({ ...p, recipient: candidate.email || "" })); }} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="Email"><Mail size={16} /></button>
-                  <button onClick={() => { openCandidateContext(candidate, "whatsapp"); setComposer((p: any) => ({ ...p, recipient: candidate.phone || "" })); }} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="WhatsApp"><MessageCircle size={16} /></button>
-                  <button onClick={() => openCandidateContext(candidate, "followup")} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="Follow-up"><CalendarClock size={16} /></button>
-                  <button onClick={() => { openCandidateContext(candidate); setActiveTab("Activity"); }} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100" title="View"><Eye size={16} /></button>
-                </div>
-              </td>
+    <div className="space-y-4">
+      {/* Filters and search toolbar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setCandidateFilter("all")}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              candidateFilter === "all"
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            All Candidates ({candidates.length})
+          </button>
+          <button
+            onClick={() => setCandidateFilter("duplicates")}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              candidateFilter === "duplicates"
+                ? "bg-amber-600 text-white shadow-sm"
+                : "bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200"
+            }`}
+          >
+            <AlertTriangle size={13} />
+            Duplicates ({candidates.filter((c) => c.isDuplicate).length})
+          </button>
+          <button
+            onClick={() => setCandidateFilter("mine")}
+            className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              candidateFilter === "mine"
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200"
+            }`}
+          >
+            My Added ({candidates.filter((c) => c.isOwner).length})
+          </button>
+        </div>
+        <div className="relative">
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={candidateSearch}
+            onChange={(e) => setCandidateSearch(e.target.value)}
+            placeholder="Search candidate, phone, or added by..."
+            className="w-full sm:w-64 rounded-lg border border-slate-200 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-[1180px] w-full text-left text-sm">
+          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+            <tr>
+              <th className="px-4 py-3">Candidate</th>
+              <th className="px-4 py-3">Contact</th>
+              <th className="px-4 py-3">Added By</th>
+              <th className="px-4 py-3">Experience</th>
+              <th className="px-4 py-3">Company</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Last Call</th>
+              <th className="px-4 py-3">Next Follow-up</th>
+              <th className="px-4 py-3 text-right">Actions</th>
             </tr>
-          ))}
-          {candidates.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-500">No candidates added yet.</td></tr>}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {filteredCandidates.map((candidate) => (
+              <tr
+                key={candidate._id}
+                className={`transition-colors ${
+                  candidate.isDuplicate ? "bg-amber-50/25 hover:bg-amber-50/50" : "hover:bg-slate-50"
+                }`}
+              >
+                <td className="px-4 py-3">
+                  <div className="font-bold text-slate-900 flex items-center gap-2">
+                    <span>{candidate.name}</span>
+                    {candidate.resumeUrl && (
+                      <a
+                        href={candidate.resumeUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-blue-600 hover:underline inline-flex items-center gap-0.5 font-semibold"
+                      >
+                        Resume <ExternalLink size={10} />
+                      </a>
+                    )}
+                  </div>
+                  {candidate.isDuplicate && (
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {candidate.isOriginal ? (
+                        <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
+                          <AlertTriangle size={10} /> Original (1st Added)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded bg-purple-100/80 px-2 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
+                          <Copy size={10} /> Duplicate Profile
+                        </span>
+                      )}
+                      <button
+                        onClick={() => setDuplicateModalCandidate(candidate)}
+                        className="inline-flex items-center gap-1 rounded bg-white hover:bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-700 border border-slate-200 shadow-2xs"
+                        title="Compare all matching duplicate profiles"
+                      >
+                        <Users size={10} /> {candidate.duplicateCount} Profiles
+                      </button>
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-slate-600">
+                  <div className="font-medium text-slate-800">{candidate.email || "-"}</div>
+                  <div className="text-xs text-slate-500">{candidate.phone || "-"}</div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="font-semibold text-slate-800 flex items-center gap-1">
+                    <span>{candidate.addedBy?.name || "Unknown"}</span>
+                    {candidate.isOwner && (
+                      <span className="rounded bg-blue-100 px-1.5 py-0.2 text-[10px] font-bold text-blue-700">
+                        You
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400">
+                    {candidate.addedBy?.designation || "Recruiter"} • {formatDate(candidate.createdAt)}
+                  </div>
+                  {candidate.isDuplicate && !candidate.isOriginal && candidate.originalAddedBy && (
+                    <div className="text-[11px] text-amber-700 font-medium mt-0.5">
+                      Orig: {candidate.originalAddedBy.name} ({formatDate(candidate.originalAddedBy.createdAt)})
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3">{candidate.experience || "-"}</td>
+                <td className="px-4 py-3">{candidate.currentCompany || "-"}</td>
+                <td className="px-4 py-3">
+                  <span className={statusBadge(candidate.status)}>{candidate.status}</span>
+                </td>
+                <td className="px-4 py-3 text-xs">
+                  {candidate.lastCall ? (
+                    <div>
+                      <span className="font-bold text-slate-700">{candidate.lastCall.status}</span>
+                      <span className="text-slate-400 block">{formatDate(candidate.lastCall.callDate)}</span>
+                    </div>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td className="px-4 py-3 text-xs">
+                  {candidate.nextFollowUp ? (
+                    <div>
+                      <span className="font-bold text-slate-700">{candidate.nextFollowUp.type}</span>
+                      <span className="text-slate-400 block">
+                        {formatDate(candidate.nextFollowUp.dueDate)} {candidate.nextFollowUp.dueTime}
+                      </span>
+                    </div>
+                  ) : (
+                    "-"
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end gap-1.5">
+                    {candidate.isDuplicate && (
+                      <button
+                        onClick={() => setDuplicateModalCandidate(candidate)}
+                        className="rounded-lg p-2 text-amber-700 hover:bg-amber-100"
+                        title="View duplicate profiles comparison"
+                      >
+                        <Copy size={16} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => openCandidateContext(candidate, "call")}
+                      className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                      title="Call"
+                    >
+                      <Phone size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        openCandidateContext(candidate, "email");
+                        setComposer((p: any) => ({ ...p, recipient: candidate.email || "" }));
+                      }}
+                      className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                      title="Email"
+                    >
+                      <Mail size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        openCandidateContext(candidate, "whatsapp");
+                        setComposer((p: any) => ({ ...p, recipient: candidate.phone || "" }));
+                      }}
+                      className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
+                    <button
+                      onClick={() => openCandidateContext(candidate, "followup")}
+                      className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                      title="Follow-up"
+                    >
+                      <CalendarClock size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        openCandidateContext(candidate);
+                        setActiveTab("Activity");
+                      }}
+                      className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
+                      title="View Activity"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filteredCandidates.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                  {candidateFilter === "duplicates"
+                    ? "No duplicate profiles found for this requirement."
+                    : candidateSearch
+                    ? "No candidates matching search filter."
+                    : "No candidates added yet."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
@@ -573,7 +828,14 @@ export default function FollowUps() {
       {selectedRequirement ? DetailView() : RequirementList()}
 
       {modal === "candidate" && (
-        <ModalShell title="Add Candidate" onClose={() => { setModal(""); setTemplates([]); }}>
+        <ModalShell
+          title="Add Candidate"
+          onClose={() => {
+            setModal("");
+            setTemplates([]);
+            setDuplicateWarning(null);
+          }}
+        >
           <div className="grid gap-4 md:grid-cols-2">
             {[
               ["candidateName", "Candidate Name *"],
@@ -582,16 +844,232 @@ export default function FollowUps() {
             ].map(([key, label]) => (
               <label key={key} className="block">
                 <span className="text-xs font-bold text-slate-600">{label}</span>
-                <input value={candidateForm[key] || ""} onChange={(e) => setCandidateForm({ ...candidateForm, [key]: e.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500" />
+                <input
+                  value={candidateForm[key] || ""}
+                  onChange={(e) => setCandidateForm({ ...candidateForm, [key]: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
+                />
               </label>
             ))}
             <label className="block md:col-span-2">
               <span className="text-xs font-bold text-slate-600">CV/Resume *</span>
-              <input type="file" accept=".pdf,.doc,.docx" onChange={(e) => setCandidateForm({ ...candidateForm, resume: e.target.files?.[0] || null })} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setCandidateForm({ ...candidateForm, resume: e.target.files?.[0] || null })}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
             </label>
-            <button disabled={saving === "candidate"} onClick={addCandidate} className="md:col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60">
-              <Upload size={16} /> {saving === "candidate" ? "Saving..." : "Add Candidate"}
+
+            {/* Duplicate checking status & warning */}
+            {duplicateCheckLoading && (
+              <div className="md:col-span-2 flex items-center gap-2 text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                <RefreshCw className="animate-spin text-blue-600" size={13} />
+                <span>Checking if this candidate email or phone already exists in the system...</span>
+              </div>
+            )}
+
+            {duplicateWarning?.hasDuplicate && (
+              <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-xs text-amber-900 shadow-xs">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <div className="flex-1 space-y-2">
+                    <div>
+                      <p className="font-black text-amber-900 text-sm">
+                        Existing Candidate Profile Detected!
+                      </p>
+                      <p className="text-amber-800 mt-0.5">
+                        This candidate profile already exists in the system. If another recruiter added it, you can still add it to your follow-up list — both profiles will be preserved and linked.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5 rounded-lg bg-white/90 p-2.5 border border-amber-200/60 divide-y divide-slate-100">
+                      {duplicateWarning.duplicates.map((dup: any) => (
+                        <div key={dup._id} className="pt-1.5 first:pt-0">
+                          <div className="flex items-center justify-between font-semibold text-slate-800">
+                            <span>
+                              Added by: <strong className="text-blue-700">{dup.addedBy?.name || "Unknown"}</strong> ({dup.addedBy?.designation || "Recruiter"})
+                            </span>
+                            <span className="text-slate-400 font-normal">{formatDate(dup.createdAt)}</span>
+                          </div>
+                          <div className="text-slate-600 mt-0.5 flex flex-wrap items-center gap-2">
+                            <span>Job: <strong>{dup.requirementTitle}</strong></span>
+                            {dup.isSameRequirement && (
+                              <span className="rounded bg-blue-100 px-1.5 py-0.2 text-[10px] font-bold text-blue-800">
+                                This Requirement
+                              </span>
+                            )}
+                            {dup.isSameRecruiter && dup.isSameRequirement && (
+                              <span className="rounded bg-red-100 px-1.5 py-0.2 text-[10px] font-bold text-red-800">
+                                You already added this profile
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {duplicateWarning.duplicates.some((d: any) => d.isSameRequirement && d.isSameRecruiter) && (
+                      <div className="rounded-lg bg-red-100 border border-red-200 p-2 text-red-800 font-bold">
+                        ⚠️ You have already added this candidate profile for this requirement. You cannot create a duplicate of your own profile for the same job.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button
+              disabled={
+                saving === "candidate" ||
+                Boolean(duplicateWarning?.duplicates?.some((d: any) => d.isSameRequirement && d.isSameRecruiter))
+              }
+              onClick={addCandidate}
+              className="md:col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm transition-all"
+            >
+              <Upload size={16} />{" "}
+              {saving === "candidate"
+                ? "Saving..."
+                : duplicateWarning?.hasDuplicate && !duplicateWarning.duplicates?.some((d: any) => d.isSameRequirement && d.isSameRecruiter)
+                ? "Add Candidate (Duplicate Profile)"
+                : "Add Candidate"}
             </button>
+          </div>
+        </ModalShell>
+      )}
+
+      {duplicateModalCandidate && (
+        <ModalShell
+          title={`Duplicate Profiles Comparison - ${duplicateModalCandidate.name}`}
+          onClose={() => setDuplicateModalCandidate(null)}
+        >
+          <div className="space-y-4">
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-900">
+              <p className="font-bold flex items-center gap-1.5 text-amber-800 text-sm">
+                <AlertTriangle size={16} /> Matching Profile Group ({[duplicateModalCandidate, ...(duplicateModalCandidate.duplicateProfiles || [])].length} Total Profiles)
+              </p>
+              <p className="mt-1 text-amber-700">
+                These profiles share the same email (<strong>{duplicateModalCandidate.email || "-"}</strong>) or phone (<strong>{duplicateModalCandidate.phone || "-"}</strong>). Both original and duplicate creators are detailed below.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {[duplicateModalCandidate, ...(duplicateModalCandidate.duplicateProfiles || [])]
+                .sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                .map((profile: any, idx: number) => {
+                  const isFirst = idx === 0;
+                  const isCurrentCard = profile._id === duplicateModalCandidate._id;
+                  return (
+                    <div
+                      key={profile._id}
+                      className={`rounded-xl border p-4 shadow-xs transition-all ${
+                        isCurrentCard
+                          ? "border-blue-400 bg-blue-50/30 ring-2 ring-blue-500/20"
+                          : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="font-black text-slate-900 text-base">{profile.name}</h4>
+                            {isFirst ? (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                                Original (1st Added)
+                              </span>
+                            ) : (
+                              <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
+                                Duplicate #{idx}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5">
+                            Added: <strong>{formatDateTime(profile.createdAt)}</strong>
+                          </p>
+                        </div>
+                        {isCurrentCard && (
+                          <span className="rounded bg-blue-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                            Current
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-3 space-y-2 text-xs">
+                        <div className="rounded-lg bg-slate-50 p-2.5">
+                          <p className="font-bold text-slate-400 uppercase text-[10px]">Created By</p>
+                          <p className="font-black text-slate-900 text-sm mt-0.5">
+                            {profile.addedBy?.name || "Unknown"}
+                            {profile.isOwner && <span className="ml-1.5 text-blue-600 font-bold">(You)</span>}
+                          </p>
+                          <p className="text-slate-500">{profile.addedBy?.email || "-"} • {profile.addedBy?.designation || "Recruiter"}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-lg bg-slate-50 p-2">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Requirement</p>
+                            <p className="font-semibold text-slate-800 truncate" title={profile.requirementTitle || selectedRequirement?.title}>
+                              {profile.requirementTitle || selectedRequirement?.title || "-"}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-slate-50 p-2">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Status</p>
+                            <p className="font-semibold text-slate-800">{profile.status || "Sourced"}</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-slate-600">
+                            <span className="font-medium text-slate-400">Email:</span>
+                            <span className="font-semibold text-slate-800">{profile.email || "-"}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span className="font-medium text-slate-400">Phone:</span>
+                            <span className="font-semibold text-slate-800">{profile.phone || "-"}</span>
+                          </div>
+                          {profile.resumeUrl && (
+                            <div className="flex justify-between items-center pt-1">
+                              <span className="font-medium text-slate-400">CV/Resume:</span>
+                              <a
+                                href={profile.resumeUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 font-bold text-blue-600 hover:underline"
+                              >
+                                View Resume <ExternalLink size={12} />
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400">
+                          ID: {profile._id?.slice(-6)}
+                        </span>
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => {
+                              openCandidateContext(profile, "call");
+                              setDuplicateModalCandidate(null);
+                            }}
+                            className="rounded-lg bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700"
+                          >
+                            Log Call
+                          </button>
+                          <button
+                            onClick={() => {
+                              openCandidateContext(profile, "followup");
+                              setDuplicateModalCandidate(null);
+                            }}
+                            className="rounded-lg bg-blue-600 hover:bg-blue-700 px-2.5 py-1 text-xs font-bold text-white"
+                          >
+                            Follow-up
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           </div>
         </ModalShell>
       )}

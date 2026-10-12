@@ -646,7 +646,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
       </div>
 
       <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
-        {["all", "New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped", "Hold"].map((status) => (
+        {["all", "New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped", "Hold", "Not responding"].map((status) => (
           <button
             key={status}
             onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
@@ -777,11 +777,13 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                                 <option value="Joined">Joined</option>
                                 <option value="Hold">Hold</option>
                                 <option value="Dropped">Dropped</option>
+                                <option value="Not responding">Not responding</option>
                               </>
                             ) : candidate.status === "Joined" ? (
                               <>
                                 <option value="Joined">Joined</option>
                                 <option value="Dropped">Dropped</option>
+                                <option value="Not responding">Not responding</option>
                               </>
                             ) : (
                               <>
@@ -795,6 +797,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                                 )}
                                 <option value="Dropped">Dropped</option>
                                 <option value="Hold">Hold</option>
+                                <option value="Not responding">Not responding</option>
                               </>
                             )}
                           </select>

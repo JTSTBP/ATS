@@ -616,6 +616,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                         "Rejected",
                         "Dropped",
                         "Hold",
+                        "Not responding",
                     ].map((status) => (
                         <button
                             key={status}
@@ -880,6 +881,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
                                                         <option value="Rejected">Rejected</option>
                                                         <option value="Hold">Hold</option>
+                                                        <option value="Not responding">Not responding</option>
                                                         <option value="Dropped">Dropped</option>
 
                                                         {/* Fallback/History options if needed, or just keep strict */}
@@ -893,6 +895,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                                 <option value="Joined">Joined</option>
                                                                 <option value="Rejected">Rejected</option>
                                                                 <option value="Hold">Hold</option>
+                                                                <option value="Not responding">Not responding</option>
                                                                 <option value="Dropped">Dropped</option>
                                                             </>
                                                         ) : candidate.status === "Joined" ? (
@@ -910,6 +913,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                                 <option value="Joined">Joined</option>
                                                                 <option value="Rejected">Rejected</option>
                                                                 <option value="Hold">Hold</option>
+                                                                <option value="Not responding">Not responding</option>
                                                                 <option value="Dropped">Dropped</option>
                                                             </>
                                                         )}
@@ -1278,4 +1282,3 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         </div >
     );
 };
-

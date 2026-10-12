@@ -547,6 +547,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
           "Rejected",
           "Dropped",
           "Hold",
+          "Not responding",
         ].map((status) => (
           <button
             key={status}
@@ -813,11 +814,13 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                             <option value="Joined">Joined</option>
                             <option value="Hold">Hold</option>
                             <option value="Dropped">Dropped</option>
+                            <option value="Not responding">Not responding</option>
                           </>
                         ) : candidate.status === "Joined" ? (
                           <>
                             <option value="Joined">Joined</option>
                             <option value="Dropped">Dropped</option>
+                            <option value="Not responding">Not responding</option>
                           </>
                         ) : (
                           <>
@@ -829,6 +832,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                             <option value="Rejected">Rejected</option>
                             <option value="Dropped">Dropped</option>
                             <option value="Hold">Hold</option>
+                            <option value="Not responding">Not responding</option>
                           </>
                         )}
                       </select>
