@@ -1,3 +1,4 @@
+import { useAuth } from "../../context/AuthProvider";
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -17,7 +18,6 @@ import {
   RefreshCw,
   Search,
   Send,
-  Sparkles,
   Square,
   Upload,
   Users,
@@ -54,7 +54,6 @@ const toDateTimeLocal = (value?: string) => {
   const offset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 };
-const fromDateTimeLocal = (value: string) => value ? new Date(value).toISOString() : "";
 
 function statusBadge(status: string) {
   const styles: Record<string, string> = {
@@ -78,11 +77,7 @@ function statusBadge(status: string) {
   return `inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${styles[status] || "bg-blue-50 text-blue-700 border-blue-100"}`;
 }
 
-function valueOrDash(value: any) {
-  if (Array.isArray(value)) return value.join(", ") || "-";
-  if (value && typeof value === "object") return JSON.stringify(value);
-  return value || "-";
-}
+
 
 function ModalShell({ title, children, onClose }: any) {
   return (
@@ -99,6 +94,8 @@ function ModalShell({ title, children, onClose }: any) {
 }
 
 export default function FollowUps() {
+  const { user } = useAuth();
+  const showDuplicateDetails = ["Admin", "Manager"].includes(user?.designation || "");
   const [requirements, setRequirements] = useState<any[]>([]);
   const [selectedRequirement, setSelectedRequirement] = useState<any | null>(null);
   const [requirementDetails, setRequirementDetails] = useState<any | null>(null);
@@ -134,6 +131,7 @@ export default function FollowUps() {
     nextFollowUpDate: "",
     nextFollowUpTime: "10:00",
     followUpType: "Call",
+    followUpRemarks: "",
   });
   const [followUpForm, setFollowUpForm] = useState<any>({
     type: "Call",
@@ -224,10 +222,12 @@ export default function FollowUps() {
     loadSummary();
   }, []);
 
-  const openRequirement = async (requirement: any) => {
-    setSelectedRequirement(requirement);
-    setActiveTab("Overview");
-    setSelectedCandidate(null);
+  const openRequirement = async (requirement: any, preserveContext = false) => {
+    if (!preserveContext) {
+      setSelectedRequirement(requirement);
+      setActiveTab("Overview");
+      setSelectedCandidate(null);
+    }
     setLoading(true);
     try {
       const [detailsRes, candidatesRes, followUpsRes] = await Promise.all([
@@ -236,7 +236,12 @@ export default function FollowUps() {
         axios.get(`${API_URL}/follow-ups`, { params: { requirementId: requirement._id } }),
       ]);
       setRequirementDetails(detailsRes.data.requirement);
-      setCandidates(candidatesRes.data.candidates || []);
+      const refreshedCandidates = candidatesRes.data.candidates || [];
+      setCandidates(refreshedCandidates);
+      if (preserveContext) {
+        setSelectedCandidate((current: any) => current ? refreshedCandidates.find((item: any) => item._id === current._id) || current : current);
+        setDuplicateModalCandidate((current: any) => current ? refreshedCandidates.find((item: any) => item._id === current._id) || current : current);
+      }
       setFollowUps(followUpsRes.data.followUps || []);
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to open requirement");
@@ -246,7 +251,7 @@ export default function FollowUps() {
   };
 
   const refreshCurrent = async () => {
-    if (selectedRequirement) await openRequirement(selectedRequirement);
+    if (selectedRequirement) await openRequirement(selectedRequirement, true);
     else await loadRequirements();
     await loadSummary();
   };
@@ -313,7 +318,7 @@ export default function FollowUps() {
       });
       const { data } = await axios.post(`${API_URL}/requirements/${selectedRequirement._id}/candidates`, formData);
       if (data.isDuplicate) {
-        toast.info(data.message || `Candidate profile added! (Previously added by ${data.previouslyAddedBy})`);
+        toast.info(showDuplicateDetails ? data.message || "Candidate profile added" : "Candidate added — Duplicate");
       } else {
         toast.success(data.message || "Candidate added successfully");
       }
@@ -426,7 +431,7 @@ export default function FollowUps() {
     if (!candidateId) return;
     setDraftSaving("load");
     try {
-      const { data } = await axios.get(`${API_URL}/candidates/${candidateId}/draft-studio`);
+      const { data } = await axios.get(`${API_URL}/candidates/${candidateId}/draft-studio?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`);
       setDraftStudio(data.sequence || { id: "", status: "Empty", sent: 0, drafts: [] });
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load draft studio");
@@ -439,79 +444,16 @@ export default function FollowUps() {
   const openEmailStudio = async (candidate: any) => {
     await openCandidateContext(candidate);
     setActiveTab("Emails");
-    await loadDraftStudio(candidate._id);
-  };
-
-  const generateEmailSequence = async () => {
-    if (!selectedCandidateId) return;
-    setDraftSaving("generate");
-    try {
-      const { data } = await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/generate`);
-      setDraftStudio({ id: data.sequenceId, status: "Draft", sent: 0, drafts: data.drafts || [] });
-      toast.success("Five email drafts generated");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to generate email drafts");
-    } finally {
-      setDraftSaving("");
-    }
-  };
-
-  const saveDraft = async (draft: any, reviewed = false) => {
-    if (!selectedCandidateId) return;
-    setDraftSaving(draft._id);
-    try {
-      await axios.patch(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/${draft._id}`, {
-        subject: draft.subject,
-        body: draft.body,
-        scheduledAt: draft.scheduledAt || "",
-        reviewed,
-      });
-      await loadDraftStudio();
-      toast.success(reviewed ? "Draft reviewed" : "Draft saved");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to save draft");
-    } finally {
-      setDraftSaving("");
-    }
-  };
-
-  const updateLocalDraft = (draftId: string, field: "subject" | "body" | "scheduledAt", value: string) => {
-    setDraftStudio((prev: any) => ({
-      ...prev,
-      drafts: prev.drafts.map((draft: any) => draft._id === draftId ? { ...draft, [field]: value } : draft),
-    }));
-  };
-
-  const markAllReviewed = async () => {
-    if (!selectedCandidateId || !draftStudio.id) return;
-    setDraftSaving("review");
-    try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/review`, {
-        sequenceId: draftStudio.id,
-        drafts: draftStudio.drafts.map((draft: any) => ({
-          _id: draft._id,
-          subject: draft.subject,
-          body: draft.body,
-          scheduledAt: draft.scheduledAt || "",
-        })),
-      });
-      await loadDraftStudio();
-      toast.success("All drafts marked reviewed");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to review drafts");
-    } finally {
-      setDraftSaving("");
-    }
   };
 
   const startEmailSequence = async () => {
-    if (!selectedCandidateId || !draftStudio.id) return;
+    if (!selectedCandidateId) return;
     setDraftSaving("start");
     try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start`, { sequenceId: draftStudio.id });
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`, { sequenceId: draftStudio.id });
       await loadDraftStudio();
       await refreshCurrent();
-      toast.success("Email sequence scheduled");
+      toast.success("Sequence scheduled");
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.response?.data?.code || "Failed to send sequence");
       await loadDraftStudio();
@@ -524,9 +466,9 @@ export default function FollowUps() {
     if (!selectedCandidateId || !draftStudio.id) return;
     setDraftSaving("stop");
     try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/stop`, { sequenceId: draftStudio.id, reason: "manual_stop" });
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/stop?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`, { sequenceId: draftStudio.id, reason: "manual_stop" });
       await loadDraftStudio();
-      toast.success("Email sequence stopped");
+      toast.success("Sequence stopped");
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to stop sequence");
     } finally {
@@ -538,11 +480,11 @@ export default function FollowUps() {
     if (!selectedCandidateId || !draftStudio.id) return;
     setDraftSaving("clear");
     try {
-      await axios.delete(`${API_URL}/candidates/${selectedCandidateId}/draft-studio`, {
+      await axios.delete(`${API_URL}/candidates/${selectedCandidateId}/draft-studio?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`, {
         data: { sequenceId: draftStudio.id },
       });
-      setDraftStudio({ id: "", status: "Empty", sent: 0, drafts: [] });
-      toast.success("Draft sequence cleared");
+      await loadDraftStudio();
+      toast.success("Sequence cleared");
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to clear email drafts");
     } finally {
@@ -640,15 +582,29 @@ export default function FollowUps() {
 
   const Overview = () => {
     const detail = requirementDetails || {};
-    const hidden = new Set(["_id", "__v", "summary", "assignedRecruiters", "assignedMentors", "leadRecruiter", "CreatedBy", "UpdatedBy", "candidateFields", "stages", "clientId"]);
+    const summary = detail.summary || selectedRequirement || {};
+    const facts = [
+      ["Company", summary.company], ["Location", summary.location],
+      ["Employment type", detail.employmentType || summary.employmentType],
+      ["Open positions", detail.noOfPositions ?? summary.noOfPositions],
+      ["Experience", summary.experience], ["Salary range", summary.salary],
+      ["Department", detail.department], ["Industry", detail.industry],
+      ["Functional area", detail.functionalArea],
+      ["Education", (detail.education || []).join(", ")],
+    ];
     return (
-      <div className="grid gap-4 md:grid-cols-2">
-        {Object.entries(detail).filter(([key]) => !hidden.has(key)).map(([key, value]) => (
-          <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{key.replace(/([A-Z])/g, " $1")}</p>
-            <p className="mt-1 whitespace-pre-wrap text-sm font-semibold text-slate-800">{valueOrDash(value)}</p>
-          </div>
-        ))}
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-4">
+          <div><h2 className="text-xl font-bold text-slate-900">Requirement details</h2><p className="mt-1 text-sm text-slate-500">{summary.title || selectedRequirement?.title}</p></div>
+          <span className={statusBadge(summary.status)}>{summary.status || "Open"}</span>
+        </div>
+        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {facts.map(([label, value]) => <div key={String(label)} className="rounded-xl bg-slate-50 p-4"><dt className="text-xs font-semibold text-slate-500">{label}</dt><dd className="mt-1 text-sm font-semibold text-slate-900">{value === undefined || value === null || value === "" ? "Not specified" : String(value)}</dd></div>)}
+        </dl>
+        <section><h3 className="font-bold text-slate-900">Key skills</h3><div className="mt-3 flex flex-wrap gap-2">{(detail.keySkills || summary.keySkills || []).map((skill: string) => <span key={skill} className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700">{skill}</span>)}{!(detail.keySkills || summary.keySkills || []).length && <p className="text-sm text-slate-500">Not specified</p>}</div></section>
+        {[["Job description", detail.description], ["Requirements", detail.requirements]].map(([label, text]) => <section key={label}><h3 className="font-bold text-slate-900">{label}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{text || "Not specified"}</p></section>)}
+        {detail.stages?.length > 0 && <section><h3 className="font-bold text-slate-900">Hiring stages</h3><ol className="mt-3 flex flex-wrap gap-2">{detail.stages.map((stage: any, index: number) => <li key={index} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">{index + 1}. {stage.name || "Interview"}</li>)}</ol></section>}
+        {detail.screeningQuestions?.length > 0 && <section><h3 className="font-bold text-slate-900">Screening questions</h3><ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">{detail.screeningQuestions.map((question: string, index: number) => <li key={index}>{question}</li>)}</ul></section>}
       </div>
     );
   };
@@ -712,7 +668,7 @@ export default function FollowUps() {
               <th className="px-4 py-3">Company</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Last Call</th>
-              <th className="px-4 py-3">Next Follow-up</th>
+              <th className="px-4 py-3">Follow-up status</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -738,7 +694,8 @@ export default function FollowUps() {
                       </a>
                     )}
                   </div>
-                  {candidate.isDuplicate && (
+                  {candidate.isDuplicate && !showDuplicateDetails && <span className="mt-1 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Duplicate</span>}
+                  {candidate.isDuplicate && showDuplicateDetails && (
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {candidate.isOriginal ? (
                         <span className="inline-flex items-center gap-1 rounded bg-amber-100/80 px-2 py-0.5 text-[10px] font-bold text-amber-800 border border-amber-200">
@@ -775,7 +732,7 @@ export default function FollowUps() {
                   <div className="text-xs text-slate-400">
                     {candidate.addedBy?.designation || "Recruiter"} • {formatDate(candidate.createdAt)}
                   </div>
-                  {candidate.isDuplicate && !candidate.isOriginal && candidate.originalAddedBy && (
+                  {showDuplicateDetails && candidate.isDuplicate && !candidate.isOriginal && candidate.originalAddedBy && (
                     <div className="text-[11px] text-amber-700 font-medium mt-0.5">
                       Orig: {candidate.originalAddedBy.name} ({formatDate(candidate.originalAddedBy.createdAt)})
                     </div>
@@ -797,20 +754,14 @@ export default function FollowUps() {
                   )}
                 </td>
                 <td className="px-4 py-3 text-xs">
-                  {candidate.nextFollowUp ? (
-                    <div>
-                      <span className="font-bold text-slate-700">{candidate.nextFollowUp.type}</span>
-                      <span className="text-slate-400 block">
-                        {formatDate(candidate.nextFollowUp.dueDate)} {candidate.nextFollowUp.dueTime}
-                      </span>
-                    </div>
-                  ) : (
-                    "-"
-                  )}
+                  {candidate.nextFollowUp || candidate.latestFollowUp ? (() => {
+                    const followUp = candidate.nextFollowUp || candidate.latestFollowUp;
+                    return <span className={statusBadge(followUp.status)}>{followUp.status}</span>;
+                  })() : <span className="text-slate-400">No follow-ups</span>}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-1.5">
-                    {candidate.isDuplicate && (
+                    {showDuplicateDetails && candidate.isDuplicate && (
                       <button
                         onClick={() => setDuplicateModalCandidate(candidate)}
                         className="rounded-lg p-2 text-amber-700 hover:bg-amber-100"
@@ -890,7 +841,7 @@ export default function FollowUps() {
             <th className="px-4 py-3">Type</th>
             <th className="px-4 py-3">Due</th>
             <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Notes</th>
+            <th className="px-4 py-3">Remarks</th>
             <th className="px-4 py-3 text-right">Actions</th>
           </tr>
         </thead>
@@ -901,7 +852,7 @@ export default function FollowUps() {
               <td className="px-4 py-3">{item.type}</td>
               <td className="px-4 py-3">{formatDate(item.dueDate)} {item.dueTime}</td>
               <td className="px-4 py-3"><span className={statusBadge(item.status)}>{item.status}</span></td>
-              <td className="px-4 py-3 max-w-xs truncate">{item.notes || "-"}</td>
+              <td className="px-4 py-3 max-w-xs whitespace-pre-wrap break-words">{item.notes || "-"}</td>
               <td className="px-4 py-3">
                 <div className="flex justify-end gap-2">
                   <button disabled={saving === item._id} onClick={() => updateFollowUp(item._id, { status: "Completed" })} className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-50" title="Complete"><CheckCircle size={16} /></button>
@@ -935,15 +886,16 @@ export default function FollowUps() {
     </div>
   );
 
+  useEffect(() => {
+    if (selectedCandidateId && ["Emails", "WhatsApp"].includes(activeTab)) loadDraftStudio(selectedCandidateId);
+  }, [activeTab, selectedCandidateId]);
+
   const EmailStudio = () => {
-    const canEdit = ["Empty", "Draft", "Ready", "Stopped"].includes(draftStudio.status);
-    const allReviewed = draftStudio.drafts.length === 5 && draftStudio.drafts.every((draft: any) => ["reviewed", "sent"].includes(draft.status));
-    const canStart = allReviewed && !["Active", "Completed", "Stopped"].includes(draftStudio.status);
-    const hasDrafts = draftStudio.drafts.length > 0;
-    const canClear = Boolean(draftStudio.id) && (draftStudio.sent || 0) === 0 && !["Active", "Completed"].includes(draftStudio.status);
-    const showReviewStep = hasDrafts && !allReviewed && !["Active", "Completed"].includes(draftStudio.status);
-    const showStartStep = hasDrafts && allReviewed && !["Active", "Completed"].includes(draftStudio.status);
-    const showStopStep = ["Active"].includes(draftStudio.status);
+    const isWhatsApp = activeTab === "WhatsApp";
+    const preview = draftStudio.drafts.length ? draftStudio.drafts : (draftStudio.templates || []);
+    const canStart = (draftStudio.templates || []).length > 0 && !["Active", "Completed"].includes(draftStudio.status);
+    const canClear = Boolean(draftStudio.id);
+    const showStopStep = draftStudio.status === "Active";
     return (
       <div className="space-y-5">
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -952,7 +904,7 @@ export default function FollowUps() {
               <div className="space-y-4">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
                   <h3 className="font-black text-slate-900">Draft studio</h3>
-                  <p className="mt-1 text-sm text-slate-600">Select a candidate to generate, edit, submit and stop a five-email sequence.</p>
+                  <p className="mt-1 text-sm text-slate-600">Select a candidate to start a sequence using the templates saved with this requirement.</p>
                 </div>
                 {CandidatesTable()}
               </div>
@@ -964,37 +916,19 @@ export default function FollowUps() {
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-lg font-black text-slate-900">{selectedCandidate.name}</h3>
                         <span className={statusBadge(draftStudio.status)}>{draftStudio.status}</span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{draftStudio.sent || 0} of 5 sent</span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{draftStudio.sent || 0} sent</span>
                       </div>
-                      <p className="mt-1 text-sm text-slate-500">{selectedCandidate.email || "No email"} • {selectedRequirement?.title}</p>
+                      <p className="mt-1 text-sm text-slate-500">{(isWhatsApp ? selectedCandidate.phone : selectedCandidate.email) || "No contact"} • {selectedRequirement?.title}</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {!hasDrafts && (
-                        <button
-                          onClick={generateEmailSequence}
-                          disabled={Boolean(draftSaving)}
-                          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60"
-                        >
-                          <Sparkles size={16} /> Generate five emails
-                        </button>
-                      )}
                       <button
                         onClick={clearEmailSequence}
                         disabled={Boolean(draftSaving) || !canClear}
                         className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
                       >
-                        <X size={16} /> Clear drafts
+                        <X size={16} /> Clear
                       </button>
-                      {showReviewStep && (
-                        <button
-                          onClick={markAllReviewed}
-                          disabled={Boolean(draftSaving) || draftStudio.drafts.length !== 5 || !canEdit}
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                        >
-                          <CheckCircle size={16} /> Mark all reviewed
-                        </button>
-                      )}
-                      {showStartStep && (
+                      {!showStopStep && (
                         <button
                           onClick={startEmailSequence}
                           disabled={Boolean(draftSaving) || !canStart}
@@ -1018,49 +952,43 @@ export default function FollowUps() {
 
                 {draftSaving === "load" ? (
                   <div className="rounded-xl bg-slate-50 p-8 text-center text-slate-500">Loading draft studio...</div>
-                ) : draftStudio.drafts.length === 0 ? (
+                ) : preview.length === 0 ? (
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center">
                     <p className="font-black text-slate-900">No sequence yet</p>
-                    <p className="mt-1 text-sm text-slate-500">Generate five emails for this candidate, review the copy, then submit the sequence.</p>
+                    <p className="mt-1 text-sm text-slate-500">Add templates when creating or editing this requirement to start a sequence.</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {draftStudio.drafts.map((draft: any, index: number) => (
+                    {preview.map((draft: any, index: number) => (
                       <div key={draft._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                         <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-black text-white">Email {index + 1}</span>
+                            <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-black text-white">{isWhatsApp ? "WhatsApp" : "Email"} {index + 1}</span>
                             <span className={statusBadge(draft.status)}>{draft.status}</span>
                             {draft.scheduledAt && draft.status !== "sent" && <span className="text-xs font-bold text-blue-600">Scheduled {formatDateTime(draft.scheduledAt)}</span>}
                             {draft.sentAt && <span className="text-xs font-bold text-slate-400">{formatDateTime(draft.sentAt)}</span>}
                           </div>
-                          <button
-                            onClick={() => saveDraft(draft, true)}
-                            disabled={Boolean(draftSaving) || draft.status === "sent"}
-                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                          >
-                            {draftSaving === draft._id ? "Saving..." : "Save and review"}
-                          </button>
+
                         </div>
-                        <input
+                        {!isWhatsApp && <input
                           value={draft.subject || ""}
-                          onChange={(e) => updateLocalDraft(draft._id, "subject", e.target.value)}
+                          readOnly
                           disabled={draft.status === "sent"}
                           className="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 disabled:bg-slate-50"
-                        />
+                        />}
                         <label className="mb-3 block">
                           <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Send date and time</span>
                           <input
                             type="datetime-local"
                             value={toDateTimeLocal(draft.scheduledAt)}
-                            onChange={(e) => updateLocalDraft(draft._id, "scheduledAt", fromDateTimeLocal(e.target.value))}
+                            readOnly
                             disabled={draft.status === "sent"}
                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
                           />
                         </label>
                         <textarea
                           value={draft.body || ""}
-                          onChange={(e) => updateLocalDraft(draft._id, "body", e.target.value)}
+                          readOnly
                           disabled={draft.status === "sent"}
                           rows={8}
                           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6 text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
@@ -1079,9 +1007,9 @@ export default function FollowUps() {
               <h3 className="font-black text-slate-900">Sequence controls</h3>
               <div className="mt-3 space-y-3 text-sm">
                 <div className="flex justify-between gap-3"><span className="text-slate-500">Status</span><b>{draftStudio.status}</b></div>
-                <div className="flex justify-between gap-3"><span className="text-slate-500">Drafts</span><b>{draftStudio.drafts.length}/5</b></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-500">Drafts</span><b>{preview.length}</b></div>
                 <div className="flex justify-between gap-3"><span className="text-slate-500">Submitted</span><b>{draftStudio.sent || 0}</b></div>
-                <div className="flex justify-between gap-3"><span className="text-slate-500">Recipient</span><b className="text-right">{selectedCandidate?.email || "-"}</b></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-500">Recipient</span><b className="text-right">{(isWhatsApp ? selectedCandidate?.phone : selectedCandidate?.email) || "-"}</b></div>
               </div>
             </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -1118,9 +1046,7 @@ export default function FollowUps() {
             <p className="text-sm text-slate-500">{selectedRequirement?.company} | {selectedRequirement?.location}</p>
           </div>
         </div>
-        <button onClick={() => setModal("candidate")} className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">
-          <Plus size={16} /> Add Candidate
-        </button>
+
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
@@ -1135,7 +1061,7 @@ export default function FollowUps() {
 
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         {activeTab === "Overview" && Overview()}
-        {activeTab === "Candidates" && CandidatesTable()}
+        {activeTab === "Candidates" && <div className="space-y-4"><div className="flex justify-end"><button onClick={() => { resetCandidateForm(); setModal("candidate"); }} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"><Plus size={16} /> Add candidate</button></div>{CandidatesTable()}</div>}
         {activeTab === "Call Tracking" && (
           <div className="space-y-4">
             {CandidatesTable()}
@@ -1149,7 +1075,7 @@ export default function FollowUps() {
         )}
         {activeTab === "Follow-ups" && FollowUpsTable()}
         {activeTab === "Emails" && EmailStudio()}
-        {activeTab === "WhatsApp" && CandidatesTable()}
+        {activeTab === "WhatsApp" && EmailStudio()}
         {activeTab === "Activity" && ActivityList()}
       </div>
     </div>
@@ -1201,7 +1127,8 @@ export default function FollowUps() {
               </div>
             )}
 
-            {duplicateWarning?.hasDuplicate && (
+            {duplicateWarning?.hasDuplicate && !showDuplicateDetails && <p className="md:col-span-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">Duplicate{duplicateWarning.duplicates.some((d: any) => d.isSameRequirement && d.isSameRecruiter) ? " — already added to this requirement" : ""}</p>}
+            {showDuplicateDetails && duplicateWarning?.hasDuplicate && (
               <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-xs text-amber-900 shadow-xs">
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
@@ -1270,7 +1197,7 @@ export default function FollowUps() {
         </ModalShell>
       )}
 
-      {duplicateModalCandidate && (
+      {showDuplicateDetails && duplicateModalCandidate && (
         <ModalShell
           title={`Duplicate Profiles Comparison - ${duplicateModalCandidate.name}`}
           onClose={() => setDuplicateModalCandidate(null)}
@@ -1348,6 +1275,7 @@ export default function FollowUps() {
                           </div>
                         </div>
 
+                        {(profile.nextFollowUp || profile.latestFollowUp) && <div className="rounded-lg border border-slate-200 p-3"><p className="mb-2 font-bold text-slate-500">Follow-up status</p><span className={statusBadge((profile.nextFollowUp || profile.latestFollowUp).status)}>{(profile.nextFollowUp || profile.latestFollowUp).status}</span><p className="mt-2 font-semibold">{(profile.nextFollowUp || profile.latestFollowUp).type}</p><p className="text-slate-500">Due {formatDate((profile.nextFollowUp || profile.latestFollowUp).dueDate)} {(profile.nextFollowUp || profile.latestFollowUp).dueTime}</p>{(profile.nextFollowUp || profile.latestFollowUp).completedAt && <p className="mt-1 text-emerald-700">Completed {formatDateTime((profile.nextFollowUp || profile.latestFollowUp).completedAt)}</p>}</div>}
                         <div className="space-y-1">
                           <div className="flex justify-between text-slate-600">
                             <span className="font-medium text-slate-400">Email:</span>
@@ -1419,6 +1347,7 @@ export default function FollowUps() {
             </label>
             {callForm.scheduleFollowUp && (
               <>
+                <label className="md:col-span-2 block"><span className="text-sm font-semibold text-slate-700">Follow-up remarks (optional)</span><textarea value={callForm.followUpRemarks} onChange={(e) => setCallForm({ ...callForm, followUpRemarks: e.target.value })} rows={3} placeholder="Add context or instructions for this follow-up" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
                 <select value={callForm.followUpType} onChange={(e) => setCallForm({ ...callForm, followUpType: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">{FOLLOW_UP_TYPES.map((item) => <option key={item}>{item}</option>)}</select>
                 <div className="grid grid-cols-2 gap-2">
                   <input type="date" value={callForm.nextFollowUpDate} onChange={(e) => setCallForm({ ...callForm, nextFollowUpDate: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
@@ -1439,7 +1368,7 @@ export default function FollowUps() {
               <input type="date" value={followUpForm.dueDate} onChange={(e) => setFollowUpForm({ ...followUpForm, dueDate: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
               <input type="time" value={followUpForm.dueTime} onChange={(e) => setFollowUpForm({ ...followUpForm, dueTime: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             </div>
-            <textarea value={followUpForm.notes} onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })} rows={3} placeholder="Notes" className="md:col-span-2 rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+            <label className="md:col-span-2 block"><span className="text-sm font-semibold text-slate-700">Remarks (optional)</span><textarea value={followUpForm.notes} onChange={(e) => setFollowUpForm({ ...followUpForm, notes: e.target.value })} rows={3} placeholder="Add context or instructions for this follow-up" className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" /></label>
             <button disabled={saving === "followup"} onClick={createFollowUp} className="md:col-span-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60">{saving === "followup" ? "Saving..." : "Create Follow-up"}</button>
           </div>
         </ModalShell>
@@ -1452,7 +1381,7 @@ export default function FollowUps() {
               <select value={composer.category} onChange={(e) => setComposer({ ...composer, category: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
                 {(modal === "email" ? EMAIL_CATEGORIES : WHATSAPP_CATEGORIES).map((item) => <option key={item}>{item}</option>)}
               </select>
-              <button onClick={() => generateTemplates(modal as any)} disabled={saving.includes("generate")} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">Generate Templates</button>
+              <button onClick={() => generateTemplates(modal as any)} disabled={saving.includes("generate")} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">Load job templates</button>
             </div>
             {templates.length > 0 && (
               <div className="grid gap-3 md:grid-cols-3">

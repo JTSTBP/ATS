@@ -75,6 +75,7 @@ type Job = {
   CreatedBy?: string;
   UpdatedBy?: string;
   clientId?: string;
+  communicationTemplates?: { channel: "EMAIL" | "WHATSAPP"; label: string; subject: string; body: string }[];
   jdFile?: string;
   jdFileName?: string;
 };
@@ -83,6 +84,9 @@ type JobFormProps = {
   job: Job | null;
   onClose: () => void;
 };
+
+const getUserReferenceId = (value: string | { _id: string } | null | undefined): string =>
+  typeof value === "string" ? value : value?._id || "";
 
 export const JobForm = ({ job, onClose }: JobFormProps) => {
   const [step, setStep] = useState(1);
@@ -406,7 +410,12 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
   };
 
   useEffect(() => {
-    if (job) setFormData(job);
+    if (job) setFormData({
+      ...job,
+      assignedRecruiters: (job.assignedRecruiters || []).filter(reference => Boolean(getUserReferenceId(reference))),
+      assignedMentors: (job.assignedMentors || []).filter(reference => Boolean(getUserReferenceId(reference))),
+      leadRecruiter: getUserReferenceId(job.leadRecruiter),
+    });
   }, [job]);
 
 
@@ -432,6 +441,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
     if (!formData.leadRecruiter) return "Lead Person Responsible is required";
     if (!formData.stages || formData.stages.length === 0) return "At least one Interview Stage is required";
     if (formData.stages.some(stage => !stage.name.trim())) return "All Interview Stages must have a name";
+    if ((formData.communicationTemplates || []).some(t => !t.label.trim() || !t.body.trim() || (t.channel === "EMAIL" && !t.subject.trim()))) return "Complete the name, message and email subject for every template";
     return null;
   };
 
@@ -951,6 +961,19 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
             </>
           )}
 
+          {step === 3 && <section className="mt-5 space-y-3 rounded-xl border p-4">
+            <h4 className="font-semibold">Email & WhatsApp follow-up templates</h4>
+            <p className="text-sm text-gray-500">The candidate profile name is filled automatically wherever you use {"{{candidateName}}"} in the subject or message. Templates run in order for each channel. Personalise with {"{{candidateName}}, {{jobTitle}}, {{companyName}}, {{location}}, {{recruiterName}}"}.</p>
+            {(["EMAIL", "WHATSAPP"] as const).map(channel => <div key={channel} className="space-y-3">
+              <button type="button" className="rounded-lg bg-blue-50 px-3 py-2 text-blue-700" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: [...(prev.communicationTemplates || []), { channel, label: `${channel} template`, subject: "", body: "Hi {{candidateName}},\n\n" }] }))}>Add {channel === "EMAIL" ? "email" : "WhatsApp"} template</button>
+              {(formData.communicationTemplates || []).map((template, index) => template.channel === channel && <div key={index} className="space-y-2 rounded-lg border p-3">
+                {(["label", ...(channel === "EMAIL" ? ["subject"] : []), "body"] as ("label" | "subject" | "body")[]).map(field => <TextField key={field} fullWidth required label={field === "label" ? "Template name" : field === "subject" ? "Email subject" : "Message"} multiline={field === "body"} minRows={field === "body" ? 3 : undefined} value={template[field]} onChange={event => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, [field]: event.target.value } : item) }))} />)}
+                <button type="button" className="mr-3 text-sm text-blue-700" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, body: `${item.body}{{candidateName}}` } : item) }))}>Insert profile name</button>
+                <button type="button" className="text-sm text-red-600" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).filter((_, i) => i !== index) }))}>Remove template</button>
+              </div>)}
+            </div>)}
+          </section>}
+
           {/* Step 4 - Recruiter & Branding */}
           {step === 4 && (
             <>
@@ -974,16 +997,16 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     multiple
                     value={
                       formData.assignedRecruiters?.filter(id => {
-                        const userId = typeof id === 'object' ? (id as any)._id : id;
+                        const userId = getUserReferenceId(id);
                         return recruiterUsers.some(u => u._id === userId);
-                      }).map(id => typeof id === 'object' ? (id as any)._id : id) || []
+                      }).map(id => getUserReferenceId(id)) || []
                     }
                     onChange={(e) => {
                       const selectedRecruiterIds = e.target.value as string[];
                       setFormData((prev) => ({
                         ...prev,
                         assignedRecruiters: selectedRecruiterIds,
-                        leadRecruiter: selectedRecruiterIds.includes(typeof prev.leadRecruiter === 'object' ? (prev.leadRecruiter as any)._id : prev.leadRecruiter)
+                        leadRecruiter: selectedRecruiterIds.includes(getUserReferenceId(prev.leadRecruiter))
                           ? prev.leadRecruiter
                           : "",
                       }));
@@ -1006,7 +1029,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   >
                     {recruiterUsers?.map((recruiter) => (
                       <MenuItem key={recruiter._id} value={recruiter._id}>
-                        <Checkbox checked={formData.assignedRecruiters?.some(id => (typeof id === 'object' ? (id as any)._id : id) === recruiter._id)} />
+                        <Checkbox checked={formData.assignedRecruiters?.some(id => (getUserReferenceId(id)) === recruiter._id)} />
                         <ListItemText primary={recruiter.name} />
                       </MenuItem>
                     ))}
@@ -1025,7 +1048,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                       labelId="assignedMentors-label"
                       multiple
                       value={
-                        formData.assignedMentors?.map(id => typeof id === 'object' ? (id as any)._id : id) || []
+                        formData.assignedMentors?.map(id => getUserReferenceId(id)) || []
                       }
                       onChange={(e) => {
                         const selectedMentorIds = e.target.value as string[];
@@ -1053,7 +1076,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     >
                       {mentorUsers?.map((mentor) => (
                         <MenuItem key={mentor._id} value={mentor._id}>
-                          <Checkbox checked={formData.assignedMentors?.some(id => (typeof id === 'object' ? (id as any)._id : id) === mentor._id)} />
+                          <Checkbox checked={formData.assignedMentors?.some(id => (getUserReferenceId(id)) === mentor._id)} />
                           <ListItemText primary={mentor.name} />
                         </MenuItem>
                       ))}
@@ -1069,9 +1092,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                   <InputLabel>Lead Person Responsible</InputLabel>
                   <Select
                     value={
-                      formData.leadRecruiter && typeof formData.leadRecruiter === "object"
-                        ? (formData.leadRecruiter as any)._id
-                        : formData.leadRecruiter || ""
+                      getUserReferenceId(formData.leadRecruiter)
                     }
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -1082,7 +1103,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                     input={<OutlinedInput label="Lead Person Responsible" />}
                   >
                     {formData.assignedRecruiters?.map((id) => {
-                      const userId = typeof id === 'object' ? (id as any)._id : id;
+                      const userId = getUserReferenceId(id);
                       const assignedUser = [...(recruiterUsers || []), ...(mentorUsers || []), ...(users || [])].find((u) => u._id === userId);
                       return (
                         <MenuItem key={userId} value={userId}>
@@ -1530,6 +1551,11 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
                 </span>
               </div>
 
+              <div className="rounded-xl border p-4">
+                <h5 className="font-semibold">Follow-up templates</h5>
+                {(formData.communicationTemplates || []).map((t, i) => <div key={i} className="mt-2 text-sm"><b>{t.channel}: {t.label}</b>{t.subject && <p>{t.subject}</p>}<p className="whitespace-pre-wrap text-gray-600">{t.body}</p></div>)}
+                {!formData.communicationTemplates?.length && <p className="text-sm text-gray-500">No templates configured.</p>}
+              </div>
               {/* Grid Layout of Clean Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 

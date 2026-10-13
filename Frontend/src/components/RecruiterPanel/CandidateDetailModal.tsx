@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   X,
   Mail,
@@ -14,6 +14,8 @@ import {
   ExternalLink,
   Award
 } from "lucide-react";
+
+import axios from "axios";
 
 interface Education {
   degree?: string;
@@ -123,6 +125,21 @@ const formatExpectedSalary = (salary?: string): string | null => {
 export default function CandidateDetailModal({ candidate, onClose }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isShortlisted, setIsShortlisted] = useState(false);
+
+  const [followUps, setFollowUps] = useState<any[]>([]);
+  const [followUpsLoading, setFollowUpsLoading] = useState(true);
+  const [followUpsError, setFollowUpsError] = useState("");
+  useEffect(() => {
+    let cancelled = false;
+    setFollowUpsLoading(true);
+    setFollowUpsError("");
+    setFollowUps([]);
+    axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/recruiter/follow-ups/candidates/${candidate._id}/follow-ups`)
+      .then(({ data }) => { if (!cancelled) setFollowUps((data.followUps || []).sort((a: any, b: any) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())); })
+      .catch(() => { if (!cancelled) setFollowUpsError("Unable to load follow-up status. Please reopen the profile to retry."); })
+      .finally(() => { if (!cancelled) setFollowUpsLoading(false); });
+    return () => { cancelled = true; };
+  }, [candidate._id]);
 
   const designation = cleanString(candidate.designation, "|");
   const phone = cleanString(candidate.phoneNumber, " ");
@@ -303,6 +320,13 @@ export default function CandidateDetailModal({ candidate, onClose }: Props) {
 
         {/* Scrollable Body */}
         <div className="flex-1 space-y-6 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <section className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
+            <h3 className="font-bold text-slate-900">Follow-up status</h3>
+            {followUpsLoading ? <span className="text-sm text-slate-500">Loading...</span> : followUpsError ? <span role="alert" className="text-sm text-red-600">Unable to load status</span> : (() => {
+              const current = followUps.filter(item => ["Pending", "Overdue"].includes(item.status)).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0] || followUps[0];
+              return <span className={`rounded-full px-3 py-1 text-xs font-bold ${current?.status === "Completed" ? "bg-emerald-100 text-emerald-800" : current?.status === "Overdue" ? "bg-red-100 text-red-800" : current?.status === "Pending" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"}`}>{current?.status || "No follow-ups"}</span>;
+            })()}
+          </section>
           {/* Skills & Education Grid */}
           <div className="grid grid-cols-1 gap-6 border-b border-gray-200 pb-6 md:grid-cols-2 lg:gap-8 lg:pb-8">
             {/* Skills Column */}
