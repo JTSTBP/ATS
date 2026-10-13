@@ -12,10 +12,13 @@ import {
   Mail,
   MessageCircle,
   Phone,
+  Play,
   Plus,
   RefreshCw,
   Search,
   Send,
+  Sparkles,
+  Square,
   Upload,
   Users,
   X,
@@ -45,6 +48,13 @@ const todayDate = () => new Date().toISOString().slice(0, 10);
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
 const formatDateTime = (value?: string) => value ? new Date(value).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "-";
+const toDateTimeLocal = (value?: string) => {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
+const fromDateTimeLocal = (value: string) => value ? new Date(value).toISOString() : "";
 
 function statusBadge(status: string) {
   const styles: Record<string, string> = {
@@ -53,6 +63,17 @@ function statusBadge(status: string) {
     Cancelled: "bg-slate-50 text-slate-600 border-slate-200",
     Overdue: "bg-red-50 text-red-700 border-red-100",
     Open: "bg-green-50 text-green-700 border-green-100",
+    Draft: "bg-blue-50 text-blue-700 border-blue-100",
+    Ready: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    Active: "bg-indigo-50 text-indigo-700 border-indigo-100",
+    Empty: "bg-slate-50 text-slate-600 border-slate-200",
+    Stopped: "bg-red-50 text-red-700 border-red-100",
+    generated: "bg-blue-50 text-blue-700 border-blue-100",
+    reviewed: "bg-emerald-50 text-emerald-700 border-emerald-100",
+    scheduled: "bg-indigo-50 text-indigo-700 border-indigo-100",
+    sent: "bg-green-50 text-green-700 border-green-100",
+    failed: "bg-red-50 text-red-700 border-red-100",
+    stopped: "bg-red-50 text-red-700 border-red-100",
   };
   return `inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${styles[status] || "bg-blue-50 text-blue-700 border-blue-100"}`;
 }
@@ -127,6 +148,13 @@ export default function FollowUps() {
     body: "",
     htmlBody: "",
   });
+  const [draftStudio, setDraftStudio] = useState<any>({
+    id: "",
+    status: "Empty",
+    sent: 0,
+    drafts: [],
+  });
+  const [draftSaving, setDraftSaving] = useState("");
 
   const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
   const [duplicateCheckLoading, setDuplicateCheckLoading] = useState(false);
@@ -382,9 +410,143 @@ export default function FollowUps() {
       setTemplates([]);
       await refreshCurrent();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || error.response?.data?.code || `Failed to send ${channel}`);
+      const data = error.response?.data || {};
+      if (channel === "whatsapp" && data.whatsappUrl) {
+        window.open(data.whatsappUrl, "_blank", "noopener,noreferrer");
+        toast.info("WhatsApp is not connected for direct sending. Opened WhatsApp with the message pre-filled.");
+      } else {
+        toast.error(data.message || data.code || `Failed to send ${channel}`);
+      }
     } finally {
       setSaving("");
+    }
+  };
+
+  const loadDraftStudio = async (candidateId = selectedCandidateId) => {
+    if (!candidateId) return;
+    setDraftSaving("load");
+    try {
+      const { data } = await axios.get(`${API_URL}/candidates/${candidateId}/draft-studio`);
+      setDraftStudio(data.sequence || { id: "", status: "Empty", sent: 0, drafts: [] });
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to load draft studio");
+      setDraftStudio({ id: "", status: "Empty", sent: 0, drafts: [] });
+    } finally {
+      setDraftSaving("");
+    }
+  };
+
+  const openEmailStudio = async (candidate: any) => {
+    await openCandidateContext(candidate);
+    setActiveTab("Emails");
+    await loadDraftStudio(candidate._id);
+  };
+
+  const generateEmailSequence = async () => {
+    if (!selectedCandidateId) return;
+    setDraftSaving("generate");
+    try {
+      const { data } = await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/generate`);
+      setDraftStudio({ id: data.sequenceId, status: "Draft", sent: 0, drafts: data.drafts || [] });
+      toast.success("Five email drafts generated");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to generate email drafts");
+    } finally {
+      setDraftSaving("");
+    }
+  };
+
+  const saveDraft = async (draft: any, reviewed = false) => {
+    if (!selectedCandidateId) return;
+    setDraftSaving(draft._id);
+    try {
+      await axios.patch(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/${draft._id}`, {
+        subject: draft.subject,
+        body: draft.body,
+        scheduledAt: draft.scheduledAt || "",
+        reviewed,
+      });
+      await loadDraftStudio();
+      toast.success(reviewed ? "Draft reviewed" : "Draft saved");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to save draft");
+    } finally {
+      setDraftSaving("");
+    }
+  };
+
+  const updateLocalDraft = (draftId: string, field: "subject" | "body" | "scheduledAt", value: string) => {
+    setDraftStudio((prev: any) => ({
+      ...prev,
+      drafts: prev.drafts.map((draft: any) => draft._id === draftId ? { ...draft, [field]: value } : draft),
+    }));
+  };
+
+  const markAllReviewed = async () => {
+    if (!selectedCandidateId || !draftStudio.id) return;
+    setDraftSaving("review");
+    try {
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/review`, {
+        sequenceId: draftStudio.id,
+        drafts: draftStudio.drafts.map((draft: any) => ({
+          _id: draft._id,
+          subject: draft.subject,
+          body: draft.body,
+          scheduledAt: draft.scheduledAt || "",
+        })),
+      });
+      await loadDraftStudio();
+      toast.success("All drafts marked reviewed");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to review drafts");
+    } finally {
+      setDraftSaving("");
+    }
+  };
+
+  const startEmailSequence = async () => {
+    if (!selectedCandidateId || !draftStudio.id) return;
+    setDraftSaving("start");
+    try {
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start`, { sequenceId: draftStudio.id });
+      await loadDraftStudio();
+      await refreshCurrent();
+      toast.success("Email sequence scheduled");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.response?.data?.code || "Failed to send sequence");
+      await loadDraftStudio();
+    } finally {
+      setDraftSaving("");
+    }
+  };
+
+  const stopEmailSequence = async () => {
+    if (!selectedCandidateId || !draftStudio.id) return;
+    setDraftSaving("stop");
+    try {
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/stop`, { sequenceId: draftStudio.id, reason: "manual_stop" });
+      await loadDraftStudio();
+      toast.success("Email sequence stopped");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to stop sequence");
+    } finally {
+      setDraftSaving("");
+    }
+  };
+
+  const clearEmailSequence = async () => {
+    if (!selectedCandidateId || !draftStudio.id) return;
+    setDraftSaving("clear");
+    try {
+      await axios.delete(`${API_URL}/candidates/${selectedCandidateId}/draft-studio`, {
+        data: { sequenceId: draftStudio.id },
+      });
+      setDraftStudio({ id: "", status: "Empty", sent: 0, drafts: [] });
+      toast.success("Draft sequence cleared");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to clear email drafts");
+    } finally {
+      setDraftSaving("");
     }
   };
 
@@ -665,10 +827,7 @@ export default function FollowUps() {
                       <Phone size={16} />
                     </button>
                     <button
-                      onClick={() => {
-                        openCandidateContext(candidate, "email");
-                        setComposer((p: any) => ({ ...p, recipient: candidate.email || "" }));
-                      }}
+                      onClick={() => openEmailStudio(candidate)}
                       className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
                       title="Email"
                     >
@@ -776,6 +935,179 @@ export default function FollowUps() {
     </div>
   );
 
+  const EmailStudio = () => {
+    const canEdit = ["Empty", "Draft", "Ready", "Stopped"].includes(draftStudio.status);
+    const allReviewed = draftStudio.drafts.length === 5 && draftStudio.drafts.every((draft: any) => ["reviewed", "sent"].includes(draft.status));
+    const canStart = allReviewed && !["Active", "Completed", "Stopped"].includes(draftStudio.status);
+    const hasDrafts = draftStudio.drafts.length > 0;
+    const canClear = Boolean(draftStudio.id) && (draftStudio.sent || 0) === 0 && !["Active", "Completed"].includes(draftStudio.status);
+    const showReviewStep = hasDrafts && !allReviewed && !["Active", "Completed"].includes(draftStudio.status);
+    const showStartStep = hasDrafts && allReviewed && !["Active", "Completed"].includes(draftStudio.status);
+    const showStopStep = ["Active"].includes(draftStudio.status);
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4">
+            {!selectedCandidate ? (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                  <h3 className="font-black text-slate-900">Draft studio</h3>
+                  <p className="mt-1 text-sm text-slate-600">Select a candidate to generate, edit, submit and stop a five-email sequence.</p>
+                </div>
+                {CandidatesTable()}
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-black text-slate-900">{selectedCandidate.name}</h3>
+                        <span className={statusBadge(draftStudio.status)}>{draftStudio.status}</span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{draftStudio.sent || 0} of 5 sent</span>
+                      </div>
+                      <p className="mt-1 text-sm text-slate-500">{selectedCandidate.email || "No email"} • {selectedRequirement?.title}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {!hasDrafts && (
+                        <button
+                          onClick={generateEmailSequence}
+                          disabled={Boolean(draftSaving)}
+                          className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60"
+                        >
+                          <Sparkles size={16} /> Generate five emails
+                        </button>
+                      )}
+                      <button
+                        onClick={clearEmailSequence}
+                        disabled={Boolean(draftSaving) || !canClear}
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                      >
+                        <X size={16} /> Clear drafts
+                      </button>
+                      {showReviewStep && (
+                        <button
+                          onClick={markAllReviewed}
+                          disabled={Boolean(draftSaving) || draftStudio.drafts.length !== 5 || !canEdit}
+                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                        >
+                          <CheckCircle size={16} /> Mark all reviewed
+                        </button>
+                      )}
+                      {showStartStep && (
+                        <button
+                          onClick={startEmailSequence}
+                          disabled={Boolean(draftSaving) || !canStart}
+                          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
+                        >
+                          <Play size={16} /> Start sequence
+                        </button>
+                      )}
+                      {showStopStep && (
+                        <button
+                          onClick={stopEmailSequence}
+                          disabled={Boolean(draftSaving) || !draftStudio.id}
+                          className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          <Square size={15} /> Stop
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {draftSaving === "load" ? (
+                  <div className="rounded-xl bg-slate-50 p-8 text-center text-slate-500">Loading draft studio...</div>
+                ) : draftStudio.drafts.length === 0 ? (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center">
+                    <p className="font-black text-slate-900">No sequence yet</p>
+                    <p className="mt-1 text-sm text-slate-500">Generate five emails for this candidate, review the copy, then submit the sequence.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {draftStudio.drafts.map((draft: any, index: number) => (
+                      <div key={draft._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                        <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-black text-white">Email {index + 1}</span>
+                            <span className={statusBadge(draft.status)}>{draft.status}</span>
+                            {draft.scheduledAt && draft.status !== "sent" && <span className="text-xs font-bold text-blue-600">Scheduled {formatDateTime(draft.scheduledAt)}</span>}
+                            {draft.sentAt && <span className="text-xs font-bold text-slate-400">{formatDateTime(draft.sentAt)}</span>}
+                          </div>
+                          <button
+                            onClick={() => saveDraft(draft, true)}
+                            disabled={Boolean(draftSaving) || draft.status === "sent"}
+                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          >
+                            {draftSaving === draft._id ? "Saving..." : "Save and review"}
+                          </button>
+                        </div>
+                        <input
+                          value={draft.subject || ""}
+                          onChange={(e) => updateLocalDraft(draft._id, "subject", e.target.value)}
+                          disabled={draft.status === "sent"}
+                          className="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 disabled:bg-slate-50"
+                        />
+                        <label className="mb-3 block">
+                          <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Send date and time</span>
+                          <input
+                            type="datetime-local"
+                            value={toDateTimeLocal(draft.scheduledAt)}
+                            onChange={(e) => updateLocalDraft(draft._id, "scheduledAt", fromDateTimeLocal(e.target.value))}
+                            disabled={draft.status === "sent"}
+                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
+                          />
+                        </label>
+                        <textarea
+                          value={draft.body || ""}
+                          onChange={(e) => updateLocalDraft(draft._id, "body", e.target.value)}
+                          disabled={draft.status === "sent"}
+                          rows={8}
+                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6 text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
+                        />
+                        {draft.errorMessage && <p className="mt-2 text-xs font-semibold text-red-600">{draft.errorMessage}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <aside className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="font-black text-slate-900">Sequence controls</h3>
+              <div className="mt-3 space-y-3 text-sm">
+                <div className="flex justify-between gap-3"><span className="text-slate-500">Status</span><b>{draftStudio.status}</b></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-500">Drafts</span><b>{draftStudio.drafts.length}/5</b></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-500">Submitted</span><b>{draftStudio.sent || 0}</b></div>
+                <div className="flex justify-between gap-3"><span className="text-slate-500">Recipient</span><b className="text-right">{selectedCandidate?.email || "-"}</b></div>
+              </div>
+            </div>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <b>Stop behavior</b>
+              <p className="mt-1">Stop marks only unsent drafts as stopped. Emails already submitted through the provider cannot be recalled.</p>
+            </div>
+            {selectedCandidate && (
+              <div className="rounded-xl border border-slate-200 bg-white p-4">
+                <h3 className="font-black text-slate-900">Recent activity</h3>
+                <div className="mt-3 space-y-3">
+                  {activity.slice(0, 5).map((item) => (
+                    <div key={item._id} className="border-b border-slate-100 pb-2 last:border-0">
+                      <p className="text-xs font-bold text-slate-800">{item.description || item.module || item.action}</p>
+                      <p className="text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
+                    </div>
+                  ))}
+                  {activity.length === 0 && <p className="text-sm text-slate-500">No email activity yet.</p>}
+                </div>
+              </div>
+            )}
+          </aside>
+        </div>
+      </div>
+    );
+  };
+
   const DetailView = () => (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -816,7 +1148,7 @@ export default function FollowUps() {
           </div>
         )}
         {activeTab === "Follow-ups" && FollowUpsTable()}
-        {activeTab === "Emails" && CandidatesTable()}
+        {activeTab === "Emails" && EmailStudio()}
         {activeTab === "WhatsApp" && CandidatesTable()}
         {activeTab === "Activity" && ActivityList()}
       </div>
