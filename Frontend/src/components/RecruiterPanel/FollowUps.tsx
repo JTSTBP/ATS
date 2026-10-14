@@ -1,3 +1,4 @@
+import EmailConnection from "./EmailConnection";
 import "./FollowUps.css";
 import { useAuth } from "../../context/AuthProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import {
   Copy,
   ExternalLink,
   Eye,
+  Pencil,
   Mail,
   MessageCircle,
   Phone,
@@ -121,6 +123,7 @@ export default function FollowUps() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
 
+  const [editingCandidate, setEditingCandidate] = useState<any>(null);
   const [candidateForm, setCandidateForm] = useState<any>({
     candidateName: "",
     email: "",
@@ -197,7 +200,7 @@ export default function FollowUps() {
         setDuplicateCheckLoading(true);
         const { data } = await axios.get(
           `${API_URL}/requirements/${selectedRequirement._id}/candidates/check-duplicate`,
-          { params: { email, phone }, signal: controller.signal }
+          { params: { email, phone, ...(editingCandidate ? { candidateId: editingCandidate._id } : {}) }, signal: controller.signal }
         );
         if (controller.signal.aborted) return;
         if (data.hasDuplicate || data.canAdd === false) {
@@ -213,7 +216,7 @@ export default function FollowUps() {
     }, 350);
 
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [candidateForm.email, candidateForm.phone, modal, selectedRequirement]);
+  }, [candidateForm.email, candidateForm.phone, modal, selectedRequirement, editingCandidate]);
 
   const loadRequirements = async (signal?: AbortSignal) => {
     const requestId = ++requirementRequestId.current;
@@ -341,6 +344,7 @@ export default function FollowUps() {
   }, [candidates, candidateFilter, candidateSearch, candidateDateFrom, candidateDateTo, candidateStatusFilter]);
 
   const resetCandidateForm = () => {
+    setEditingCandidate(null);
     setCandidateForm({
       candidateName: "",
       email: "",
@@ -359,8 +363,12 @@ export default function FollowUps() {
         if (key === "resume" && value) formData.append("resume", value);
         else if (key !== "resume") formData.append(key, value || "");
       });
-      const { data } = await axios.post(`${API_URL}/requirements/${selectedRequirement._id}/candidates`, formData);
-      if (data.isDuplicate) {
+      const { data } = editingCandidate
+        ? await axios.patch(`${API_URL}/candidates/${editingCandidate._id}`, formData)
+        : await axios.post(`${API_URL}/requirements/${selectedRequirement._id}/candidates`, formData);
+      if (editingCandidate) {
+        toast.success("Candidate updated successfully");
+      } else if (data.isDuplicate) {
         toast.info(showDuplicateDetails ? data.message || "Candidate profile added" : "Candidate added — Duplicate");
       } else {
         toast.success(data.message || "Candidate added successfully");
@@ -369,7 +377,7 @@ export default function FollowUps() {
       resetCandidateForm();
       await refreshCurrent();
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to add candidate");
+      toast.error(error.response?.data?.message || (editingCandidate ? "Failed to update candidate" : "Failed to add candidate"));
     } finally {
       setSaving("");
     }
@@ -867,6 +875,7 @@ export default function FollowUps() {
                 </td>
                 <td data-label="Actions" className="px-4 py-3">
                   <div className="flex flex-wrap justify-end gap-1.5">
+                    <button type="button" title="Edit" aria-label={`Edit ${candidate.name}`} disabled={Boolean(saving)} onClick={() => { setEditingCandidate(candidate); setCandidateForm({ candidateName: candidate.name || "", email: candidate.email || "", phone: candidate.phone || "", resume: null }); setDuplicateWarning(null); setModal("candidate"); }} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"><Pencil size={16} /></button>
                     <button disabled={Boolean(saving)} onClick={() => openLineup(candidate)} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">{saving === `lineup-${candidate._id}` ? "Loading..." : "Convert to lineup"}</button>
                     {isAdmin && activeTab === "Candidates" && <button title="Delete candidate" aria-label={`Delete ${candidate.name}`} disabled={saving === "delete-candidates"} onClick={() => deleteCandidates([candidate._id])} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={16} /></button>}
                     {showDuplicateDetails && candidate.isDuplicate && (
@@ -1013,6 +1022,7 @@ export default function FollowUps() {
     const showStopStep = draftStudio.status === "Active";
     return (
       <div className="space-y-5">
+        {!isWhatsApp && <EmailConnection />}
         <div className="followups-studio-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold text-slate-900">{isWhatsApp ? "WhatsApp studio" : "Email draft studio"}</h2><label className="text-sm font-semibold text-slate-600">Candidate <select value={selectedCandidateId || ""} onChange={event => { const candidate = candidates.find(item => item._id === event.target.value); if (candidate) openCandidateContext(candidate); else setSelectedCandidate(null); }} className="ml-2 rounded-lg border border-slate-200 px-3 py-2"><option value="">Select candidate</option>{candidates.map(candidate => <option key={candidate._id} value={candidate._id}>{candidate.name} — {(isWhatsApp ? candidate.phone : candidate.email) || "No contact"}</option>)}</select></label></div>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
@@ -1216,7 +1226,7 @@ export default function FollowUps() {
 
       {modal === "candidate" && (
         <ModalShell
-          title="Add Candidate"
+          title={editingCandidate ? "Edit Candidate" : "Add Candidate"}
           onClose={() => {
             setModal("");
             setTemplates([]);
@@ -1239,7 +1249,8 @@ export default function FollowUps() {
               </label>
             ))}
             <label className="block md:col-span-2">
-              <span className="text-xs font-bold text-slate-600">CV/Resume *</span>
+              <span className="text-xs font-bold text-slate-600">{editingCandidate ? "Replace CV/Resume (optional)" : "CV/Resume *"}</span>
+              {editingCandidate && <p className="mt-1 text-xs text-slate-500">Leave empty to keep the current resume.</p>}
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
@@ -1311,6 +1322,7 @@ export default function FollowUps() {
               <Upload size={16} />{" "}
               {saving === "candidate"
                 ? "Saving..."
+                : editingCandidate ? "Save changes"
                 : duplicateWarning?.hasDuplicate
                 ? "Add Candidate (Duplicate Profile)"
                 : "Add Candidate"}

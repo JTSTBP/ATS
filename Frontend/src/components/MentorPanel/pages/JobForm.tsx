@@ -64,6 +64,7 @@ type Job = {
   assignedRecruiters?: (string | { _id: string; name: string })[];
   assignedMentors?: (string | { _id: string; name: string })[];
   leadRecruiter?: string | { _id: string; name: string };
+  mentorAssignments?: Record<string, { assignedRecruiters: (string | { _id: string; name: string })[]; leadRecruiter?: string | { _id: string; name: string } }>;
   candidateFields: {
     id: string;
     name: string;
@@ -428,13 +429,16 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
   };
 
   useEffect(() => {
-    if (job) setFormData({
-      ...job,
-      assignedRecruiters: (job.assignedRecruiters || []).filter(reference => Boolean(getUserReferenceId(reference))),
-      assignedMentors: (job.assignedMentors || []).filter(reference => Boolean(getUserReferenceId(reference))),
-      leadRecruiter: getUserReferenceId(job.leadRecruiter),
+    if (!job) return;
+    const ownAssignment = user?.designation === "Mentor" ? job.mentorAssignments?.[user._id] : undefined;
+    const allowed = new Set(getAllowedRecruiters(user, users).map(recruiter => recruiter._id));
+    const selected = (ownAssignment?.assignedRecruiters || job.assignedRecruiters || []).filter(reference => {
+      const id = getUserReferenceId(reference);
+      return id && (user?.designation !== "Mentor" || allowed.has(id));
     });
-  }, [job]);
+    const lead = getUserReferenceId(ownAssignment?.leadRecruiter || job.leadRecruiter);
+    setFormData({ ...job, assignedRecruiters: selected, assignedMentors: (job.assignedMentors || []).filter(reference => Boolean(getUserReferenceId(reference))), leadRecruiter: user?.designation === "Mentor" && !selected.some(reference => getUserReferenceId(reference) === lead) ? "" : lead });
+  }, [job, user?._id, users]);
 
 
   const handleNext = (e: React.MouseEvent) => {
@@ -486,7 +490,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
         : { ...formData, CreatedBy: user?._id };
 
       let body: any;
-      let headers: Record<string, string> = {};
+      let headers: Record<string, string> = { Authorization: `Bearer ${localStorage.getItem("token") || ""}` };
 
       if (jdFileToUpload || removeExistingJd) {
         const formDataPayload = new FormData();
@@ -1007,6 +1011,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
               {/* Assign Recruiters */}
               <Grid size={12}>
                 <FormControl fullWidth>
+                  {user?.designation === "Mentor" && <p className="mb-3 text-sm text-gray-500">Assign your team and your lead recruiter. Other mentors' assignments are saved separately.</p>}
                   <InputLabel id="assignedRecruiters-label">
                     Assign Recruiters
                   </InputLabel>

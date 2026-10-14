@@ -245,6 +245,15 @@ export const JobDetailsModal = ({
           </section>
         )}
 
+        {Object.keys(job.mentorAssignments || {}).length > 0 && <section className="mb-6">
+          <h3 className="mb-3 text-lg font-semibold text-gray-800">Mentor team assignments</h3>
+          <div className="grid gap-3 sm:grid-cols-2">{Object.entries(job.mentorAssignments || {}).map(([mentorId, value]) => {
+            const assignment = value as any;
+            const mentor = assignment.mentorId?.name || job.assignedMentors?.find((item: any) => item?._id === mentorId)?.name || "Mentor";
+            return <div key={mentorId} className="rounded-xl border border-gray-200 bg-slate-50 p-4"><h4 className="font-semibold text-gray-900">{mentor}</h4><p className="mt-2 text-sm text-gray-600">Lead recruiter: <span className="font-semibold text-gray-900">{assignment.leadRecruiter?.name || "Not assigned"}</span></p><p className="mt-2 text-sm text-gray-600">Recruiters: {(assignment.assignedRecruiters || []).map((recruiter: any) => recruiter?.name).filter(Boolean).join(", ") || "Not assigned"}</p></div>;
+          })}</div>
+        </section>}
+
         {/* Lead Recruiter */}
         {job.leadRecruiter && (
           <section className="mb-6">

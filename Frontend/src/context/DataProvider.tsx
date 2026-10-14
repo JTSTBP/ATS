@@ -197,7 +197,7 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       const isFormData = jobData instanceof FormData;
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
-        headers: isFormData ? {} : { "Content-Type": "application/json" },
+        headers: { ...(isFormData ? {} : { "Content-Type": "application/json" }), Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         body: isFormData ? jobData : JSON.stringify(jobData),
       });
       const data = await res.json();
@@ -217,7 +217,7 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({
       setLoading(true);
       const res = await fetch(`${API_URL}/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") || ""}` },
         body: JSON.stringify({ status, UpdatedBy: userId }),
       });
       const data = await res.json();

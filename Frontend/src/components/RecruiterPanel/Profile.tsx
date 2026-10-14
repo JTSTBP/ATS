@@ -1,3 +1,4 @@
+import EmailConnection from "./EmailConnection";
 import { motion } from 'framer-motion';
 import { User, Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Save, X, Camera, Shield } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -230,6 +231,7 @@ export default function Profile() {
                     </div>
                 </div>
 
+                <div className="px-6 pt-6 sm:px-10"><EmailConnection /></div>
                 {/* Profile Details */}
                 <div className="p-6 sm:p-10">
                     <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest font-mono mb-8 flex items-center gap-2">
