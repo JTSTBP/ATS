@@ -1,5 +1,6 @@
+import "./FollowUps.css";
 import { useAuth } from "../../context/AuthProvider";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import {
@@ -14,18 +15,20 @@ import {
   MessageCircle,
   Phone,
   Play,
-  Plus,
   RefreshCw,
   Search,
   Send,
   Square,
   Upload,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const API_URL = `${API_BASE_URL}/api/recruiter/follow-ups`;
+
+const CANDIDATE_STATUSES = ["Not interested", "Wrong number", "No answer", "Busy", "Lineup"];
 
 const CALL_STATUSES = ["Connected", "No Answer", "Busy", "Switched Off", "Not Reachable", "Call Back Later"];
 const CALL_OUTCOMES = [
@@ -81,13 +84,13 @@ function statusBadge(status: string) {
 
 function ModalShell({ title, children, onClose }: any) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-slate-200 p-4">
-          <h3 className="font-black text-slate-900">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-2 hover:bg-slate-100"><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-2 sm:p-4">
+      <div className="followups-modal max-h-[94dvh] w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-3 border-b border-slate-100 p-4 sm:px-6">
+          <h3 className="min-w-0 break-words font-bold text-slate-900">{title}</h3>
+          <button onClick={onClose} aria-label="Close dialog" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl hover:bg-slate-100"><X size={18} /></button>
         </div>
-        <div className="max-h-[calc(90vh-70px)] overflow-auto p-5">{children}</div>
+        <div className="max-h-[calc(94dvh-80px)] overflow-auto overscroll-contain p-4 sm:p-6">{children}</div>
       </div>
     </div>
   );
@@ -95,6 +98,8 @@ function ModalShell({ title, children, onClose }: any) {
 
 export default function FollowUps() {
   const { user } = useAuth();
+  const isAdmin = user?.designation === "Admin";
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
   const showDuplicateDetails = ["Admin", "Manager"].includes(user?.designation || "");
   const [requirements, setRequirements] = useState<any[]>([]);
   const [selectedRequirement, setSelectedRequirement] = useState<any | null>(null);
@@ -108,6 +113,7 @@ export default function FollowUps() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState("");
   const [search, setSearch] = useState("");
+  const requirementRequestId = useRef(0);
   const [status, setStatus] = useState("all");
   const [location, setLocation] = useState("");
   const [summary, setSummary] = useState<any>({});
@@ -159,29 +165,42 @@ export default function FollowUps() {
   const [duplicateModalCandidate, setDuplicateModalCandidate] = useState<any | null>(null);
   const [candidateFilter, setCandidateFilter] = useState<"all" | "duplicates" | "mine">("all");
   const [candidateSearch, setCandidateSearch] = useState("");
+  const [candidateStatusFilter, setCandidateStatusFilter] = useState("all");
+  const [candidateDateFrom, setCandidateDateFrom] = useState("");
+  const [candidateDateTo, setCandidateDateTo] = useState("");
+
+  const [lineupCandidate, setLineupCandidate] = useState<any>(null);
+  const [lineupFields, setLineupFields] = useState<any[]>([]);
+  const [lineupValues, setLineupValues] = useState<Record<string, any>>({});
+  const [lineupErrors, setLineupErrors] = useState<string[]>([]);
 
   const selectedCandidateId = selectedCandidate?._id;
 
   useEffect(() => {
     if (modal !== "candidate" || !selectedRequirement) {
+      setDuplicateCheckLoading(false);
       setDuplicateWarning(null);
       return;
     }
     const email = candidateForm.email?.trim();
     const phone = candidateForm.phone?.trim();
     if (!email && !phone) {
+      setDuplicateCheckLoading(false);
       setDuplicateWarning(null);
       return;
     }
 
+    const controller = new AbortController();
+    setDuplicateWarning(null);
     const timer = setTimeout(async () => {
       try {
         setDuplicateCheckLoading(true);
         const { data } = await axios.get(
           `${API_URL}/requirements/${selectedRequirement._id}/candidates/check-duplicate`,
-          { params: { email, phone } }
+          { params: { email, phone }, signal: controller.signal }
         );
-        if (data.hasDuplicate) {
+        if (controller.signal.aborted) return;
+        if (data.hasDuplicate || data.canAdd === false) {
           setDuplicateWarning(data);
         } else {
           setDuplicateWarning(null);
@@ -189,22 +208,23 @@ export default function FollowUps() {
       } catch {
         // ignore check error
       } finally {
-        setDuplicateCheckLoading(false);
+        if (!controller.signal.aborted) setDuplicateCheckLoading(false);
       }
     }, 350);
 
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); controller.abort(); };
   }, [candidateForm.email, candidateForm.phone, modal, selectedRequirement]);
 
-  const loadRequirements = async () => {
+  const loadRequirements = async (signal?: AbortSignal) => {
+    const requestId = ++requirementRequestId.current;
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API_URL}/requirements`, { params: { search, status, location, limit: 50 } });
-      setRequirements(data.requirements || []);
+      const { data } = await axios.get(`${API_URL}/requirements`, { params: { search: search.trim(), status, location: location.trim(), limit: 50 }, signal });
+      if (!signal?.aborted && requestId === requirementRequestId.current) setRequirements(data.requirements || []);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to load follow-up requirements");
+      if (!axios.isCancel(error) && !signal?.aborted && requestId === requirementRequestId.current) toast.error(error.response?.data?.message || "Failed to load follow-up requirements");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted && requestId === requirementRequestId.current) setLoading(false);
     }
   };
 
@@ -218,13 +238,28 @@ export default function FollowUps() {
   };
 
   useEffect(() => {
-    loadRequirements();
     loadSummary();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    // Invalidate earlier results as soon as the filters change.
+    requirementRequestId.current += 1;
+    setLoading(true);
+    const timer = setTimeout(() => loadRequirements(controller.signal), 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [search, status, location]);
 
   const openRequirement = async (requirement: any, preserveContext = false) => {
     if (!preserveContext) {
       setSelectedRequirement(requirement);
+      setSelectedCandidateIds([]);
+      setCandidateStatusFilter("all");
+      setCandidateDateFrom("");
+      setCandidateDateTo("");
       setActiveTab("Overview");
       setSelectedCandidate(null);
     }
@@ -280,8 +315,16 @@ export default function FollowUps() {
 
   const filteredCandidates = useMemo(() => {
     return candidates.filter((candidate) => {
+      if (candidateStatusFilter !== "all" && (candidate.status || "Sourced") !== candidateStatusFilter) return false;
       if (candidateFilter === "duplicates" && !candidate.isDuplicate) return false;
       if (candidateFilter === "mine" && !candidate.isOwner) return false;
+      if (candidateDateFrom || candidateDateTo) {
+        const addedAt = new Date(candidate.createdAt);
+        if (Number.isNaN(addedAt.getTime())) return false;
+        const addedDate = `${addedAt.getFullYear()}-${String(addedAt.getMonth() + 1).padStart(2, "0")}-${String(addedAt.getDate()).padStart(2, "0")}`;
+        if (candidateDateFrom && addedDate < candidateDateFrom) return false;
+        if (candidateDateTo && addedDate > candidateDateTo) return false;
+      }
       if (candidateSearch.trim()) {
         const query = candidateSearch.toLowerCase();
         const matchName = String(candidate.name || "").toLowerCase().includes(query);
@@ -295,7 +338,7 @@ export default function FollowUps() {
       }
       return true;
     });
-  }, [candidates, candidateFilter, candidateSearch]);
+  }, [candidates, candidateFilter, candidateSearch, candidateDateFrom, candidateDateTo, candidateStatusFilter]);
 
   const resetCandidateForm = () => {
     setCandidateForm({
@@ -492,6 +535,64 @@ export default function FollowUps() {
     }
   };
 
+  const updateCandidateStatus = async (candidate: any, status: string) => {
+    setSaving(`status-${candidate._id}`);
+    try {
+      await axios.patch(`${API_URL}/candidates/${candidate._id}/status`, { status });
+      setCandidates(prev => prev.map(item => item._id === candidate._id ? { ...item, status } : item));
+      setSelectedCandidate((current: any) => current?._id === candidate._id ? { ...current, status } : current);
+      toast.success("Candidate status updated");
+    } catch (error: any) { toast.error(error.response?.data?.message || "Failed to update status"); }
+    finally { setSaving(""); }
+  };
+
+  const openLineup = async (candidate: any) => {
+    setSaving(`lineup-${candidate._id}`);
+    try {
+      const { data } = await axios.get(`${API_URL}/candidates/${candidate._id}/lineup`);
+      setLineupFields(data.fields || []);
+      setLineupValues(data.values || {});
+      setLineupErrors([]);
+      setLineupCandidate(candidate);
+    } catch (error: any) { toast.error(error.response?.data?.message || "Failed to load required fields"); }
+    finally { setSaving(""); }
+  };
+
+  const convertToLineup = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!lineupCandidate) return;
+    setSaving("convert-lineup");
+    setLineupErrors([]);
+    try {
+      await axios.post(`${API_URL}/candidates/${lineupCandidate._id}/lineup`, { dynamicFields: lineupValues });
+      const id = lineupCandidate._id;
+      setLineupCandidate(null);
+      setCandidates(prev => prev.filter(candidate => candidate._id !== id));
+      setSelectedCandidate((current: any) => current?._id === id ? null : current);
+      setSelectedCandidateIds(prev => prev.filter(candidateId => candidateId !== id));
+      toast.success("Converted to lineup and moved to the normal candidates list");
+      await refreshCurrent();
+    } catch (error: any) {
+      setLineupErrors(error.response?.data?.errors || [error.response?.data?.message || "Failed to convert candidate"]);
+    } finally { setSaving(""); }
+  };
+
+  const deleteCandidates = async (ids: string[]) => {
+    if (!isAdmin || !selectedRequirement || !ids.length) return;
+    if (!window.confirm(`Delete ${ids.length === 1 ? "this candidate" : `${ids.length} candidates`} and their calls, follow-ups and communication records? This cannot be undone.`)) return;
+    setSaving("delete-candidates");
+    try {
+      await axios.delete(`${API_URL}/requirements/${selectedRequirement._id}/candidates`, { data: { candidateIds: ids } });
+      setSelectedCandidateIds(prev => prev.filter(id => !ids.includes(id)));
+      setSelectedCandidate((current: any) => current && ids.includes(current._id) ? null : current);
+      setDuplicateModalCandidate(null);
+      toast.success("Candidates deleted");
+      await refreshCurrent();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to delete candidates");
+    } finally { setSaving(""); }
+  };
+
   const RequirementList = () => (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -504,7 +605,7 @@ export default function FollowUps() {
         </button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
           ["Today's Follow-ups", summary.todays],
           ["Overdue", summary.overdue],
@@ -521,10 +622,10 @@ export default function FollowUps() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-3 md:grid-cols-[1fr_180px_180px_auto]">
+        <div className="grid gap-3 md:grid-cols-[1fr_180px_180px]">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search requirement" className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search requirement title..." aria-label="Search requirement title" className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:border-blue-500" />
           </div>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500">
             <option value="all">All Status</option>
@@ -533,7 +634,6 @@ export default function FollowUps() {
             <option value="Inactive">Inactive</option>
           </select>
           <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500" />
-          <button onClick={loadRequirements} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">Apply</button>
         </div>
       </div>
 
@@ -543,7 +643,7 @@ export default function FollowUps() {
         ) : requirements.length === 0 ? (
           <div className="rounded-xl bg-white p-8 text-center text-slate-500">No accessible requirements found.</div>
         ) : requirements.map((requirement) => (
-          <div key={requirement._id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div key={requirement._id} className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
@@ -586,8 +686,8 @@ export default function FollowUps() {
     const facts = [
       ["Company", summary.company], ["Location", summary.location],
       ["Employment type", detail.employmentType || summary.employmentType],
-      ["Open positions", detail.noOfPositions ?? summary.noOfPositions],
-      ["Experience", summary.experience], ["Salary range", summary.salary],
+      ["Open positions", detail.noOfPositions > 0 ? detail.noOfPositions : ""],
+      ["Experience", detail.experience?.min || detail.experience?.max ? summary.experience : ""], ["Salary range", detail.salary?.min || detail.salary?.max ? summary.salary : ""],
       ["Department", detail.department], ["Industry", detail.industry],
       ["Functional area", detail.functionalArea],
       ["Education", (detail.education || []).join(", ")],
@@ -599,10 +699,10 @@ export default function FollowUps() {
           <span className={statusBadge(summary.status)}>{summary.status || "Open"}</span>
         </div>
         <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {facts.map(([label, value]) => <div key={String(label)} className="rounded-xl bg-slate-50 p-4"><dt className="text-xs font-semibold text-slate-500">{label}</dt><dd className="mt-1 text-sm font-semibold text-slate-900">{value === undefined || value === null || value === "" ? "Not specified" : String(value)}</dd></div>)}
+          {facts.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "" && !["N/A", "Not specified"].includes(String(value))).map(([label, value]) => <div key={String(label)} className="rounded-xl bg-slate-50 p-4"><dt className="text-xs font-semibold text-slate-500">{label}</dt><dd className="mt-1 text-sm font-semibold text-slate-900">{String(value)}</dd></div>)}
         </dl>
-        <section><h3 className="font-bold text-slate-900">Key skills</h3><div className="mt-3 flex flex-wrap gap-2">{(detail.keySkills || summary.keySkills || []).map((skill: string) => <span key={skill} className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700">{skill}</span>)}{!(detail.keySkills || summary.keySkills || []).length && <p className="text-sm text-slate-500">Not specified</p>}</div></section>
-        {[["Job description", detail.description], ["Requirements", detail.requirements]].map(([label, text]) => <section key={label}><h3 className="font-bold text-slate-900">{label}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{text || "Not specified"}</p></section>)}
+        {(detail.keySkills || summary.keySkills || []).length > 0 && <section><h3 className="font-bold text-slate-900">Key skills</h3><div className="mt-3 flex flex-wrap gap-2">{(detail.keySkills || summary.keySkills || []).map((skill: string) => <span key={skill} className="rounded-full bg-blue-50 px-3 py-1 text-sm text-blue-700">{skill}</span>)}{!(detail.keySkills || summary.keySkills || []).length && <p className="text-sm text-slate-500">Not specified</p>}</div></section>}
+        {[["Job description", detail.description], ["Requirements", detail.requirements]].filter(([, text]) => text?.trim()).map(([label, text]) => <section key={label}><h3 className="font-bold text-slate-900">{label}</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{text || "Not specified"}</p></section>)}
         {detail.stages?.length > 0 && <section><h3 className="font-bold text-slate-900">Hiring stages</h3><ol className="mt-3 flex flex-wrap gap-2">{detail.stages.map((stage: any, index: number) => <li key={index} className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">{index + 1}. {stage.name || "Interview"}</li>)}</ol></section>}
         {detail.screeningQuestions?.length > 0 && <section><h3 className="font-bold text-slate-900">Screening questions</h3><ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-600">{detail.screeningQuestions.map((question: string, index: number) => <li key={index}>{question}</li>)}</ul></section>}
       </div>
@@ -611,8 +711,9 @@ export default function FollowUps() {
 
   const CandidatesTable = () => (
     <div className="space-y-4">
+      {isAdmin && activeTab === "Candidates" && <div className="flex items-center justify-between gap-3"><label className="flex items-center gap-2 text-sm"><input type="checkbox" aria-label="Select all visible candidates" checked={filteredCandidates.length > 0 && filteredCandidates.every(candidate => selectedCandidateIds.includes(candidate._id))} onChange={event => setSelectedCandidateIds(prev => event.target.checked ? Array.from(new Set([...prev, ...filteredCandidates.map(candidate => candidate._id)])) : prev.filter(id => !filteredCandidates.some(candidate => candidate._id === id)))} />Select visible candidates ({selectedCandidateIds.length} selected)</label><button disabled={!selectedCandidateIds.length || saving === "delete-candidates"} onClick={() => deleteCandidates(selectedCandidateIds)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Delete selected</button></div>}
       {/* Filters and search toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3">
+      <div className="followups-candidate-filters flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between border-b border-slate-100 pb-4">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => setCandidateFilter("all")}
@@ -624,7 +725,7 @@ export default function FollowUps() {
           >
             All Candidates ({candidates.length})
           </button>
-          <button
+          {showDuplicateDetails && <button
             onClick={() => setCandidateFilter("duplicates")}
             className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
               candidateFilter === "duplicates"
@@ -634,7 +735,7 @@ export default function FollowUps() {
           >
             <AlertTriangle size={13} />
             Duplicates ({candidates.filter((c) => c.isDuplicate).length})
-          </button>
+          </button>}
           <button
             onClick={() => setCandidateFilter("mine")}
             className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
@@ -652,20 +753,27 @@ export default function FollowUps() {
             value={candidateSearch}
             onChange={(e) => setCandidateSearch(e.target.value)}
             placeholder="Search candidate, phone, or added by..."
-            className="w-full sm:w-64 rounded-lg border border-slate-200 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-blue-500"
+            className="w-full xl:w-72 rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-8 pr-3 text-sm outline-none focus:border-blue-500"
           />
         </div>
       </div>
 
+      <div className="followups-date-toolbar flex flex-wrap items-end justify-between gap-3">
+        <div className="followups-date-fields flex flex-wrap items-end gap-3">
+          <label className="text-xs font-semibold text-slate-500">Status<select aria-label="Filter candidate status" value={candidateStatusFilter} onChange={event => setCandidateStatusFilter(event.target.value)} className="mt-1 block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"><option value="all">All statuses</option><option value="Sourced">Sourced</option>{CANDIDATE_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}</select></label>
+          <label className="text-xs font-semibold text-slate-500">Added from<input type="date" value={candidateDateFrom} max={candidateDateTo || undefined} onChange={event => setCandidateDateFrom(event.target.value)} className="mt-1 block rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700" /></label>
+          <label className="text-xs font-semibold text-slate-500">Added to<input type="date" value={candidateDateTo} min={candidateDateFrom || undefined} onChange={event => setCandidateDateTo(event.target.value)} className="mt-1 block rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-700" /></label>
+          {(candidateDateFrom || candidateDateTo) && <button type="button" onClick={() => { setCandidateDateFrom(""); setCandidateDateTo(""); }} className="py-2 text-xs text-slate-500 hover:underline">Clear dates</button>}
+        </div>
+        {activeTab === "Candidates" && <button type="button" onClick={() => { resetCandidateForm(); setModal("candidate"); }} className="followups-add-candidate bg-transparent p-0 text-sm font-semibold text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">+ Add candidate</button>}
+      </div>
       <div className="overflow-x-auto">
-        <table className="min-w-[1180px] w-full text-left text-sm">
+        <table role="table" className="followups-candidate-table w-full text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="px-4 py-3">Candidate</th>
               <th className="px-4 py-3">Contact</th>
               <th className="px-4 py-3">Added By</th>
-              <th className="px-4 py-3">Experience</th>
-              <th className="px-4 py-3">Company</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Last Call</th>
               <th className="px-4 py-3">Follow-up status</th>
@@ -680,8 +788,9 @@ export default function FollowUps() {
                   candidate.isDuplicate ? "bg-amber-50/25 hover:bg-amber-50/50" : "hover:bg-slate-50"
                 }`}
               >
-                <td className="px-4 py-3">
+                <td data-label="Candidate" className="px-4 py-3">
                   <div className="font-bold text-slate-900 flex items-center gap-2">
+                    {isAdmin && activeTab === "Candidates" && <input type="checkbox" aria-label={`Select ${candidate.name}`} checked={selectedCandidateIds.includes(candidate._id)} onChange={event => setSelectedCandidateIds(prev => event.target.checked ? [...prev, candidate._id] : prev.filter(id => id !== candidate._id))} />}
                     <span>{candidate.name}</span>
                     {candidate.resumeUrl && (
                       <a
@@ -694,7 +803,6 @@ export default function FollowUps() {
                       </a>
                     )}
                   </div>
-                  {candidate.isDuplicate && !showDuplicateDetails && <span className="mt-1 inline-block rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Duplicate</span>}
                   {candidate.isDuplicate && showDuplicateDetails && (
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       {candidate.isOriginal ? (
@@ -716,11 +824,11 @@ export default function FollowUps() {
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-3 text-slate-600">
+                <td data-label="Contact" className="px-4 py-3 text-slate-600">
                   <div className="font-medium text-slate-800">{candidate.email || "-"}</div>
                   <div className="text-xs text-slate-500">{candidate.phone || "-"}</div>
                 </td>
-                <td className="px-4 py-3">
+                <td data-label="Added by" className="px-4 py-3">
                   <div className="font-semibold text-slate-800 flex items-center gap-1">
                     <span>{candidate.addedBy?.name || "Unknown"}</span>
                     {candidate.isOwner && (
@@ -738,12 +846,10 @@ export default function FollowUps() {
                     </div>
                   )}
                 </td>
-                <td className="px-4 py-3">{candidate.experience || "-"}</td>
-                <td className="px-4 py-3">{candidate.currentCompany || "-"}</td>
-                <td className="px-4 py-3">
-                  <span className={statusBadge(candidate.status)}>{candidate.status}</span>
+                <td data-label="Profile status" className="px-4 py-3">
+                  <select aria-label={`Status for ${candidate.name}`} value={candidate.status || "Sourced"} disabled={Boolean(saving)} onChange={event => updateCandidateStatus(candidate, event.target.value)} className="max-w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs font-semibold text-slate-700"><option value="Sourced" disabled>Sourced</option>{CANDIDATE_STATUSES.map(status => <option key={status} value={status}>{status}</option>)}</select>
                 </td>
-                <td className="px-4 py-3 text-xs">
+                <td data-label="Last call" className="px-4 py-3 text-xs">
                   {candidate.lastCall ? (
                     <div>
                       <span className="font-bold text-slate-700">{candidate.lastCall.status}</span>
@@ -753,14 +859,16 @@ export default function FollowUps() {
                     "-"
                   )}
                 </td>
-                <td className="px-4 py-3 text-xs">
+                <td data-label="Follow-up status" className="px-4 py-3 text-xs">
                   {candidate.nextFollowUp || candidate.latestFollowUp ? (() => {
                     const followUp = candidate.nextFollowUp || candidate.latestFollowUp;
                     return <span className={statusBadge(followUp.status)}>{followUp.status}</span>;
                   })() : <span className="text-slate-400">No follow-ups</span>}
                 </td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-end gap-1.5">
+                <td data-label="Actions" className="px-4 py-3">
+                  <div className="flex flex-wrap justify-end gap-1.5">
+                    <button disabled={Boolean(saving)} onClick={() => openLineup(candidate)} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">{saving === `lineup-${candidate._id}` ? "Loading..." : "Convert to lineup"}</button>
+                    {isAdmin && activeTab === "Candidates" && <button title="Delete candidate" aria-label={`Delete ${candidate.name}`} disabled={saving === "delete-candidates"} onClick={() => deleteCandidates([candidate._id])} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={16} /></button>}
                     {showDuplicateDetails && candidate.isDuplicate && (
                       <button
                         onClick={() => setDuplicateModalCandidate(candidate)}
@@ -817,11 +925,11 @@ export default function FollowUps() {
             ))}
             {filteredCandidates.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
                   {candidateFilter === "duplicates"
                     ? "No duplicate profiles found for this requirement."
-                    : candidateSearch
-                    ? "No candidates matching search filter."
+                    : candidateSearch || candidateStatusFilter !== "all" || candidateDateFrom || candidateDateTo
+                    ? "No candidates match the selected filters."
                     : "No candidates added yet."}
                 </td>
               </tr>
@@ -834,7 +942,7 @@ export default function FollowUps() {
 
   const FollowUpsTable = () => (
     <div className="overflow-x-auto">
-      <table className="min-w-[900px] w-full text-left text-sm">
+      <table role="table" className="followups-action-table w-full text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase text-slate-500">
           <tr>
             <th className="px-4 py-3">Candidate</th>
@@ -848,15 +956,21 @@ export default function FollowUps() {
         <tbody className="divide-y divide-slate-100">
           {visibleFollowUps.map((item) => (
             <tr key={item._id} className="hover:bg-slate-50">
-              <td className="px-4 py-3 font-bold">{item.candidateId?.name || item.candidateId?.dynamicFields?.candidateName || item.candidateId?.dynamicFields?.CandidateName || "Candidate"}</td>
-              <td className="px-4 py-3">{item.type}</td>
-              <td className="px-4 py-3">{formatDate(item.dueDate)} {item.dueTime}</td>
-              <td className="px-4 py-3"><span className={statusBadge(item.status)}>{item.status}</span></td>
-              <td className="px-4 py-3 max-w-xs whitespace-pre-wrap break-words">{item.notes || "-"}</td>
-              <td className="px-4 py-3">
-                <div className="flex justify-end gap-2">
-                  <button disabled={saving === item._id} onClick={() => updateFollowUp(item._id, { status: "Completed" })} className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-50" title="Complete"><CheckCircle size={16} /></button>
-                  <button disabled={saving === item._id} onClick={() => updateFollowUp(item._id, { status: "Cancelled" })} className="rounded-lg p-2 text-red-600 hover:bg-red-50" title="Cancel"><X size={16} /></button>
+              <td data-label="Candidate" className="px-4 py-3 font-bold">{item.candidateId?.name || item.candidateId?.dynamicFields?.candidateName || item.candidateId?.dynamicFields?.CandidateName || "Candidate"}</td>
+              <td data-label="Type" className="px-4 py-3">{item.type}</td>
+              <td data-label="Due" className="px-4 py-3">{formatDate(item.dueDate)} {item.dueTime}</td>
+              <td data-label="Status" className="px-4 py-3"><span className={statusBadge(item.status)}>{item.status}</span></td>
+              <td data-label="Remarks" className="px-4 py-3 max-w-xs whitespace-pre-wrap break-words">{item.notes || "-"}</td>
+              <td data-label="Actions" className="px-4 py-3">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <button type="button" title="Call" aria-label={`Call ${item.candidateId?.name || "candidate"}`} disabled={!item.candidateId} onClick={() => {
+                    const id = typeof item.candidateId === "string" ? item.candidateId : item.candidateId?._id;
+                    const candidate = candidates.find(profile => profile._id === id) || (typeof item.candidateId === "object" ? { ...item.candidateId, phone: item.candidateId.phoneNumber || "" } : null);
+                    if (candidate) openCandidateContext(candidate, "call");
+                    else toast.error("Candidate profile is no longer available");
+                  }} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"><Phone size={16} /><span className="hidden md:inline">Call</span></button>
+                  <button disabled={saving === item._id || ["Completed", "Cancelled"].includes(item.status)} onClick={() => updateFollowUp(item._id, { status: "Completed" })} className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-50" title="Complete"><CheckCircle size={16} /></button>
+                  <button disabled={saving === item._id || ["Completed", "Cancelled"].includes(item.status)} onClick={() => updateFollowUp(item._id, { status: "Cancelled" })} className="rounded-lg p-2 text-red-600 hover:bg-red-50" title="Cancel"><X size={16} /></button>
                 </div>
               </td>
             </tr>
@@ -892,21 +1006,22 @@ export default function FollowUps() {
 
   const EmailStudio = () => {
     const isWhatsApp = activeTab === "WhatsApp";
+    const channelActivity = activity.filter(item => String(item.module || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email") || String(item.actionType || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email"));
     const preview = draftStudio.drafts.length ? draftStudio.drafts : (draftStudio.templates || []);
     const canStart = (draftStudio.templates || []).length > 0 && !["Active", "Completed"].includes(draftStudio.status);
     const canClear = Boolean(draftStudio.id);
     const showStopStep = draftStudio.status === "Active";
     return (
       <div className="space-y-5">
+        <div className="followups-studio-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold text-slate-900">{isWhatsApp ? "WhatsApp studio" : "Email draft studio"}</h2><label className="text-sm font-semibold text-slate-600">Candidate <select value={selectedCandidateId || ""} onChange={event => { const candidate = candidates.find(item => item._id === event.target.value); if (candidate) openCandidateContext(candidate); else setSelectedCandidate(null); }} className="ml-2 rounded-lg border border-slate-200 px-3 py-2"><option value="">Select candidate</option>{candidates.map(candidate => <option key={candidate._id} value={candidate._id}>{candidate.name} — {(isWhatsApp ? candidate.phone : candidate.email) || "No contact"}</option>)}</select></label></div>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
             {!selectedCandidate ? (
               <div className="space-y-4">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                  <h3 className="font-black text-slate-900">Draft studio</h3>
+                  <h3 className="font-black text-slate-900">{isWhatsApp ? "WhatsApp templates" : "Email drafts"}</h3>
                   <p className="mt-1 text-sm text-slate-600">Select a candidate to start a sequence using the templates saved with this requirement.</p>
                 </div>
-                {CandidatesTable()}
               </div>
             ) : (
               <>
@@ -1014,19 +1129,19 @@ export default function FollowUps() {
             </div>
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
               <b>Stop behavior</b>
-              <p className="mt-1">Stop marks only unsent drafts as stopped. Emails already submitted through the provider cannot be recalled.</p>
+              <p className="mt-1">Stop marks only unsent drafts as stopped. Messages already submitted through the provider cannot be recalled.</p>
             </div>
             {selectedCandidate && (
               <div className="rounded-xl border border-slate-200 bg-white p-4">
                 <h3 className="font-black text-slate-900">Recent activity</h3>
                 <div className="mt-3 space-y-3">
-                  {activity.slice(0, 5).map((item) => (
+                  {channelActivity.slice(0, 5).map((item) => (
                     <div key={item._id} className="border-b border-slate-100 pb-2 last:border-0">
                       <p className="text-xs font-bold text-slate-800">{item.description || item.module || item.action}</p>
                       <p className="text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
                     </div>
                   ))}
-                  {activity.length === 0 && <p className="text-sm text-slate-500">No email activity yet.</p>}
+                  {channelActivity.length === 0 && <p className="text-sm text-slate-500">No {isWhatsApp ? "WhatsApp" : "email"} activity yet.</p>}
                 </div>
               </div>
             )}
@@ -1039,29 +1154,29 @@ export default function FollowUps() {
   const DetailView = () => (
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-start gap-3">
-          <button onClick={() => { setSelectedRequirement(null); setRequirementDetails(null); }} className="rounded-lg p-2 hover:bg-slate-100"><ArrowLeft size={20} /></button>
+        <div className="flex min-w-0 items-start gap-3">
+          <button aria-label="Back to requirements" onClick={() => { setSelectedRequirement(null); setRequirementDetails(null); }} className="rounded-lg p-2 hover:bg-slate-100"><ArrowLeft size={20} /></button>
           <div>
-            <h1 className="text-2xl font-black text-slate-900">{selectedRequirement?.title}</h1>
+            <h1 className="break-words text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{selectedRequirement?.title}</h1>
             <p className="text-sm text-slate-500">{selectedRequirement?.company} | {selectedRequirement?.location}</p>
           </div>
         </div>
 
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-        <div className="flex min-w-max gap-2">
-          {["Overview", "Candidates", "Call Tracking", "Follow-ups", "Emails", "WhatsApp", "Activity"].map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`rounded-lg px-4 py-2 text-sm font-bold ${activeTab === tab ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}>
+      <div className="followups-tab-bar rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+        <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:gap-1.5">
+          {["Overview", "Candidates", "Call Tracking", "Emails", "WhatsApp", "Follow-ups", "Activity"].map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)} aria-current={activeTab === tab ? "page" : undefined} className={`min-h-11 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors sm:text-center ${activeTab === tab ? "bg-blue-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}>
               {tab}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-6">
         {activeTab === "Overview" && Overview()}
-        {activeTab === "Candidates" && <div className="space-y-4"><div className="flex justify-end"><button onClick={() => { resetCandidateForm(); setModal("candidate"); }} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"><Plus size={16} /> Add candidate</button></div>{CandidatesTable()}</div>}
+        {activeTab === "Candidates" && CandidatesTable()}
         {activeTab === "Call Tracking" && (
           <div className="space-y-4">
             {CandidatesTable()}
@@ -1082,8 +1197,22 @@ export default function FollowUps() {
   );
 
   return (
-    <>
+    <div className="followups-page min-w-0">
       {selectedRequirement ? DetailView() : RequirementList()}
+
+      {lineupCandidate && <ModalShell title={`Convert to lineup — ${lineupCandidate.name}`} onClose={() => { if (saving !== "convert-lineup") setLineupCandidate(null); }}>
+        <form onSubmit={convertToLineup} className="space-y-4">
+          <p className="text-sm leading-6 text-slate-600">Complete the required fields marked * and review the profile. Converting moves this profile into the requirement's normal candidate list and removes it from the sourced list.</p>
+          {lineupErrors.length > 0 && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{lineupErrors.map((error, index) => <p key={index}>{error}</p>)}</div>}
+          <div className="grid gap-4 sm:grid-cols-2">{lineupFields.map(field => <label key={field.name} className={`block text-sm font-semibold text-slate-600 ${field.type === "textarea" ? "sm:col-span-2" : ""}`}>
+            {field.name.replace(/([a-z])([A-Z])/g, "$1 $2")}{field.required ? " *" : ""}
+            {field.type === "select" ? <select required={field.required} value={lineupValues[field.name] || ""} onChange={event => setLineupValues(prev => ({ ...prev, [field.name]: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2"><option value="">Select {field.name}</option>{(field.options || []).map((option: string) => <option key={option}>{option}</option>)}</select>
+              : field.type === "textarea" ? <textarea required={field.required} rows={3} value={lineupValues[field.name] || ""} onChange={event => setLineupValues(prev => ({ ...prev, [field.name]: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />
+              : <input type={["email", "tel", "number", "date"].includes(field.type) ? field.type : "text"} step={field.type === "number" ? "any" : undefined} required={field.required} placeholder={field.type === "tags" ? "Separate values with commas" : undefined} value={lineupValues[field.name] ?? ""} onChange={event => setLineupValues(prev => ({ ...prev, [field.name]: event.target.value }))} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2" />}
+          </label>)}</div>
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-4"><button type="button" disabled={saving === "convert-lineup"} onClick={() => setLineupCandidate(null)} className="rounded-lg border border-slate-200 px-4 py-2 text-sm">Cancel</button><button type="submit" disabled={saving === "convert-lineup"} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving === "convert-lineup" ? "Converting..." : "Convert to lineup"}</button></div>
+        </form>
+      </ModalShell>}
 
       {modal === "candidate" && (
         <ModalShell
@@ -1127,8 +1256,8 @@ export default function FollowUps() {
               </div>
             )}
 
-            {duplicateWarning?.hasDuplicate && !showDuplicateDetails && <p className="md:col-span-2 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-800">Duplicate{duplicateWarning.duplicates.some((d: any) => d.isSameRequirement && d.isSameRecruiter) ? " — already added to this requirement" : ""}</p>}
-            {showDuplicateDetails && duplicateWarning?.hasDuplicate && (
+            {duplicateWarning?.canAdd === false && <p role="alert" className="md:col-span-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-700">{duplicateWarning.message}</p>}
+            {showDuplicateDetails && duplicateWarning?.hasDuplicate && duplicateWarning?.duplicateSource !== "normal" && (
               <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50/90 p-4 text-xs text-amber-900 shadow-xs">
                 <div className="flex items-start gap-2.5">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
@@ -1138,7 +1267,7 @@ export default function FollowUps() {
                         Existing Candidate Profile Detected!
                       </p>
                       <p className="text-amber-800 mt-0.5">
-                        This candidate profile already exists in the system. If another recruiter added it, you can still add it to your follow-up list — both profiles will be preserved and linked.
+                        This candidate profile already exists in the system. You can still add it to your follow-up list — both profiles will be preserved and linked.
                       </p>
                     </div>
 
@@ -1168,28 +1297,21 @@ export default function FollowUps() {
                       ))}
                     </div>
 
-                    {duplicateWarning.duplicates.some((d: any) => d.isSameRequirement && d.isSameRecruiter) && (
-                      <div className="rounded-lg bg-red-100 border border-red-200 p-2 text-red-800 font-bold">
-                        ⚠️ You have already added this candidate profile for this requirement. You cannot create a duplicate of your own profile for the same job.
-                      </div>
-                    )}
+
                   </div>
                 </div>
               </div>
             )}
 
             <button
-              disabled={
-                saving === "candidate" ||
-                Boolean(duplicateWarning?.duplicates?.some((d: any) => d.isSameRequirement && d.isSameRecruiter))
-              }
+              disabled={saving === "candidate" || duplicateWarning?.canAdd === false}
               onClick={addCandidate}
               className="md:col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm transition-all"
             >
               <Upload size={16} />{" "}
               {saving === "candidate"
                 ? "Saving..."
-                : duplicateWarning?.hasDuplicate && !duplicateWarning.duplicates?.some((d: any) => d.isSameRequirement && d.isSameRecruiter)
+                : duplicateWarning?.hasDuplicate
                 ? "Add Candidate (Duplicate Profile)"
                 : "Add Candidate"}
             </button>
@@ -1336,6 +1458,7 @@ export default function FollowUps() {
 
       {modal === "call" && selectedCandidate && (
         <ModalShell title={`Log Call - ${selectedCandidate.name}`} onClose={() => { setModal(""); setTemplates([]); }}>
+          {selectedCandidate.phone ? <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg bg-blue-50 p-3"><span className="text-sm font-semibold text-slate-700">{selectedCandidate.phone}</span><a href={`tel:${String(selectedCandidate.phone).replace(/[^+0-9]/g, "")}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white"><Phone size={16} />Call now</a></div> : <p className="mb-4 text-sm text-slate-500">No phone number available for this candidate.</p>}
           <div className="grid gap-4 md:grid-cols-2">
             <input type="date" value={callForm.callDate} onChange={(e) => setCallForm({ ...callForm, callDate: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             <input type="time" value={callForm.callTime} onChange={(e) => setCallForm({ ...callForm, callTime: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
@@ -1403,6 +1526,6 @@ export default function FollowUps() {
           </div>
         </ModalShell>
       )}
-    </>
+    </div>
   );
 }

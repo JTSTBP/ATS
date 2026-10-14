@@ -85,6 +85,24 @@ type JobFormProps = {
   onClose: () => void;
 };
 
+const createTemplateSet = (channel: "EMAIL" | "WHATSAPP", offset = 0) => {
+  const steps = [
+    { label: "Job opportunity", subject: "{{jobTitle}} opportunity at {{companyName}}", message: "I am reaching out about the {{jobTitle}} opportunity at {{companyName}} in {{location}}. Please let me know if you would be interested in discussing the role." },
+    { label: "First follow-up", subject: "Following up on the {{jobTitle}} opportunity", message: "I wanted to follow up on the {{jobTitle}} opportunity at {{companyName}}. Have you had a chance to consider it? I would be happy to share more details." },
+    { label: "Availability", subject: "A quick conversation about {{jobTitle}}", message: "Would you be available for a brief conversation about the {{jobTitle}} role at {{companyName}}? Please share a convenient date and time to connect." },
+    { label: "Interest check", subject: "Are you interested in the {{jobTitle}} role?", message: "I am checking whether you would like to explore the {{jobTitle}} opportunity at {{companyName}}. Please let me know your interest or if you have any questions." },
+    { label: "Final follow-up", subject: "Final follow-up: {{jobTitle}} at {{companyName}}", message: "This is my final follow-up about the {{jobTitle}} opportunity at {{companyName}}. If you are interested, please reply and we can discuss the next steps. Thank you for your time." },
+  ];
+  return steps.map((step, index) => ({
+    channel,
+    label: `${channel === "EMAIL" ? "Email" : "WhatsApp"} ${offset + index + 1}: ${step.label}`,
+    subject: channel === "EMAIL" ? step.subject : "",
+    body: channel === "EMAIL"
+      ? `Hi {{candidateName}},\n\n${step.message}\n\nRegards,\n{{recruiterName}}`
+      : `Hi {{candidateName}}, ${step.message} — {{recruiterName}}`,
+  }));
+};
+
 const getUserReferenceId = (value: string | { _id: string } | null | undefined): string =>
   typeof value === "string" ? value : value?._id || "";
 
@@ -963,9 +981,9 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
           {step === 3 && <section className="mt-5 space-y-3 rounded-xl border p-4">
             <h4 className="font-semibold">Email & WhatsApp follow-up templates</h4>
-            <p className="text-sm text-gray-500">The candidate profile name is filled automatically wherever you use {"{{candidateName}}"} in the subject or message. Templates run in order for each channel. Personalise with {"{{candidateName}}, {{jobTitle}}, {{companyName}}, {{location}}, {{recruiterName}}"}.</p>
+            <p className="text-sm text-gray-500">The candidate profile name is filled automatically wherever you use {"{{candidateName}}"} in the subject or message. Each click adds five ready-to-edit templates, which run in order for each channel. Personalise with {"{{candidateName}}, {{jobTitle}}, {{companyName}}, {{location}}, {{recruiterName}}"}.</p>
             {(["EMAIL", "WHATSAPP"] as const).map(channel => <div key={channel} className="space-y-3">
-              <button type="button" className="rounded-lg bg-blue-50 px-3 py-2 text-blue-700" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: [...(prev.communicationTemplates || []), { channel, label: `${channel} template`, subject: "", body: "Hi {{candidateName}},\n\n" }] }))}>Add {channel === "EMAIL" ? "email" : "WhatsApp"} template</button>
+              <button type="button" className="rounded-lg bg-blue-50 px-3 py-2 text-blue-700" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: [...(prev.communicationTemplates || []), ...createTemplateSet(channel, (prev.communicationTemplates || []).filter(template => template.channel === channel).length)] }))}>Add 5 {channel === "EMAIL" ? "email" : "WhatsApp"} templates</button>
               {(formData.communicationTemplates || []).map((template, index) => template.channel === channel && <div key={index} className="space-y-2 rounded-lg border p-3">
                 {(["label", ...(channel === "EMAIL" ? ["subject"] : []), "body"] as ("label" | "subject" | "body")[]).map(field => <TextField key={field} fullWidth required label={field === "label" ? "Template name" : field === "subject" ? "Email subject" : "Message"} multiline={field === "body"} minRows={field === "body" ? 3 : undefined} value={template[field]} onChange={event => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, [field]: event.target.value } : item) }))} />)}
                 <button type="button" className="mr-3 text-sm text-blue-700" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, body: `${item.body}{{candidateName}}` } : item) }))}>Insert profile name</button>
