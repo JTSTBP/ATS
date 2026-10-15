@@ -32,6 +32,11 @@ const API_URL = `${API_BASE_URL}/api/recruiter/follow-ups`;
 
 const CANDIDATE_STATUSES = ["Not interested", "Wrong number", "No answer", "Busy", "Lineup"];
 
+const emailErrorMessage = (value: string) => {
+  try { return JSON.parse(value)?.message || "Unable to send this email. Please check your sending account."; }
+  catch { return value; }
+};
+
 const CALL_STATUSES = ["Connected", "No Answer", "Busy", "Switched Off", "Not Reachable", "Call Back Later"];
 const CALL_OUTCOMES = [
   "Interested",
@@ -47,7 +52,6 @@ const CALL_OUTCOMES = [
 ];
 const FOLLOW_UP_TYPES = ["Call", "Email", "WhatsApp", "Interview Reminder", "JD Sharing", "General Follow-up", "Joining Reminder", "Custom"];
 const EMAIL_CATEGORIES = ["No Answer", "Call Back", "Job Opportunity", "JD Sharing", "Interested Candidate", "Interview Reminder", "Interview Follow-up", "Offer Follow-up", "Joining Reminder", "Custom"];
-const WHATSAPP_CATEGORIES = ["No Answer", "Job Opportunity", "JD Sharing", "Call Back", "Interview Reminder", "Follow-up", "Joining Reminder", "Custom"];
 
 const todayDate = () => new Date().toISOString().slice(0, 10);
 const nowTime = () => new Date().toTimeString().slice(0, 5);
@@ -162,6 +166,9 @@ export default function FollowUps() {
     drafts: [],
   });
   const [draftSaving, setDraftSaving] = useState("");
+  const [whatsappTemplateLoading, setWhatsappTemplateLoading] = useState(false);
+  const [whatsappTemplateError, setWhatsappTemplateError] = useState("");
+  const [hasWhatsappTemplate, setHasWhatsappTemplate] = useState(false);
 
   const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
   const [duplicateCheckLoading, setDuplicateCheckLoading] = useState(false);
@@ -482,7 +489,7 @@ export default function FollowUps() {
     if (!candidateId) return;
     setDraftSaving("load");
     try {
-      const { data } = await axios.get(`${API_URL}/candidates/${candidateId}/draft-studio?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`);
+      const { data } = await axios.get(`${API_URL}/candidates/${candidateId}/draft-studio?channel=email`);
       setDraftStudio(data.sequence || { id: "", status: "Empty", sent: 0, drafts: [] });
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load draft studio");
@@ -501,7 +508,7 @@ export default function FollowUps() {
     if (!selectedCandidateId) return;
     setDraftSaving("start");
     try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`, { sequenceId: draftStudio.id });
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start?channel=email`, { sequenceId: draftStudio.id });
       await loadDraftStudio();
       await refreshCurrent();
       toast.success("Sequence scheduled");
@@ -517,7 +524,7 @@ export default function FollowUps() {
     if (!selectedCandidateId || !draftStudio.id) return;
     setDraftSaving("stop");
     try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/stop?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`, { sequenceId: draftStudio.id, reason: "manual_stop" });
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/stop?channel=email`, { sequenceId: draftStudio.id, reason: "manual_stop" });
       await loadDraftStudio();
       toast.success("Sequence stopped");
     } catch (error: any) {
@@ -531,7 +538,7 @@ export default function FollowUps() {
     if (!selectedCandidateId || !draftStudio.id) return;
     setDraftSaving("clear");
     try {
-      await axios.delete(`${API_URL}/candidates/${selectedCandidateId}/draft-studio?channel=${activeTab === "WhatsApp" ? "whatsapp" : "email"}`, {
+      await axios.delete(`${API_URL}/candidates/${selectedCandidateId}/draft-studio?channel=email`, {
         data: { sequenceId: draftStudio.id },
       });
       await loadDraftStudio();
@@ -1010,8 +1017,37 @@ export default function FollowUps() {
   );
 
   useEffect(() => {
-    if (selectedCandidateId && ["Emails", "WhatsApp"].includes(activeTab)) loadDraftStudio(selectedCandidateId);
+    if (selectedCandidateId && activeTab === "Emails") loadDraftStudio(selectedCandidateId);
   }, [activeTab, selectedCandidateId]);
+
+  useEffect(() => {
+    if (!selectedCandidateId || (activeTab !== "WhatsApp" && modal !== "whatsapp")) return;
+    const controller = new AbortController();
+    setWhatsappTemplateLoading(true); setWhatsappTemplateError(""); setHasWhatsappTemplate(false);
+    setComposer((prev: any) => ({ ...prev, body: "", htmlBody: "", recipient: selectedCandidate?.phone || "" }));
+    axios.post(`${API_URL}/candidates/${selectedCandidateId}/whatsapp/generate`, {}, { signal: controller.signal }).then(({ data }) => {
+      if (controller.signal.aborted) return;
+      const template = data.templates?.[0];
+      setHasWhatsappTemplate(Boolean(template));
+      setComposer((prev: any) => ({ ...prev, body: template?.body || "" }));
+      if (!template) setWhatsappTemplateError("Add a WhatsApp template to this requirement before sending.");
+    }).catch(error => { if (!controller.signal.aborted) setWhatsappTemplateError(error.response?.data?.message || "Unable to load WhatsApp template."); })
+      .finally(() => { if (!controller.signal.aborted) setWhatsappTemplateLoading(false); });
+    return () => controller.abort();
+  }, [selectedCandidateId, activeTab, modal]);
+
+  const WhatsAppMessageForm = () => <div className="space-y-4">
+    <p className="text-sm text-slate-500">Send a single message using the requirement's WhatsApp template.</p>
+    {whatsappTemplateError && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{whatsappTemplateError}</p>}
+    <label className="block text-sm font-semibold text-slate-600">Recipient<input readOnly value={composer.recipient || ""} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2" /></label>
+    <label className="block text-sm font-semibold text-slate-600">Message<textarea value={composer.body || ""} onChange={event => setComposer((prev: any) => ({ ...prev, body: event.target.value }))} disabled={whatsappTemplateLoading || !hasWhatsappTemplate} rows={7} placeholder={whatsappTemplateLoading ? "Loading template..." : "WhatsApp message"} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-normal" /></label>
+    <button type="button" disabled={Boolean(saving) || whatsappTemplateLoading || !hasWhatsappTemplate || !composer.body?.trim() || !composer.recipient} onClick={() => sendMessage("whatsapp")} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Send size={16} />{saving === "whatsapp-send" ? "Sending..." : "Send message"}</button>
+  </div>;
+
+  const WhatsAppStudio = () => <div className="space-y-5">
+    <div className="followups-studio-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold text-slate-900">WhatsApp message</h2><label className="text-sm font-semibold text-slate-600">Candidate<select value={selectedCandidateId || ""} onChange={event => { const candidate = candidates.find(item => item._id === event.target.value); if (candidate) openCandidateContext(candidate); else setSelectedCandidate(null); }} className="ml-2 rounded-lg border border-slate-200 px-3 py-2"><option value="">Select candidate</option>{candidates.map(candidate => <option key={candidate._id} value={candidate._id}>{candidate.name} — {candidate.phone || "No phone"}</option>)}</select></label></div>
+    {selectedCandidate ? WhatsAppMessageForm() : <p className="rounded-xl bg-slate-50 p-5 text-sm text-slate-500">Select a candidate to send a WhatsApp message.</p>}
+  </div>;
 
   const EmailStudio = () => {
     const isWhatsApp = activeTab === "WhatsApp";
@@ -1118,7 +1154,7 @@ export default function FollowUps() {
                           rows={8}
                           className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6 text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
                         />
-                        {draft.errorMessage && <p className="mt-2 text-xs font-semibold text-red-600">{draft.errorMessage}</p>}
+                        {draft.errorMessage && <p className="mt-2 text-xs font-semibold text-red-600">{emailErrorMessage(draft.errorMessage)}</p>}
                       </div>
                     ))}
                   </div>
@@ -1200,7 +1236,7 @@ export default function FollowUps() {
         )}
         {activeTab === "Follow-ups" && FollowUpsTable()}
         {activeTab === "Emails" && EmailStudio()}
-        {activeTab === "WhatsApp" && EmailStudio()}
+        {activeTab === "WhatsApp" && WhatsAppStudio()}
         {activeTab === "Activity" && ActivityList()}
       </div>
     </div>
@@ -1509,12 +1545,14 @@ export default function FollowUps() {
         </ModalShell>
       )}
 
-      {(modal === "email" || modal === "whatsapp") && selectedCandidate && (
-        <ModalShell title={`${modal === "email" ? "Email" : "WhatsApp"} - ${selectedCandidate.name}`} onClose={() => { setModal(""); setTemplates([]); }}>
+      {modal === "whatsapp" && selectedCandidate && <ModalShell title={`WhatsApp — ${selectedCandidate.name}`} onClose={() => setModal("")}>{WhatsAppMessageForm()}</ModalShell>}
+
+      {modal === "email" && selectedCandidate && (
+        <ModalShell title={`Email - ${selectedCandidate.name}`} onClose={() => { setModal(""); setTemplates([]); }}>
           <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-[1fr_auto]">
               <select value={composer.category} onChange={(e) => setComposer({ ...composer, category: e.target.value })} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                {(modal === "email" ? EMAIL_CATEGORIES : WHATSAPP_CATEGORIES).map((item) => <option key={item}>{item}</option>)}
+                {EMAIL_CATEGORIES.map((item) => <option key={item}>{item}</option>)}
               </select>
               <button onClick={() => generateTemplates(modal as any)} disabled={saving.includes("generate")} className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">Load job templates</button>
             </div>
@@ -1529,7 +1567,7 @@ export default function FollowUps() {
                 ))}
               </div>
             )}
-            <input value={composer.recipient} onChange={(e) => setComposer({ ...composer, recipient: e.target.value })} placeholder={modal === "email" ? "Recipient email" : "Recipient phone"} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+            <input value={composer.recipient} onChange={(e) => setComposer({ ...composer, recipient: e.target.value })} placeholder="Recipient email" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             {modal === "email" && <input value={composer.subject} onChange={(e) => setComposer({ ...composer, subject: e.target.value })} placeholder="Subject" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />}
             <textarea value={composer.body} onChange={(e) => setComposer({ ...composer, body: e.target.value })} placeholder="Message body" rows={8} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             <button disabled={saving.includes("send")} onClick={() => sendMessage(modal as any)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60">
