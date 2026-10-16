@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import PanelOutlet from "../components/PanelOutlet";
 import Sidebar from "../components/RecruiterPanel/Sidebar";
 import Navbar from "../components/RecruiterPanel/Navbar";
 import {
@@ -66,7 +66,7 @@ export default function MentorLayout() {
       >
         <Navbar toggleSidebar={toggleSidebar} />
         <main className="p-6">
-          <Outlet />
+          <PanelOutlet />
         </main>
       </div>
     </div>

@@ -185,7 +185,9 @@ const Finance = () => {
     const [expenseFormData, setExpenseFormData] = useState({ date: "", amount: "", description: "" });
     const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [loading, setLoading] = useState(false);
-    const [tabLoading, setTabLoading] = useState(false);
+    const [invoiceLoading, setInvoiceLoading] = useState(true);
+    const [paymentLoading, setPaymentLoading] = useState(true);
+    const [expenseLoading, setExpenseLoading] = useState(true);
     const [summaryLoading, setSummaryLoading] = useState(false);
 
     const [invoiceFormData, setInvoiceFormData] = useState({
@@ -244,33 +246,27 @@ const Finance = () => {
     const [summaryFilter, setSummaryFilter] = useState('monthly');
 
     useEffect(() => {
-        fetchInvoices();
         fetchClients();
         fetchCandidates();
-        fetchPayments();
-        fetchExpenses();
-        fetchSummary();
     }, []);
 
     useEffect(() => {
         fetchSummary();
     }, [summaryFilter]);
 
-    // Refetch data when filters change
     useEffect(() => {
-        if (activeTab === 'invoices') {
-            fetchInvoices();
-        } else if (activeTab === 'payments') {
-            fetchPayments();
-        } else if (activeTab === 'expenses') {
-            fetchExpenses();
-        }
+        fetchInvoices();
     }, [
-        activeTab,
-        filterInvoiceClient, filterInvoiceCandidate, filterInvoiceStatus, filterInvoiceStartDate, filterInvoiceEndDate,
-        filterPaymentClient, filterPaymentCandidate, filterPaymentStartDate, filterPaymentEndDate,
-        filterExpenseCategory, filterExpenseStartDate, filterExpenseEndDate
+        filterInvoiceClient, filterInvoiceCandidate, filterInvoiceStatus, filterInvoiceStartDate, filterInvoiceEndDate
     ]);
+
+    useEffect(() => {
+        fetchPayments();
+    }, [filterPaymentClient, filterPaymentCandidate, filterPaymentStartDate, filterPaymentEndDate]);
+
+    useEffect(() => {
+        fetchExpenses();
+    }, [filterExpenseCategory, filterExpenseStartDate, filterExpenseEndDate]);
 
     const fetchSummary = async () => {
         setSummaryLoading(true);
@@ -287,7 +283,7 @@ const Finance = () => {
     };
 
     const fetchExpenses = async () => {
-        setTabLoading(true);
+        setExpenseLoading(true);
         try {
             const params = {
                 category: filterExpenseCategory,
@@ -299,7 +295,7 @@ const Finance = () => {
         } catch (error) {
             console.error("Error fetching expenses:", error);
         } finally {
-            setTabLoading(false);
+            setExpenseLoading(false);
         }
     };
 
@@ -346,7 +342,7 @@ const Finance = () => {
     };
 
     const fetchInvoices = async () => {
-        setTabLoading(true);
+        setInvoiceLoading(true);
         try {
             const params = {
                 client: filterInvoiceClient,
@@ -360,12 +356,12 @@ const Finance = () => {
         } catch (error) {
             console.error("Error fetching invoices:", error);
         } finally {
-            setTabLoading(false);
+            setInvoiceLoading(false);
         }
     };
 
     const fetchPayments = async () => {
-        setTabLoading(true);
+        setPaymentLoading(true);
         try {
             const params = {
                 client: filterPaymentClient,
@@ -378,7 +374,7 @@ const Finance = () => {
         } catch (error) {
             console.error("Error fetching payments:", error);
         } finally {
-            setTabLoading(false);
+            setPaymentLoading(false);
         }
     };
 
@@ -861,7 +857,7 @@ const Finance = () => {
                     {activeTab === 'expenses' ? (
                         <>
                             <button
-                                onClick={() => setIsExpenseUploadModalOpen(true)}
+                                onClick={() => setIsExpenseModalOpen(true)}
                                 className="w-full lg:w-auto bg-slate-800 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-900 transition-all shadow-lg shadow-slate-200 active:scale-95"
                             >
                                 <Plus className="w-5 h-5" />
@@ -1061,7 +1057,7 @@ const Finance = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {tabLoading ? (
+                                    {invoiceLoading ? (
                                         Array.from({ length: 5 }).map((_, idx) => (
                                             <tr key={idx} className="animate-pulse">
                                                 <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
@@ -1297,7 +1293,7 @@ const Finance = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {tabLoading ? (
+                                    {paymentLoading ? (
                                         Array.from({ length: 5 }).map((_, idx) => (
                                             <tr key={idx} className="animate-pulse">
                                                 <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
@@ -1426,7 +1422,7 @@ const Finance = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {tabLoading ? (
+                                    {expenseLoading ? (
                                         Array.from({ length: 5 }).map((_, idx) => (
                                             <tr key={idx} className="animate-pulse">
                                                 <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-32"></div></td>
@@ -2213,8 +2209,8 @@ const Finance = () => {
             )}
 
             {isExpenseModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-6 relative">
                         <button
                             onClick={() => setIsExpenseModalOpen(false)}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
@@ -2272,6 +2268,7 @@ const Finance = () => {
                                     onChange={handleExpenseChange}
                                     required
                                     min="0"
+                                    step="0.01"
                                     className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                     placeholder="e.g. 50"
                                 />

@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import { toast } from "react-toastify";
 
 console.log("CandidatesProvider module initiating...");
@@ -161,6 +161,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const allCandidatesRequest = useRef<Promise<void> | null>(null);
 
   // Pagination State
   const [paginatedCandidates, setPaginatedCandidates] = useState<Candidate[]>([]);
@@ -281,15 +282,24 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const fetchallCandidates = useCallback(async () => {
-    setLoading(true);
+    if (allCandidatesRequest.current) return allCandidatesRequest.current;
+    const request = (async () => {
+      setLoading(true);
+      try {
+        const { data } = await axios.get(`${API_URL}`);
+        if (data.success) setCandidates(data.candidates);
+        else throw new Error("Failed to load candidates");
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+    allCandidatesRequest.current = request;
     try {
-      const { data } = await axios.get(`${API_URL}`);
-      if (data.success) setCandidates(data.candidates);
-      else throw new Error("Failed to load candidates");
-    } catch (err: any) {
-      setError(err.message);
+      await request;
     } finally {
-      setLoading(false);
+      allCandidatesRequest.current = null;
     }
   }, []);
 

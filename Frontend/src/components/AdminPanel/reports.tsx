@@ -219,15 +219,24 @@ export default function ReportsTab() {
     return jobCandidates.filter((c: any) => isWithinCustomRange(c.createdAt, candStart, candEnd));
   };
 
+  const candidateIndexes = useMemo(() => {
+    const byJob = new Map<string, typeof candidates>();
+    const byCreator = new Map<string, typeof candidates>();
+    candidates.forEach(candidate => {
+      const jobId = String(candidate.jobId?._id || candidate.jobId || "");
+      const creatorId = String(typeof candidate.createdBy === "object" ? candidate.createdBy?._id || "" : candidate.createdBy || "");
+      if (!byJob.has(jobId)) byJob.set(jobId, []);
+      if (!byCreator.has(creatorId)) byCreator.set(creatorId, []);
+      byJob.get(jobId)!.push(candidate);
+      byCreator.get(creatorId)!.push(candidate);
+    });
+    return { byJob, byCreator };
+  }, [candidates]);
+
   // 1. Base Client Job Report Data
   // Global date filter applies to JOBS only (by Date Received). All candidates are lifetime.
   const baseClientJobRows = useMemo(() => {
     const rows: any[] = [];
-
-    const getCandidateJobId = (c: any) => {
-      const jid = c.jobId?._id || c.jobId;
-      return jid ? String(jid) : null;
-    };
 
     jobs.forEach(job => {
       if (job.status !== "Open") return;
@@ -236,7 +245,7 @@ export default function ReportsTab() {
 
       // ALL candidates for this job (lifetime) - no date filter here
       const jobId = job._id ? String(job._id) : null;
-      const jobCandidates = jobId ? candidates.filter(c => getCandidateJobId(c) === jobId) : [];
+      const jobCandidates = jobId ? candidateIndexes.byJob.get(jobId) || [] : [];
 
       const jClientId = typeof job.clientId === 'object' ? job.clientId?._id : job.clientId;
       const client = clients.find(c => c._id === jClientId);
@@ -262,7 +271,7 @@ export default function ReportsTab() {
 
     rows.sort((a, b) => new Date(b.job.createdAt || 0).getTime() - new Date(a.job.createdAt || 0).getTime());
     return rows;
-  }, [jobs, candidates, clients, users, startDate, endDate]);
+  }, [jobs, candidateIndexes, clients, users, startDate, endDate]);
 
   const clientJobReportData = useMemo(() => {
     const reportRows = baseClientJobRows.filter(row => {
@@ -382,18 +391,18 @@ export default function ReportsTab() {
 
     recruiters.forEach(recruiter => {
       // Global date filter on candidate upload date (createdAt)
-      const recruiterCandidates = candidates.filter(c => {
-        const cCreatorId = typeof c.createdBy === 'object' ? (c.createdBy as any)?._id : c.createdBy;
-        return cCreatorId === recruiter._id && isWithinGlobalRange(c.createdAt) && isOpenJobCandidate(c);
+      const recruiterCandidates = (candidateIndexes.byCreator.get(String(recruiter._id)) || []).filter(c =>
+        isWithinGlobalRange(c.createdAt) && isOpenJobCandidate(c)
+      );
+
+      const lineups = new Map<string, typeof candidates>();
+      recruiterCandidates.forEach(candidate => {
+        const key = `${getCandidateJobId(candidate)}|${formatDate(candidate.createdAt || "")}`;
+        if (!lineups.has(key)) lineups.set(key, []);
+        lineups.get(key)!.push(candidate);
       });
 
-      const lineupKeys = Array.from(new Set(recruiterCandidates.map(c => {
-        const date = formatDate(c.createdAt || "");
-        const jobId = getCandidateJobId(c);
-        return `${jobId}|${date}`;
-      })));
-
-      lineupKeys.forEach(key => {
+      lineups.forEach((jobCandidates, key) => {
         const [jobId, sourceDate] = key.split('|');
         if (!jobId || jobId === 'undefined') return;
 
@@ -403,11 +412,6 @@ export default function ReportsTab() {
         const jClientId = typeof job.clientId === 'object' ? (job.clientId as any)?._id : job.clientId;
         const client = clients.find(c => jClientId === c._id);
         const clientName = client?.companyName || "Unknown";
-        const jobCandidates = recruiterCandidates.filter(c => {
-          const cJobId = getCandidateJobId(c);
-          const cDate = formatDate(c.createdAt || "");
-          return cJobId === jobId && cDate === sourceDate;
-        });
         const jobDate = job.createdAt ? formatDate(job.createdAt) : "N/A";
 
         if (jobCandidates.length > 0) {
@@ -424,7 +428,7 @@ export default function ReportsTab() {
     });
 
     return rows;
-  }, [users, candidates, jobs, clients, startDate, endDate]);
+  }, [users, candidateIndexes, jobs, clients, startDate, endDate]);
 
   // Daily Lineup Filtered Data (with local candidate filter support)
   const dailyLineupReportData = useMemo(() => {

@@ -184,15 +184,24 @@ export default function ManagerReports() {
       return jid && openJobIds.has(jid);
     };
 
+    const candidatesByJob = new Map<string, typeof scopedCandidates>();
+    scopedCandidates.forEach(candidate => {
+      const id = getCandidateJobId(candidate);
+      if (!id) return;
+      if (!candidatesByJob.has(id)) candidatesByJob.set(id, []);
+      candidatesByJob.get(id)!.push(candidate);
+    });
+
     scopedJobs.forEach(job => {
+      const jobCandidates = candidatesByJob.get(String(job._id)) || [];
       const isJobOpen = job.status === "Open";
       // Candidates created in range for this job (ONLY if job is open)
-      const jobCandidatesInRange = scopedCandidates.filter(c => {
+      const jobCandidatesInRange = jobCandidates.filter(c => {
         const cJobId = getCandidateJobId(c);
         return cJobId === job._id && (c.createdAt ? isWithinDateRange(String(c.createdAt)) : false) && isJobOpen;
       });
 
-      const joinedCandidatesInRangeCount = scopedCandidates.filter(c => {
+      const joinedCandidatesInRangeCount = jobCandidates.filter(c => {
         const cJobId = getCandidateJobId(c);
         return (
           cJobId === job._id &&

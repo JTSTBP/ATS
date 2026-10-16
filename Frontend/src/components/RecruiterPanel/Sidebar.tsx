@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X } from "lucide-react";
+import { preloadPanelRoute } from "../../utils/preloadPanelRoute";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -37,6 +38,9 @@ export default function Sidebar({ isOpen, toggleSidebar, menuItems }: SidebarPro
                 <li key={item.path}>
                   <NavLink
                     to={item.path}
+                    onMouseEnter={() => preloadPanelRoute(item.path)}
+                    onFocus={() => preloadPanelRoute(item.path)}
+                    onTouchStart={() => preloadPanelRoute(item.path)}
                     onClick={() => {
                       if (window.innerWidth < 1024) toggleSidebar();
                       // Reset Job filters when navigating via main sidebar
