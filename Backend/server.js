@@ -31,11 +31,27 @@ const { startEmailSequenceWorker } = require("./services/emailSequenceWorker");
 // Initialize Express app
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use("/uploads", express.static("uploads"));
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+].filter(Boolean);
 
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Origin not allowed by CORS"));
+  },
+}));
+
+app.use(express.json());
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads"))
+);
 
 
 // ===== Routes =====
@@ -60,13 +76,6 @@ app.use("/api/email-sequences", emailSequenceWebhookRoutes);
 app.use("/api/recruiter/follow-ups", recruiterFollowupRoutes);
 app.use("/api/ceo-daily-reports", ceoDailyReportRoutes);
 
-// Serve frontend dist
-app.use(express.static(path.join(__dirname, "dist")));
-
-// React/Vite fallback route
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
-});
 
 // ===== MongoDB Connection & Server Start =====
 mongoose.set('strictQuery', false);
