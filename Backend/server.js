@@ -52,7 +52,15 @@ app.use(
   "/uploads",
   express.static(path.join(__dirname, "uploads"))
 );
-
+// Backend Welcome Route
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Welcome to ATS Backend API!",
+    status: "Running",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // ===== Routes =====
 app.use("/api/users", userRoutes);
