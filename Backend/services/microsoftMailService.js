@@ -14,12 +14,20 @@ const getConfig = () => {
   const key = Buffer.from(process.env.MICROSOFT_TOKEN_ENCRYPTION_KEY || "", "base64");
   const tenant = process.env.MICROSOFT_TENANT_ID || "common";
   if (!clientId || !clientSecret || !redirectUri || !frontend || key.length !== 32 || !/^[a-zA-Z0-9-]+$/.test(tenant)) {
-    throw mailError("MICROSOFT_SETUP_REQUIRED", "Microsoft email needs administrator setup before you can connect.", 503);
+    const issues = [];
+    for (const [name, value] of Object.entries({ MICROSOFT_CLIENT_ID: clientId, MICROSOFT_CLIENT_SECRET: clientSecret, MICROSOFT_REDIRECT_URI: redirectUri, FRONTEND_URL: frontend })) {
+      if (!value) issues.push(`${name} is missing`);
+    }
+    if (key.length !== 32) issues.push("MICROSOFT_TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes (base64)");
+    if (!/^[a-zA-Z0-9-]+$/.test(tenant)) issues.push("MICROSOFT_TENANT_ID is invalid; use common or your tenant ID");
+    throw mailError("MICROSOFT_SETUP_REQUIRED", `Microsoft email setup: ${issues.join("; ")}.`, 503);
   }
-  for (const value of [redirectUri, frontend]) {
-    const url = new URL(value);
+  for (const [name, value] of Object.entries({ MICROSOFT_REDIRECT_URI: redirectUri, FRONTEND_URL: frontend })) {
+    let url;
+    try { url = new URL(value); }
+    catch { throw mailError("MICROSOFT_SETUP_REQUIRED", `${name} must be a valid absolute URL.`, 503); }
     if (url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))) {
-      throw mailError("MICROSOFT_SETUP_REQUIRED", "Microsoft email requires HTTPS outside localhost.", 503);
+      throw mailError("MICROSOFT_SETUP_REQUIRED", `${name} requires HTTPS outside localhost.`, 503);
     }
   }
   return { clientId, clientSecret, redirectUri, frontendOrigin: new URL(frontend).origin, key, tenant };

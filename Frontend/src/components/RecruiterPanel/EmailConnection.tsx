@@ -3,7 +3,7 @@ import axios from "axios";
 import { Mail, RefreshCw } from "lucide-react";
 
 const api = `${import.meta.env.VITE_BACKEND_URL}/api/microsoft-mail`;
-type Connection = { hasAppPassword: boolean; configured: boolean; connected: boolean; email: string; provider: string; microsoftRequired: boolean };
+type Connection = { hasAppPassword: boolean; configured: boolean; connected: boolean; email: string; provider: string; microsoftRequired: boolean; configurationError?: string };
 
 export default function EmailConnection() {
   const [connection, setConnection] = useState<Connection | null>(null);
@@ -30,6 +30,14 @@ export default function EmailConnection() {
   }, [load]);
 
   const connect = async () => {
+    if (!connection) {
+      setMessage("Email connection status is unavailable. Refresh the status and try again.");
+      return;
+    }
+    if (!connection.configured) {
+      setMessage(connection.configurationError || "Outlook connection is not configured on the backend. Ask your administrator to configure Microsoft email, then refresh this status and connect your mailbox.");
+      return;
+    }
     const win = window.open("", "ats-microsoft-mail", "width=540,height=720");
     if (!win) { setMessage("Allow pop-ups for this site to connect your Microsoft email."); return; }
     popup.current = win;
@@ -63,12 +71,12 @@ export default function EmailConnection() {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" aria-label="Refresh email connection" onClick={load} className="rounded-lg p-2 text-slate-500 hover:bg-slate-200"><RefreshCw size={16} /></button>
         {connection?.connected && connection.provider === "microsoft" ? <>
-          <button type="button" disabled={busy || !connection.configured} onClick={connect} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold disabled:opacity-50">Reconnect</button>
+          <button type="button" disabled={busy} onClick={connect} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold disabled:opacity-50">Reconnect</button>
           <button type="button" disabled={busy} onClick={disconnect} className="rounded-lg px-3 py-2 text-sm text-red-600 disabled:opacity-50">Disconnect</button>
-        </> : <button type="button" disabled={busy || !connection?.configured} onClick={connect} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Waiting for Microsoft…" : "Connect Outlook / Microsoft 365"}</button>}
+        </> : <button type="button" disabled={busy} onClick={connect} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Waiting for Microsoft…" : "Connect Outlook / Microsoft 365"}</button>}
       </div>
     </div>
-    {connection && !connection.configured && <p className="mt-3 text-xs text-amber-700">Microsoft sign-in requires administrator setup. Your existing app-password email remains available for supported accounts.</p>}
+    {connection && !connection.configured && <p className="mt-3 text-xs text-amber-700">{connection.configurationError || "Microsoft sign-in requires administrator setup."}</p>}
     {message && <p role="status" className="mt-3 text-sm text-slate-600">{message}</p>}
   </section>;
 }
