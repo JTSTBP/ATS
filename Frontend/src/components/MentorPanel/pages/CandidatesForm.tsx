@@ -15,6 +15,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
   const { createCandidate, updateCandidate } = useCandidateContext();
   const isFinance = user?.role === 'Finance' || user?.designation === 'Finance';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initializedForm = useRef<string | null>(null);
 
   const [selectedJob, setSelectedJob] = useState<any>(null);
   const [resumeFile, setResumeFile] = useState(null);
@@ -36,7 +37,15 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
 
   // Initialize form when modal opens
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      initializedForm.current = null;
+      return;
+    }
+    const formKey = `${candidate?._id || "new"}:${user?._id || ""}`;
+    if (initializedForm.current === formKey) return;
+    initializedForm.current = formKey;
+    setResumeFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
 
     if (candidate) {
       // Find the full job object from jobs list
@@ -46,7 +55,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       setSelectedJob(jobObj || null);
 
       // Merge job's candidateFields with existing values
-      const dynamicFields = {};
+      const dynamicFields = { ...candidate.dynamicFields };
       jobObj?.candidateFields?.forEach((field) => {
         if (field.name) {
           dynamicFields[field.name] =
@@ -55,7 +64,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       });
 
       setFormData({
-        jobId: jobObj?._id || candidate.jobId,
+        jobId: jobObj?._id || candidate.jobId?._id || candidate.jobId,
         createdBy: candidate.createdBy?._id || user?._id,
         dynamicFields,
         linkedinUrl: candidate.linkedinUrl || "",
@@ -77,6 +86,25 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       });
     }
   }, [isOpen, candidate, jobs, user?._id]);
+
+  // Jobs can arrive after the form opens; hydrate metadata without resetting input.
+  useEffect(() => {
+    if (!isOpen || !formData.jobId) return;
+    const job = jobs.find((item: any) => item._id === formData.jobId);
+    if (!job) return;
+    setSelectedJob(job);
+    setFormData(previous => {
+      const fields = { ...previous.dynamicFields };
+      let changed = false;
+      job.candidateFields?.forEach(field => {
+        if (field.name && !(field.name in fields)) {
+          fields[field.name] = "";
+          changed = true;
+        }
+      });
+      return changed ? { ...previous, dynamicFields: fields } : previous;
+    });
+  }, [isOpen, jobs, formData.jobId]);
 
   let filteredJobs: any[] = [];
   const designation = user?.designation?.toLowerCase() || "";
