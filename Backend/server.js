@@ -31,10 +31,18 @@ const { startEmailSequenceWorker } = require("./services/emailSequenceWorker");
 // Initialize Express app
 const app = express();
 
+const normalizeOrigin = (value) => {
+  try {
+    return new URL(value.trim()).origin;
+  } catch {
+    return "";
+  }
+};
+
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
+  ...(process.env.FRONTEND_URL || "").split(","),
   "http://localhost:5173",
-].filter(Boolean);
+].map(normalizeOrigin).filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
@@ -55,16 +63,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error("Origin not allowed by CORS"));
-  },
-}));
 
 app.use(express.json());
 
