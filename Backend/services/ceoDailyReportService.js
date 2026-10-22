@@ -11,6 +11,13 @@ const DEFAULT_TIMEZONE = "Asia/Kolkata";
 const ACTIVE_JOB_STATUSES = ["Open"];
 const BASE_STATUS_COLUMNS = ["Applied", "Screened", "Interview", "Shortlisted", "Selected", "Rejected", "Joined"];
 
+const getCeoDailyReportEmailProvider = () => {
+  const reportProvider = String(process.env.CEO_DAILY_REPORT_EMAIL_PROVIDER || "").trim();
+  if (reportProvider) return reportProvider.toLowerCase();
+  if (String(process.env.RESEND_API_KEY || "").trim()) return "resend";
+  return String(process.env.EMAIL_PROVIDER || process.env.MAIL_PROVIDER || "smtp").trim().toLowerCase();
+};
+
 const pad = (value) => String(value).padStart(2, "0");
 const getAutomaticDeliveryKey = (reportDate, slot) => `${REPORT_TYPE}:${reportDate}:${slot}:automatic`;
 
@@ -728,7 +735,7 @@ const sendCeoDailyReport = async ({ slot = "12PM", force = false, test = false, 
         cc: ccRecipients,
         subject,
         html,
-        provider: process.env.CEO_DAILY_REPORT_EMAIL_PROVIDER || "smtp",
+        provider: getCeoDailyReportEmailProvider(),
       });
       log.emailStatus = "sent";
     } catch (error) {
@@ -807,4 +814,5 @@ module.exports = {
   buildHtmlReport,
   buildPdfReportBuffer,
   sendCeoDailyReport,
+  getCeoDailyReportEmailProvider,
 };

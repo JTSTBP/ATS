@@ -1,7 +1,7 @@
 const cron = require("node-cron");
 const CeoDailyReportLog = require("../models/CeoDailyReportLog");
 const CeoDailyReportSettings = require("../models/CeoDailyReportSettings");
-const { sendCeoDailyReport } = require("../services/ceoDailyReportService");
+const { sendCeoDailyReport, getCeoDailyReportEmailProvider } = require("../services/ceoDailyReportService");
 
 const REPORT_TYPE = "ceo_daily_ats_performance";
 const pad = (value) => String(value).padStart(2, "0");
@@ -171,6 +171,12 @@ const startCeoDailyReportScheduler = () => {
   const eveningCron = process.env.CEO_DAILY_REPORT_7PM_CRON || "0 19 * * *";
   const intervalCatchupEnabled = process.env.CEO_DAILY_REPORT_ENABLE_INTERVAL_CATCHUP === "true";
   const catchupIntervalMinutes = Number(process.env.CEO_DAILY_REPORT_CATCHUP_INTERVAL_MINUTES || 0);
+
+  console.log(
+    `[CEO Daily Report] Email provider: ${getCeoDailyReportEmailProvider()} ` +
+    `(Resend API key ${process.env.RESEND_API_KEY?.trim() ? "configured" : "missing"}; ` +
+    `Resend sender ${process.env.RESEND_FROM_EMAIL?.trim() ? "configured" : "missing"}).`
+  );
 
   CeoDailyReportLog.createIndexes().catch((error) => {
     console.error("[CEO Daily Report] Failed to ensure report log indexes:", error.message);

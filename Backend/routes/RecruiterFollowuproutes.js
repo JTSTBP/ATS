@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Job = require("../models/Jobs");
+const User = require("../models/Users");
 const SourcedCandidate = require("../models/SourcedCandidate");
 const CandidateByJob = require("../models/CandidatesByJob");
 const CallLog = require("../models/CallLog");
@@ -44,14 +45,34 @@ const WHATSAPP_CATEGORIES = [
   "Custom",
 ];
 
-const requireRecruiter = (req, res, next) => {
+const requireRecruiter = async (req, res, next) => {
   if (!req.user || req.user.isDisabled) {
     return res.status(401).json({ success: false, message: "Unauthorized" });
   }
-  if (!["Recruiter", "Admin", "Manager"].includes(req.user.designation)) {
+  if (!["Recruiter", "Admin", "Manager", "Mentor"].includes(req.user.designation)) {
     return res.status(403).json({ success: false, message: "Not allowed" });
   }
-  next();
+  try {
+    if (req.user.designation === "Mentor") {
+      const team = await User.find({
+        designation: "Recruiter",
+        isDisabled: { $ne: true },
+        $or: [{ reporter: req.user._id }, { secondary_managers: req.user._id }],
+      }).select("_id").lean();
+      const teamIds = [req.user._id, ...team.map((member) => member._id)];
+      req.followUpRequirementIds = await Job.find({
+        $or: [
+          { CreatedBy: req.user._id },
+          { assignedMentors: req.user._id },
+          { assignedRecruiters: { $in: teamIds } },
+        ],
+      }).distinct("_id");
+    }
+    next();
+  } catch (error) {
+    console.error("Follow-up access setup failed:", error);
+    res.status(500).json({ success: false, message: "Unable to load follow-up access" });
+  }
 };
 
 router.use(protect, requireRecruiter);
@@ -60,7 +81,11 @@ const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g,
 const toId = (value) => String(value?._id || value || "");
 const isObjectId = (value) => mongoose.Types.ObjectId.isValid(String(value || ""));
 const canSeeAllFollowUps = (user) => ["Admin", "Manager"].includes(user?.designation);
-const ownerScope = (req) => canSeeAllFollowUps(req.user) ? {} : { recruiterId: req.user._id };
+const ownerScope = (req) => {
+  if (canSeeAllFollowUps(req.user)) return {};
+  if (req.user?.designation === "Mentor") return { requirementId: { $in: req.followUpRequirementIds || [] } };
+  return { recruiterId: req.user._id };
+};
 
 const getCandidateField = (candidate, keys) => {
   for (const key of keys) {
@@ -98,8 +123,9 @@ const formatExperience = (experience) => {
   return range ? `${range} ${experience.unit || "years"}` : "";
 };
 
-const recruiterJobQuery = (user) => {
+const recruiterJobQuery = (user, followUpRequirementIds = []) => {
   if (user.designation === "Admin" || user.designation === "Manager") return {};
+  if (user.designation === "Mentor") return { _id: { $in: followUpRequirementIds } };
   return {
     $or: [
       { assignedRecruiters: user._id },
@@ -110,7 +136,7 @@ const recruiterJobQuery = (user) => {
 
 const assertJobAccess = async (req, jobId) => {
   if (!isObjectId(jobId)) return null;
-  const job = await Job.findOne({ _id: jobId, ...recruiterJobQuery(req.user) })
+  const job = await Job.findOne({ _id: jobId, ...recruiterJobQuery(req.user, req.followUpRequirementIds) })
     .populate("clientId", "companyName name clientName")
     .lean();
   return job;
@@ -493,8 +519,7 @@ const sendEmailCommunication = async ({ communication, recruiter, recipient, sub
   return communication;
 };
 
-const getCandidateCommunicationSnapshot = async (candidateIds, recruiterId) => {
-  const scope = recruiterId ? { recruiterId } : {};
+const getCandidateCommunicationSnapshot = async (candidateIds, scope = {}) => {
   const [calls, communications, followUps] = await Promise.all([
     CallLog.find({ candidateId: { $in: candidateIds }, ...scope }).sort({ createdAt: -1 }).lean(),
     Communication.find({ candidateId: { $in: candidateIds }, ...scope }).sort({ createdAt: -1 }).lean(),
@@ -525,7 +550,7 @@ const getCandidateCommunicationSnapshot = async (candidateIds, recruiterId) => {
 router.get("/requirements", async (req, res) => {
   try {
     const { search = "", status = "all", location = "", page = 1, limit = 10 } = req.query;
-    const query = { ...recruiterJobQuery(req.user) };
+    const query = { ...recruiterJobQuery(req.user, req.followUpRequirementIds) };
     if (status && status !== "all") query.status = status;
     if (search) query.title = new RegExp(escapeRegex(search), "i");
     if (location) query["location.name"] = new RegExp(escapeRegex(location), "i");
@@ -541,7 +566,7 @@ router.get("/requirements", async (req, res) => {
     const jobIds = jobs.map((job) => job._id);
     const [candidateCounts, pendingCounts] = await Promise.all([
       SourcedCandidate.aggregate([
-        { $match: { requirementId: { $in: jobIds }, ...(canSeeAllFollowUps(req.user) ? {} : { recruiterId: req.user._id }) } },
+        { $match: { requirementId: { $in: jobIds }, ...ownerScope(req) } },
         { $group: { _id: "$requirementId", count: { $sum: 1 } } },
       ]),
       FollowUp.aggregate([
@@ -670,7 +695,7 @@ router.get("/requirements/:requirementId/candidates", async (req, res) => {
       .lean();
 
     const candidateIds = candidates.map((c) => c._id);
-    const snapshot = await getCandidateCommunicationSnapshot(candidateIds, canSeeAllFollowUps(req.user) ? null : req.user._id);
+    const snapshot = await getCandidateCommunicationSnapshot(candidateIds, ownerScope(req));
 
     const emails = candidates.map((c) => c.email).filter(Boolean);
     const phones = candidates.map((c) => c.phoneNumber).filter(Boolean);

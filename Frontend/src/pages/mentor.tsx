@@ -14,6 +14,7 @@ import {
   UserCircle,
   Upload,
   Database,
+  MessageSquareMore,
 } from "lucide-react";
 
 export default function MentorLayout() {
@@ -39,6 +40,7 @@ export default function MentorLayout() {
     { path: "/Mentor/", label: "Dashboard", icon: LayoutDashboard },
     { path: "/Mentor/jobs", label: "Requirements", icon: Briefcase },
     { path: "/Mentor/candidates", label: "Candidates", icon: Users },
+    { path: "/Mentor/follow-ups", label: "Follow-ups", icon: MessageSquareMore },
     { path: "/Mentor/applications", label: "Applications", icon: FileText },
     {
       path: "/Mentor/leaveapplications",

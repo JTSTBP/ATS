@@ -91,6 +91,7 @@ function App() {
               />
 
               <Route path="/Mentor/candidates" element={<CandidatesManager />} />
+              <Route path="/Mentor/follow-ups" element={<FollowUps />} />
               <Route
                 path="/Mentor/candidates/add"
                 element={<CandidatesManager initialFormOpen={true} />}
