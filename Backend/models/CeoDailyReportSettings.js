@@ -26,6 +26,16 @@ const CeoDailyReportSettingsSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    reportHistorySuppressions: {
+      type: [{
+        _id: false,
+        reportType: { type: String, required: true },
+        reportDate: { type: String, required: true },
+        reportSlot: { type: String, enum: ["12PM", "7PM"], required: true },
+        deletedAt: { type: Date, default: Date.now },
+      }],
+      default: [],
+    },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

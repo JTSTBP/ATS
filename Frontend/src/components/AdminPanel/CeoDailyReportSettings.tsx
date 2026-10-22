@@ -242,9 +242,13 @@ export default function CeoDailyReportSettings() {
       });
       const deletedIds = new Set(selectedHistoryIds);
       if (selectedReport && deletedIds.has(selectedReport._id)) setSelectedReport(null);
-      setHistory((current) => current.filter((item) => !deletedIds.has(item._id)));
       setSelectedHistoryIds([]);
-      toast.success(response.data.message || "Selected report history cleared");
+      await loadHistory();
+      if (response.data.remainingCount > 0) {
+        toast.warn(`${response.data.deletedCount} report history record(s) deleted; ${response.data.remainingCount} still remain. Refresh and try again.`);
+      } else {
+        toast.success(response.data.message || "Selected report history cleared");
+      }
     } catch (error) {
       const message = axios.isAxiosError(error) ? error.response?.data?.message : "";
       toast.error(message || "Unable to clear selected report history");

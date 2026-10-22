@@ -1,11 +1,13 @@
 const cron = require("node-cron");
 const CeoDailyReportLog = require("../models/CeoDailyReportLog");
+const CeoDailyReportSettings = require("../models/CeoDailyReportSettings");
 const { sendCeoDailyReport } = require("../services/ceoDailyReportService");
 
 const REPORT_TYPE = "ceo_daily_ats_performance";
 const pad = (value) => String(value).padStart(2, "0");
 const inFlightReports = new Set();
 const completedReports = new Set();
+let suppressionMigrationPromise = Promise.resolve();
 
 const getCurrentPartsInTimezone = (timezone) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -30,6 +32,40 @@ const getCurrentPartsInTimezone = (timezone) => {
 };
 
 const getReportDate = ({ year, month, day }) => `${year}-${pad(month)}-${pad(day)}`;
+
+const migrateLegacyReportSuppressions = async () => {
+  const collectionName = "ceodailyreportsuppressions";
+  const database = CeoDailyReportSettings.db;
+  const exists = await database.db.listCollections({ name: collectionName }).hasNext();
+  if (!exists) return;
+
+  const legacyMarkers = await database.db.collection(collectionName).find({}).toArray();
+  if (legacyMarkers.length) {
+    const settings = await CeoDailyReportSettings.findOne() || new CeoDailyReportSettings();
+    const timezone = process.env.CEO_DAILY_REPORT_TIMEZONE || "Asia/Kolkata";
+    const currentDate = getReportDate(getCurrentPartsInTimezone(timezone));
+    const existing = new Set((settings.reportHistorySuppressions || []).map((entry) =>
+      `${entry.reportType}:${entry.reportDate}:${entry.reportSlot}`
+    ));
+    for (const marker of legacyMarkers.filter((entry) => entry.reportDate === currentDate)) {
+      const reportType = marker.reportType || REPORT_TYPE;
+      const key = `${reportType}:${marker.reportDate}:${marker.reportSlot}`;
+      if (!existing.has(key)) {
+        settings.reportHistorySuppressions.push({
+          reportType,
+          reportDate: marker.reportDate,
+          reportSlot: marker.reportSlot,
+          deletedAt: marker.deletedAt || marker.createdAt || new Date(),
+        });
+        existing.add(key);
+      }
+    }
+    await settings.save();
+  }
+
+  await database.db.dropCollection(collectionName);
+  console.log(`[CEO Daily Report] Migrated ${legacyMarkers.length} history suppression marker(s) and removed the legacy collection.`);
+};
 
 const hasSuccessfulReport = async (reportDate, slot) => {
   const sentLog = await CeoDailyReportLog.exists({
@@ -58,6 +94,23 @@ const runAutomaticReportOnce = async ({ slot, reportDate, source }) => {
 
   inFlightReports.add(runtimeKey);
   try {
+    await suppressionMigrationPromise;
+    const deletedHistory = await CeoDailyReportSettings.exists({
+      reportHistorySuppressions: {
+        $elemMatch: {
+          reportType: REPORT_TYPE,
+          reportDate,
+          reportSlot: slot,
+        },
+      },
+    });
+    if (deletedHistory) {
+      const skipped = { slot, skipped: true, reason: `Report history was cleared for ${reportDate}.` };
+      console.log(`[CEO Daily Report] ${source} skipped ${slot}; ${skipped.reason}`);
+      completedReports.add(runtimeKey);
+      return skipped;
+    }
+
     if (await hasSuccessfulReport(reportDate, slot)) {
       completedReports.add(runtimeKey);
       const skipped = { slot, skipped: true, reason: `Report already sent for ${reportDate}.` };
@@ -122,6 +175,9 @@ const startCeoDailyReportScheduler = () => {
   CeoDailyReportLog.createIndexes().catch((error) => {
     console.error("[CEO Daily Report] Failed to ensure report log indexes:", error.message);
   });
+  suppressionMigrationPromise = migrateLegacyReportSuppressions().catch((error) => {
+    console.error("[CEO Daily Report] Failed to migrate report history suppressions:", error.message);
+  });
 
   const scheduleReport = (slot, expression) => {
     if (!cron.validate(expression)) {
@@ -150,7 +206,7 @@ const startCeoDailyReportScheduler = () => {
   scheduleReport("7PM", eveningCron);
 
   console.log(`[CEO Daily Report] Startup catch-up check enabled in timezone "${timezone}".`);
-  runDueCeoDailyReports("startup catch-up");
+  suppressionMigrationPromise.then(() => runDueCeoDailyReports("startup catch-up"));
 
   if (intervalCatchupEnabled && catchupIntervalMinutes > 0) {
     setInterval(() => {

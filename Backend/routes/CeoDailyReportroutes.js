@@ -12,6 +12,41 @@ const {
 } = require("../services/ceoDailyReportService");
 
 const router = express.Router();
+const REPORT_TYPE = "ceo_daily_ats_performance";
+
+const currentReportDate = (timezone) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone || "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const getPart = (type) => parts.find((part) => part.type === type)?.value || "";
+  return `${getPart("year")}-${getPart("month")}-${getPart("day")}`;
+};
+
+const storeCurrentDaySuppressions = async (logs) => {
+  const settings = await getSettings();
+  const reportDate = currentReportDate(process.env.CEO_DAILY_REPORT_TIMEZONE || settings.timezone);
+  const entries = new Map(
+    (settings.reportHistorySuppressions || [])
+      .filter((entry) => entry.reportDate === reportDate)
+      .map((entry) => [`${entry.reportType}:${entry.reportDate}:${entry.reportSlot}`, entry])
+  );
+
+  logs.filter((log) => log.reportDate === reportDate).forEach((log) => {
+    const reportType = log.reportType || REPORT_TYPE;
+    entries.set(`${reportType}:${log.reportDate}:${log.reportSlot}`, {
+      reportType,
+      reportDate: log.reportDate,
+      reportSlot: log.reportSlot,
+      deletedAt: new Date(),
+    });
+  });
+
+  settings.reportHistorySuppressions = [...entries.values()];
+  await settings.save();
+};
 
 router.post("/cron/run-due", async (req, res) => {
   try {
@@ -191,11 +226,16 @@ router.delete("/history/bulk", async (req, res) => {
       return res.status(400).json({ success: false, message: "No report history selected" });
     }
 
+    const logs = await CeoDailyReportLog.find({ _id: { $in: ids } }).select("reportType reportDate reportSlot").lean();
+    if (logs.length) await storeCurrentDaySuppressions(logs);
+
     const result = await CeoDailyReportLog.deleteMany({ _id: { $in: ids } });
+    const remainingCount = await CeoDailyReportLog.countDocuments({ _id: { $in: ids } });
     res.json({
       success: true,
       message: "Selected report history cleared",
       deletedCount: result.deletedCount || 0,
+      remainingCount,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -204,9 +244,12 @@ router.delete("/history/bulk", async (req, res) => {
 
 router.delete("/history/:id", async (req, res) => {
   try {
-    const log = await CeoDailyReportLog.findByIdAndDelete(req.params.id);
+    const log = await CeoDailyReportLog.findById(req.params.id);
     if (!log) return res.status(404).json({ success: false, message: "Report not found" });
-    res.json({ success: true, message: "Report history cleared" });
+
+    await storeCurrentDaySuppressions([log]);
+    await log.deleteOne();
+    res.json({ success: true, message: "Report history cleared", deletedCount: 1 });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
