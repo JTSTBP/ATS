@@ -74,7 +74,7 @@ app.use(
 app.get("/", (req, res) => {
   res.status(200).json({
     success: true,
-    message: "Welcome to ATS Backend API!",
+    message: "Welcome to ATS Backend API",
     status: "Running",
     timestamp: new Date().toISOString(),
   });
