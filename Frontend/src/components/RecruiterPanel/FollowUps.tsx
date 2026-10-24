@@ -63,6 +63,11 @@ const toDateTimeLocal = (value?: string) => {
   const offset = date.getTimezoneOffset() * 60000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 };
+const getRequirementId = (candidate: any) => {
+  const requirement = candidate?.requirementId ?? candidate?.jobId;
+  if (typeof requirement === "string") return requirement;
+  return requirement?._id || "";
+};
 
 function statusBadge(status: string) {
   const styles: Record<string, string> = {
@@ -108,6 +113,9 @@ export default function FollowUps() {
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([]);
   const showDuplicateDetails = ["Admin", "Manager"].includes(user?.designation || "");
   const [requirements, setRequirements] = useState<any[]>([]);
+  const [requirementsPage, setRequirementsPage] = useState(1);
+  const [requirementsTotalPages, setRequirementsTotalPages] = useState(1);
+  const [requirementsTotal, setRequirementsTotal] = useState(0);
   const [selectedRequirement, setSelectedRequirement] = useState<any | null>(null);
   const [requirementDetails, setRequirementDetails] = useState<any | null>(null);
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -118,6 +126,7 @@ export default function FollowUps() {
   const [activeTab, setActiveTab] = useState("Overview");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState("");
+  const detailRequestId = useRef(0);
   const [search, setSearch] = useState("");
   const requirementRequestId = useRef(0);
   const [status, setStatus] = useState("all");
@@ -229,8 +238,12 @@ export default function FollowUps() {
     const requestId = ++requirementRequestId.current;
     setLoading(true);
     try {
-      const { data } = await axios.get(`${API_URL}/requirements`, { params: { search: search.trim(), status, location: location.trim(), limit: 50 }, signal });
-      if (!signal?.aborted && requestId === requirementRequestId.current) setRequirements(data.requirements || []);
+      const { data } = await axios.get(`${API_URL}/requirements`, { params: { search: search.trim(), status, location: location.trim(), page: requirementsPage, limit: 10 }, signal });
+      if (!signal?.aborted && requestId === requirementRequestId.current) {
+        setRequirements(data.requirements || []);
+        setRequirementsTotalPages(Math.max(1, data.totalPages || 1));
+        setRequirementsTotal(data.totalJobs || 0);
+      }
     } catch (error: any) {
       if (!axios.isCancel(error) && !signal?.aborted && requestId === requirementRequestId.current) toast.error(error.response?.data?.message || "Failed to load follow-up requirements");
     } finally {
@@ -252,6 +265,10 @@ export default function FollowUps() {
   }, []);
 
   useEffect(() => {
+    setRequirementsPage(1);
+  }, [search, status, location]);
+
+  useEffect(() => {
     const controller = new AbortController();
     // Invalidate earlier results as soon as the filters change.
     requirementRequestId.current += 1;
@@ -261,37 +278,67 @@ export default function FollowUps() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [search, status, location]);
+  }, [search, status, location, requirementsPage]);
 
   const openRequirement = async (requirement: any, preserveContext = false) => {
+    const requestId = ++detailRequestId.current;
     if (!preserveContext) {
       setSelectedRequirement(requirement);
+      setRequirementDetails(null);
       setSelectedCandidateIds([]);
       setCandidateStatusFilter("all");
       setCandidateDateFrom("");
       setCandidateDateTo("");
       setActiveTab("Overview");
       setSelectedCandidate(null);
+      setDuplicateModalCandidate(null);
+      setCandidates([]);
+      setFollowUps([]);
+      setCalls([]);
+      setActivity([]);
     }
     setLoading(true);
     try {
-      const [detailsRes, candidatesRes, followUpsRes] = await Promise.all([
+      const [detailsResult, candidatesResult, followUpsResult] = await Promise.allSettled([
         axios.get(`${API_URL}/requirements/${requirement._id}`),
         axios.get(`${API_URL}/requirements/${requirement._id}/candidates`),
         axios.get(`${API_URL}/follow-ups`, { params: { requirementId: requirement._id } }),
       ]);
-      setRequirementDetails(detailsRes.data.requirement);
-      const refreshedCandidates = candidatesRes.data.candidates || [];
-      setCandidates(refreshedCandidates);
-      if (preserveContext) {
-        setSelectedCandidate((current: any) => current ? refreshedCandidates.find((item: any) => item._id === current._id) || current : current);
-        setDuplicateModalCandidate((current: any) => current ? refreshedCandidates.find((item: any) => item._id === current._id) || current : current);
+      if (requestId !== detailRequestId.current) return;
+      const errors: string[] = [];
+
+      if (detailsResult.status === "fulfilled") {
+        setRequirementDetails(detailsResult.value.data.requirement);
+      } else {
+        errors.push("requirement details");
       }
-      setFollowUps(followUpsRes.data.followUps || []);
+
+      if (candidatesResult.status === "fulfilled") {
+        const refreshedCandidates = (candidatesResult.value.data.candidates || []).map((candidate: any) => ({
+          ...candidate,
+          requirementId: getRequirementId(candidate) || requirement._id,
+        }));
+        setCandidates(refreshedCandidates);
+        if (preserveContext) {
+          setSelectedCandidate((current: any) => current ? refreshedCandidates.find((item: any) => item._id === current._id) || null : null);
+          setDuplicateModalCandidate((current: any) => current ? refreshedCandidates.find((item: any) => item._id === current._id) || null : null);
+          setSelectedCandidateIds((current: string[]) => current.filter(id => refreshedCandidates.some((item: any) => item._id === id)));
+        }
+      } else {
+        errors.push("candidates");
+      }
+
+      if (followUpsResult.status === "fulfilled") {
+        setFollowUps(followUpsResult.value.data.followUps || []);
+      } else {
+        errors.push("scheduled follow-ups");
+      }
+
+      if (errors.length) toast.error(`Could not load ${errors.join(", ")}. Please refresh and try again.`);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to open requirement");
+      if (requestId === detailRequestId.current) toast.error(error.response?.data?.message || "Failed to open requirement");
     } finally {
-      setLoading(false);
+      if (requestId === detailRequestId.current) setLoading(false);
     }
   };
 
@@ -320,7 +367,7 @@ export default function FollowUps() {
 
   const visibleFollowUps = useMemo(() => {
     if (!selectedRequirement) return followUps;
-    return followUps.filter((item) => item.requirementId?._id === selectedRequirement._id || item.requirementId === selectedRequirement._id);
+    return followUps.filter((item) => (typeof item.requirementId === "object" ? item.requirementId?._id : item.requirementId) === selectedRequirement._id);
   }, [followUps, selectedRequirement]);
 
   const filteredCandidates = useMemo(() => {
@@ -692,6 +739,14 @@ export default function FollowUps() {
           </div>
         ))}
       </div>
+      {!loading && requirementsTotal > 0 && <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+        <span>Showing {(requirementsPage - 1) * 10 + 1}–{Math.min(requirementsPage * 10, requirementsTotal)} of {requirementsTotal} requirements</span>
+        <div className="flex items-center gap-2">
+          <button type="button" disabled={requirementsPage <= 1} onClick={() => setRequirementsPage(page => Math.max(1, page - 1))} className="rounded-lg border border-slate-200 px-3 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-40">Previous</button>
+          <span className="min-w-20 text-center">Page {requirementsPage} of {requirementsTotalPages}</span>
+          <button type="button" disabled={requirementsPage >= requirementsTotalPages} onClick={() => setRequirementsPage(page => Math.min(requirementsTotalPages, page + 1))} className="rounded-lg border border-slate-200 px-3 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-40">Next</button>
+        </div>
+      </div>}
     </div>
   );
 

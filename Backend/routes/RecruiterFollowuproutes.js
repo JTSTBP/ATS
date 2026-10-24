@@ -54,12 +54,13 @@ const requireRecruiter = async (req, res, next) => {
   }
   try {
     if (req.user.designation === "Mentor") {
-      const team = await User.find({
-        designation: "Recruiter",
-        isDisabled: { $ne: true },
+      // Keep the requirement scope in sync with Jobroutes: a mentor can see
+      // requirements assigned to any direct or secondary reportee.
+      const reportees = await User.find({
         $or: [{ reporter: req.user._id }, { secondary_managers: req.user._id }],
       }).select("_id").lean();
-      const teamIds = [req.user._id, ...team.map((member) => member._id)];
+      const teamIds = [req.user._id, ...reportees.map((member) => member._id)];
+      req.followUpTeamIds = teamIds;
       req.followUpRequirementIds = await Job.find({
         $or: [
           { CreatedBy: req.user._id },
@@ -83,8 +84,23 @@ const isObjectId = (value) => mongoose.Types.ObjectId.isValid(String(value || ""
 const canSeeAllFollowUps = (user) => ["Admin", "Manager"].includes(user?.designation);
 const ownerScope = (req) => {
   if (canSeeAllFollowUps(req.user)) return {};
-  if (req.user?.designation === "Mentor") return { requirementId: { $in: req.followUpRequirementIds || [] } };
+  if (req.user?.designation === "Mentor") return {
+    requirementId: { $in: req.followUpRequirementIds || [] },
+    recruiterId: { $in: req.followUpTeamIds || [req.user._id] },
+  };
   return { recruiterId: req.user._id };
+};
+const candidateJobScope = (req, requirementId) => ({
+  requirementId,
+  ...(req.user?.designation === "Mentor"
+    ? { recruiterId: { $in: req.followUpTeamIds || [req.user._id] } }
+    : req.user?.designation === "Recruiter"
+      ? { recruiterId: req.user._id }
+      : {}),
+});
+const scopedQuery = (...conditions) => {
+  const valid = conditions.filter((condition) => condition && Object.keys(condition).length > 0);
+  return valid.length <= 1 ? (valid[0] || {}) : { $and: valid };
 };
 
 const getCandidateField = (candidate, keys) => {
@@ -144,7 +160,12 @@ const assertJobAccess = async (req, jobId) => {
 
 const assertCandidateAccess = async (req, candidateId) => {
   if (!isObjectId(candidateId)) return { candidate: null, job: null };
-  const candidate = await SourcedCandidate.findOne({ _id: candidateId, ...ownerScope(req) })
+  const candidateQuery = req.user.designation === "Mentor"
+    ? { _id: candidateId, recruiterId: { $in: req.followUpTeamIds || [req.user._id] } }
+    : req.user.designation === "Recruiter"
+      ? { _id: candidateId, recruiterId: req.user._id }
+      : { _id: candidateId };
+  const candidate = await SourcedCandidate.findOne(candidateQuery)
     .populate({
       path: "requirementId",
       populate: { path: "clientId", select: "companyName name clientName" },
@@ -159,6 +180,7 @@ const assertCandidateAccess = async (req, candidateId) => {
 
 const buildCandidateSummary = (candidate, extras = {}) => ({
   _id: candidate._id,
+  requirementId: candidate.requirementId?._id || candidate.requirementId || candidate.jobId?._id || candidate.jobId || null,
   name: getCandidateField(candidate, ["name", "candidateName", "CandidateName", "Name"]) || "Unnamed Candidate",
   email: getCandidateField(candidate, ["Email", "email"]),
   phone: getCandidateField(candidate, ["phoneNumber", "Phone", "phone", "Mobile", "mobile"]),
@@ -566,11 +588,11 @@ router.get("/requirements", async (req, res) => {
     const jobIds = jobs.map((job) => job._id);
     const [candidateCounts, pendingCounts] = await Promise.all([
       SourcedCandidate.aggregate([
-        { $match: { requirementId: { $in: jobIds }, ...ownerScope(req) } },
+        { $match: scopedQuery({ requirementId: { $in: jobIds } }, ownerScope(req)) },
         { $group: { _id: "$requirementId", count: { $sum: 1 } } },
       ]),
       FollowUp.aggregate([
-        { $match: { requirementId: { $in: jobIds }, ...ownerScope(req), status: "Pending" } },
+        { $match: scopedQuery({ requirementId: { $in: jobIds }, status: "Pending" }, ownerScope(req)) },
         { $group: { _id: "$requirementId", count: { $sum: 1 } } },
       ]),
     ]);
@@ -689,13 +711,17 @@ router.get("/requirements/:requirementId/candidates", async (req, res) => {
     const job = await assertJobAccess(req, req.params.requirementId);
     if (!job) return res.status(404).json({ success: false, message: "Requirement not found" });
 
-    const candidates = await SourcedCandidate.find({ requirementId: job._id, ...ownerScope(req) })
+    // This endpoint returns sourced profiles only. Keep the selected requirement
+    // and the user's access scope as separate predicates so neither can override
+    // the other (especially for mentors with access to several requirements).
+    const candidateScope = candidateJobScope(req, job._id);
+    const candidates = await SourcedCandidate.find(candidateScope)
       .populate("recruiterId", "name email designation")
       .sort({ createdAt: -1 })
       .lean();
 
     const candidateIds = candidates.map((c) => c._id);
-    const snapshot = await getCandidateCommunicationSnapshot(candidateIds, ownerScope(req));
+    const snapshot = await getCandidateCommunicationSnapshot(candidateIds, candidateScope);
 
     const emails = candidates.map((c) => c.email).filter(Boolean);
     const phones = candidates.map((c) => c.phoneNumber).filter(Boolean);
@@ -713,7 +739,7 @@ router.get("/requirements/:requirementId/candidates", async (req, res) => {
         }
       }
       if (or.length > 0) {
-        allDuplicates = await SourcedCandidate.find({ $or: or })
+        allDuplicates = await SourcedCandidate.find(scopedQuery({ $or: or }, candidateScope))
           .populate("recruiterId", "name email designation")
           .populate("requirementId", "title")
           .sort({ createdAt: 1 })
@@ -903,7 +929,7 @@ router.patch("/candidates/:candidateId", upload.single("resume"), async (req, re
     if (!block.canAdd) return res.status(409).json({ success: false, ...block });
     const updates = { name, email, phoneNumber };
     if (req.file) updates.resumeFileUrl = req.file.location || req.file.path;
-    const updated = await SourcedCandidate.findOneAndUpdate({ _id: candidate._id, ...ownerScope(req) }, { $set: updates }, { new: true, runValidators: true }).populate("recruiterId", "name email designation").lean();
+    const updated = await SourcedCandidate.findOneAndUpdate({ _id: candidate._id }, { $set: updates }, { new: true, runValidators: true }).populate("recruiterId", "name email designation").lean();
     if (!updated) return res.status(404).json({ success: false, message: "Candidate not found" });
     // Already-sent or in-flight messages retain their original recipient.
     const unsent = { candidateId: candidate._id, status: { $in: ["generated", "reviewed", "scheduled", "failed"] } };
@@ -1086,10 +1112,15 @@ router.get("/candidates/:candidateId/follow-ups", async (req, res) => {
 
 router.get("/follow-ups", async (req, res) => {
   const { requirementId, status, type } = req.query;
-  const query = ownerScope(req);
-  if (requirementId && isObjectId(requirementId)) query.requirementId = requirementId;
-  if (status && status !== "all") query.status = status;
-  if (type && type !== "all") query.type = type;
+  if (requirementId) {
+    const job = await assertJobAccess(req, requirementId);
+    if (!job) return res.status(404).json({ success: false, message: "Requirement not found" });
+  }
+  const filters = {};
+  if (requirementId) filters.requirementId = requirementId;
+  if (status && status !== "all") filters.status = status;
+  if (type && type !== "all") filters.type = type;
+  const query = scopedQuery(filters, ownerScope(req));
   const followUps = await FollowUp.find(query)
     .populate("candidateId", "name email phoneNumber resumeFileUrl")
     .populate("requirementId", "title")
