@@ -4,19 +4,7 @@ const { formatEmailErrorResponse } = require("./emailService");
 const { sendUserMail } = require("./userEmailService");
 const { sendWhatsAppMessage } = require("./whatsappService");
 
-const DEFAULT_INTERVALS_MINUTES = [0, 4320, 10080, 14400, 20160];
-
-const getSequenceIntervals = () => {
-  const raw = process.env.EMAIL_SEQUENCE_INTERVAL_MINUTES || "";
-  const parsed = raw.split(",").map((value) => Number(value.trim())).filter((value) => Number.isFinite(value) && value >= 0);
-  return parsed.length >= 5 ? parsed.slice(0, 5) : DEFAULT_INTERVALS_MINUTES;
-};
-
-const scheduleForStep = (step, startedAt = new Date()) => {
-  const intervals = getSequenceIntervals();
-  const minutes = intervals[step] ?? intervals[intervals.length - 1] ?? 0;
-  return new Date(startedAt.getTime() + minutes * 60 * 1000);
-};
+const { scheduleForStep, sendingDayStart } = require("../utils/emailSchedule");
 
 const renderHtml = (body) => String(body || "").replace(/\n/g, "<br/>");
 
@@ -37,17 +25,25 @@ const sendCommunication = async (communication) => {
 
 const runEmailSequenceWorkerOnce = async () => {
   const now = new Date();
+  if (!sendingDayStart(now)) return { checked: 0, sent: 0, failed: 0 };
   await Communication.updateMany({ channel: "WHATSAPP", sequenceId: { $type: "string" }, status: { $in: ["generated", "reviewed", "scheduled", "failed"] } }, { $set: { status: "stopped", stoppedAt: now, stopReason: "whatsapp_direct_messages_only" } });
   const due = await Communication.find({
     channel: "EMAIL",
     sequenceId: { $type: "string" },
     status: "scheduled",
     scheduledAt: { $lte: now },
-  }).sort({ scheduledAt: 1 }).limit(Number(process.env.EMAIL_SEQUENCE_WORKER_BATCH || 10));
+  }).sort({ scheduledAt: 1, sequenceStep: 1 }).limit(Number(process.env.EMAIL_SEQUENCE_WORKER_BATCH || 10));
 
   let sent = 0;
   let failed = 0;
   for (const item of due) {
+    const dayStart = sendingDayStart(new Date());
+    if (!dayStart) break;
+    const sentToday = await Communication.findOne({ sequenceId: item.sequenceId, recruiterId: item.recruiterId, channel: "EMAIL", status: "sent", sentAt: { $gte: dayStart } });
+    if (sentToday) {
+      await Communication.updateOne({ _id: item._id, status: "scheduled" }, { $set: { scheduledAt: scheduleForStep(1, new Date()) } });
+      continue;
+    }
     const claimed = await Communication.findOneAndUpdate(
       { _id: item._id, status: "scheduled" },
       { $set: { status: "pending", claimedAt: new Date() } },
@@ -86,9 +82,11 @@ const startEmailSequenceWorker = () => {
 };
 
 module.exports = {
-  getSequenceIntervals,
   runEmailSequenceWorkerOnce,
   scheduleForStep,
   sendCommunication,
   startEmailSequenceWorker,
 };
+
+
+

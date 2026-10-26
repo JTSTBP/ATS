@@ -60,3 +60,7 @@ an address you control to check actual delivery and the sender address.
 
 References: [Microsoft authorization code flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow),
 [Graph sendMail](https://learn.microsoft.com/en-us/graph/api/user-sendmail?view=graph-rest-1.0).
+
+## Follow-up sequence timing
+
+Each sequence sends at most one email per IST calendar day. The first email sends immediately when started between 9 AM and 8:15 PM; otherwise it starts at a varied daytime on the next eligible date. Later steps use different times between 9 AM and 8:15 PM IST, on consecutive calendar days. Dates are saved on drafts, so refreshing does not change the timetable. The worker does not start sends at or after 8:30 PM IST and defers additional overdue steps to following days. Legacy EMAIL_SEQUENCE_INTERVAL_MINUTES is no longer used. A sleeping server can delay processing until it resumes. Varying times does not guarantee inbox placement. Replies and opt-outs require the inbound webhook to be configured; Microsoft connection alone does not enable reply tracking.
