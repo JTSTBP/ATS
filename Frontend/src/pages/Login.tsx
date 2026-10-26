@@ -1,10 +1,11 @@
 
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Briefcase, X } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Star, Zap, X } from "lucide-react";
 import { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthProvider";
 import logo from "../images/logo.png";
+import "./Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -64,231 +65,53 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 lg:bg-white overflow-hidden relative">
-      {/* Left Side - Visuals */}
-      <div className="hidden lg:flex w-1/2 bg-slate-900 relative items-center justify-center overflow-hidden">
-        {/* Animated Background Elements */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-700 to-purple-800 opacity-90" />
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 90, 0],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="absolute -top-1/2 -left-1/2 w-full h-full bg-gradient-to-br from-blue-400/20 to-transparent rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.5, 1],
-            rotate: [0, -90, 0],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full bg-gradient-to-tl from-purple-400/20 to-transparent rounded-full blur-3xl"
-        />
-
-        {/* Content */}
-        <div className="relative z-10 p-12 text-white max-w-lg">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="w-16 h-16 bg-white/10 backdrop-blur-lg rounded-2xl flex items-center justify-center mb-8 border border-white/20 shadow-xl"
-          >
-            <img src={logo} className="w-20 h-20 object-contain" />
-          </motion.div>
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-5xl font-bold mb-6 leading-tight"
-          >
-            Recruit Top Talent <br />
-            <span className="text-blue-200">Faster & Smarter.</span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-lg text-blue-100 leading-relaxed"
-          >
-            Streamline your hiring process with our advanced Applicant Tracking
-            System. Manage candidates, schedule interviews, and build your dream
-            team.
-          </motion.p>
-
-          {/* Glass Card Stats */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mt-12 flex gap-4"
-          >
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-4 flex-1">
-              <h3 className="text-2xl font-bold">10k+</h3>
-              <p className="text-sm text-blue-200">Candidates Hired</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-xl p-4 flex-1">
-              <h3 className="text-2xl font-bold">98%</h3>
-              <p className="text-sm text-blue-200">Satisfaction Rate</p>
-            </div>
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Mobile Background Decoration (Visible only on small screens) */}
-      <div className="absolute inset-0 lg:hidden overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -right-[20%] w-[80%] h-[80%] bg-blue-100/40 rounded-full blur-3xl opacity-60" />
-        <div className="absolute -bottom-[20%] -left-[20%] w-[80%] h-[80%] bg-purple-100/40 rounded-full blur-3xl opacity-60" />
-      </div>
-
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-md bg-white p-6 md:p-8 rounded-3xl shadow-xl border border-slate-100"
-        >
-          <div className="text-center mb-8 md:mb-10">
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="inline-block p-3 rounded-2xl text-blue-600 mb-2"
-            >
-              <img src={logo} className="w-16 h-16 md:w-20 md:h-20 object-contain mx-auto" />
-            </motion.div>
-            <motion.h2
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-2xl md:text-3xl font-bold text-slate-900 mb-2 flex items-center justify-center gap-2 flex-wrap"
-            >
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-                Welcome Back
-              </span>
-              <motion.span
-                animate={{ rotate: [0, 20, 0, 20, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 2 }}
-                className="inline-block origin-bottom-right"
-              >
-                👋
-              </motion.span>
-            </motion.h2>
-            <motion.p
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-slate-500 text-sm md:text-base"
-            >
-              Please enter your details to sign in
-            </motion.p>
+    <main className="login-page">
+      <section className="login-hero" aria-labelledby="login-headline">
+        <div className="login-brand"><img src={logo} alt="Jobs Territory" /></div>
+        <div className="login-hero-content">
+          <div className="login-badge"><span aria-hidden="true" />Next-gen applicant tracking system</div>
+          <h1 id="login-headline">Recruit Top Talent<br /><span className="login-animated-headline" aria-label="Faster & Smarter.">{Array.from("Faster & Smarter.").map((letter, index) => <span key={index} aria-hidden="true" style={{ animationDelay: `${(index + 1) * 0.05}s` }}>{letter === " " ? "\u00a0" : letter}</span>)}</span></h1>
+          <p className="login-description">Streamline your hiring workflow with our advanced ATS. Manage candidate pipelines, schedule intelligent interviews, and build your dream team effortlessly.</p>
+          <div className="login-stats">
+            <div><strong>10k+</strong><span>Candidates hired</span></div>
+            <div><strong>98%</strong><span>Satisfaction rate</span></div>
+            <div className="login-highlight"><b><Zap size={16} aria-hidden="true" /> AI powered</b><span>Automated resume parsing &amp; matching</span></div>
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 ml-1">
-                Email Address
-              </label>
-              <div className="relative group">
-                <Mail
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
-                  size={20}
-                />
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  className={`w-full pl-12 pr-4 py-3 md:py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.email
-                    ? "border-red-500 bg-red-50"
-                    : "border-slate-200"
-                    }`}
-                  placeholder="name@company.com"
-                />
+        </div>
+        <footer className="login-hero-footer"><p><Star size={18} fill="currentColor" aria-hidden="true" /><span>“Every connection brings you closer to your next superstar hire.”</span></p></footer>
+      </section>
+      <section className="login-form-side" aria-labelledby="login-title">
+        <div className="login-card">
+          <header className="login-card-header">
+            <div className="login-brand login-brand-card"><img src={logo} alt="Jobs Territory" /></div>
+            <h2 id="login-title">Welcome Back <span aria-hidden="true">👋</span></h2>
+            <p>Please enter your credentials to access your dashboard</p>
+          </header>
+          <form onSubmit={handleSubmit} className="login-form" aria-busy={isLoading}>
+            <div className="login-field">
+              <label htmlFor="login-email">Email address</label>
+              <div className="login-input-wrap">
+                <Mail size={20} aria-hidden="true" />
+                <input id="login-email" name="email" type="email" autoComplete="username" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="recruiter@company.com" aria-invalid={!!errors.email} aria-describedby={errors.email ? "login-email-error" : undefined} />
               </div>
-              {errors.email && (
-                <p className="text-xs text-red-500 ml-1">{errors.email}</p>
-              )}
+              {errors.email && <p id="login-email-error" className="login-error" role="alert">{errors.email}</p>}
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 ml-1">
-                Password
-              </label>
-              <div className="relative group">
-                <Lock
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors"
-                  size={20}
-                />
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  className={`w-full pl-12 pr-12 py-3 md:py-3.5 bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all ${errors.password
-                    ? "border-red-500 bg-red-50"
-                    : "border-slate-200"
-                    }`}
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                </button>
+            <div className="login-field">
+              <label htmlFor="login-password">Password</label>
+              <div className="login-input-wrap">
+                <Lock size={20} aria-hidden="true" />
+                <input id="login-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="••••••••" aria-invalid={!!errors.password} aria-describedby={errors.password ? "login-password-error" : undefined} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
               </div>
-              {errors.password && (
-                <p className="text-xs text-red-500 ml-1">{errors.password}</p>
-              )}
+              {errors.password && <p id="login-password-error" className="login-error" role="alert">{errors.password}</p>}
             </div>
-
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(true)}
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                Forgot Password?
-              </button>
-            </div>
-
-            {errors.general && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-sm"
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                {errors.general}
-              </motion.div>
-            )}
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3.5 md:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-bold shadow-lg hover:shadow-blue-500/30 flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  Sign In
-                  <ArrowRight
-                    size={20}
-                    className="group-hover:translate-x-1 transition-transform"
-                  />
-                </>
-              )}
-            </button>
+            <div className="login-form-options"><button type="button" onClick={() => setShowForgotPassword(true)}>Forgot password?</button></div>
+            {errors.general && <p className="login-error login-error-general" role="alert">{errors.general}</p>}
+            <button type="submit" disabled={isLoading} className="login-submit">{isLoading ? "Signing in…" : <>Sign in <ArrowRight size={21} aria-hidden="true" /></>}</button>
           </form>
-        </motion.div>
-      </div>
-
+          <footer className="login-card-footer">Need recruiter access?<br /><span>Contact your system admin</span></footer>
+        </div>
+      </section>
       {/* Forgot Password Modal */}
       <AnimatePresence>
         {showForgotPassword && (
@@ -379,6 +202,9 @@ export default function Login() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </main>
   );
 }
+
+
+
