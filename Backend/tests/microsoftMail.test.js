@@ -106,6 +106,20 @@ test("Microsoft connection, token safety and follow-up sending", async t => {
     assert.equal(sent.provider, "microsoft"); assert.equal(sent.accepted, true); assert.ok(calls[1].endsWith("/me/sendMail"));
     assert.equal(service.unseal(user.microsoftMail.refreshToken), "rotated-refresh"); assert.equal(smtpCalls, 0);
   });
+  await t.test("Graph rejection preserves safe diagnostics without exposing response content", async () => {
+    reset(); user.followUpEmailProvider = "microsoft"; user.microsoftMail = { email: user.email, refreshToken: service.seal("refresh") };
+    for (const [status, code] of [[400, "MailboxNotEnabledForRESTAPI"], [429, "TooManyRequests"], [401, "InvalidAuthenticationToken"]]) {
+      global.fetch = async address => address.includes("/token") ? response(200, { access_token: "access" }) : response(status, { error: { code, message: "private-provider-content" } });
+      await assert.rejects(sendUserMail(user._id, { to: "candidate@example.com" }), error => {
+        assert.deepEqual(error.diagnostics, { httpStatus: status, microsoftCode: code });
+        assert.ok(error.message.includes(code));
+        assert.ok(!error.message.includes("private-provider-content"));
+        return true;
+      });
+    }
+    global.fetch = async address => address.includes("/token") ? response(200, { access_token: "access" }) : { ...response(503), json: async () => { throw new Error("invalid JSON"); } };
+    await assert.rejects(sendUserMail(user._id, { to: "candidate@example.com" }), error => error.diagnostics.httpStatus === 503 && error.message.includes("503"));
+  });
   await t.test("missing, revoked and mismatched connections block sending", async () => {
     reset(); await assert.rejects(getUserEmailOptions(user._id), { code: "MICROSOFT_RECONNECT_REQUIRED" });
     user.followUpEmailProvider = "microsoft"; user.microsoftMail = { email: user.email, refreshToken: service.seal("refresh") };
@@ -134,3 +148,4 @@ test("Microsoft connection, token safety and follow-up sending", async t => {
 });
 
 test.after(() => { global.fetch = originalFetch; process.env = previousEnv; });
+

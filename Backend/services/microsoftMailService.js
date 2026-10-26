@@ -139,8 +139,23 @@ const sendMicrosoftMail = async (userId, message) => {
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ message: { subject: message.subject, body: { contentType: message.html ? "HTML" : "Text", content: message.html || message.text || "" }, toRecipients, ccRecipients: recipients(message.cc), bccRecipients: recipients(message.bcc) }, saveToSentItems: true }),
   });
-  if (response.status !== 202) throw mailError(response.status === 401 ? "MICROSOFT_RECONNECT_REQUIRED" : "MICROSOFT_SEND_FAILED", response.status === 403 ? "Microsoft denied sending. Your administrator may need to approve Mail.Send permission." : "Microsoft did not accept the email. Check your connection and try again.", 502);
+  if (response.status !== 202) {
+    const data = await response.json().catch(() => null);
+    const rawCode = data?.error?.code;
+    const microsoftCode = typeof rawCode === "string" && /^[a-zA-Z0-9_.-]{1,100}$/.test(rawCode) ? rawCode : "UnknownError";
+    let guidance = "Microsoft rejected the email. Contact your administrator with this error code.";
+    if (response.status === 401) guidance = "Microsoft authentication was rejected. Reconnect your Microsoft account.";
+    else if (microsoftCode === "MailboxNotEnabledForRESTAPI") guidance = "This mailbox is not available to Microsoft Graph. Ask your administrator to check Exchange Online licensing and mailbox provisioning.";
+    else if (response.status === 403) guidance = "Microsoft denied sending. Ask your administrator to check Mail.Send permission, mailbox licensing and access policies.";
+    else if (response.status === 429) guidance = "Microsoft is limiting email requests. Wait before trying again.";
+    else if (response.status >= 500) guidance = "Microsoft email is temporarily unavailable. Try again later.";
+    const error = mailError(response.status === 401 ? "MICROSOFT_RECONNECT_REQUIRED" : "MICROSOFT_SEND_FAILED", `${guidance} (HTTP ${response.status}, ${microsoftCode})`, 502);
+    error.diagnostics = { httpStatus: response.status, microsoftCode };
+    error.traceId = response.headers.get("request-id") || undefined;
+    throw error;
+  }
   return { provider: "microsoft", messageId: response.headers.get("request-id") || crypto.randomUUID(), accepted: true };
 };
 
 module.exports = { getConfig, startConnection, completeConnection, assertMicrosoftConnection, sendMicrosoftMail, isOutlookAddress, seal, unseal };
+
