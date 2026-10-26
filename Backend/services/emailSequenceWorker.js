@@ -41,7 +41,7 @@ const runEmailSequenceWorkerOnce = async () => {
     if (!dayStart) break;
     const sentToday = await Communication.findOne({ sequenceId: item.sequenceId, recruiterId: item.recruiterId, channel: "EMAIL", status: "sent", sentAt: { $gte: dayStart } });
     if (sentToday) {
-      await Communication.updateOne({ _id: item._id, status: "scheduled" }, { $set: { scheduledAt: scheduleForStep(1, new Date()) } });
+      await Communication.updateOne({ _id: item._id, status: "scheduled" }, { $set: { scheduledAt: scheduleForStep(Math.max(1, item.sequenceStep - (sentToday.sequenceStep || 0)), sentToday.sentAt) } });
       continue;
     }
     const claimed = await Communication.findOneAndUpdate(
@@ -87,6 +87,4 @@ module.exports = {
   sendCommunication,
   startEmailSequenceWorker,
 };
-
-
 
