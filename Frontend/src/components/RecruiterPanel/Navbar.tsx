@@ -177,6 +177,8 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
 
           <button
             onClick={() => setShowDropdown(!showDropdown)}
+            aria-label="Account menu"
+            aria-expanded={showDropdown}
             className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md hover:shadow-lg transition-shadow"
           >
             <User size={20} className="text-white" />
@@ -282,6 +284,18 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
                   <p className="text-xs text-slate-500 mt-1">{user?.designation}</p>
                 </div>
 
+                {user?.designation === 'Recruiter' && (
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      navigate('/Recruiter/profile');
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-blue-50 transition-colors flex items-center gap-3 text-slate-700"
+                  >
+                    <User size={18} />
+                    <span className="font-medium">My Profile</span>
+                  </button>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full px-4 py-3 text-left hover:bg-red-50 transition-colors flex items-center gap-3 text-red-600"

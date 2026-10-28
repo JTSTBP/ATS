@@ -1,6 +1,6 @@
 import EmailConnection from "./EmailConnection";
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Save, X, Camera, Shield } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, Calendar, Edit2, Save, X, Camera, Shield, Link } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthProvider';
 import { formatDate } from '../../utils/dateUtils';
@@ -11,6 +11,7 @@ import { getImageUrl } from '../../utils/imageUtils';
 export default function Profile() {
     const { user, updateProfile } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [removePhoto, setRemovePhoto] = useState(false);
@@ -24,6 +25,8 @@ export default function Profile() {
         appPassword: user?.appPassword || '',
         personalEmail: user?.personalEmail || '',
         dateOfBirth: user?.dateOfBirth || '',
+        whatsappLink: user?.whatsappLink || '',
+        linkedinLink: user?.linkedinLink || '',
     });
 
     // Sync formData when user context changes
@@ -39,6 +42,8 @@ export default function Profile() {
                 appPassword: user.appPassword || '',
                 personalEmail: user.personalEmail || '',
                 dateOfBirth: user.dateOfBirth || '',
+                whatsappLink: user.whatsappLink || '',
+                linkedinLink: user.linkedinLink || '',
             });
         }
     }, [user]);
@@ -70,17 +75,22 @@ export default function Profile() {
         console.log('🗑️ Profile photo marked for removal');
     };
 
-    const handleSave = async () => {
+    const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (isSaving) return;
+        setIsSaving(true);
         const data = new FormData();
         data.append('name', formData.name);
         data.append('email', formData.email);
         data.append('phone', formData.phone);
         data.append('designation', formData.designation);
         data.append('department', formData.department);
-        data.append('joinDate', formData.joinDate);
+        data.append('joinDate', formData.joinDate.split('T')[0]);
         data.append('appPassword', formData.appPassword);
         data.append('personalEmail', formData.personalEmail);
-        data.append('dateOfBirth', formData.dateOfBirth);
+        data.append('dateOfBirth', formData.dateOfBirth.split('T')[0]);
+        data.append('whatsappLink', formData.whatsappLink);
+        data.append('linkedinLink', formData.linkedinLink);
 
         if (removePhoto) {
             console.log('🗑️ Removing profile photo');
@@ -94,6 +104,7 @@ export default function Profile() {
 
         console.log('📤 Sending profile update...');
         const success = await updateProfile(data);
+        setIsSaving(false);
         if (success) {
             console.log('✅ Profile updated successfully');
             setIsEditing(false);
@@ -114,6 +125,8 @@ export default function Profile() {
                 appPassword: user.appPassword || '',
                 personalEmail: user.personalEmail || '',
                 dateOfBirth: user.dateOfBirth || '',
+                whatsappLink: user.whatsappLink || '',
+                linkedinLink: user.linkedinLink || '',
             });
         }
         setRemovePhoto(false);
@@ -128,7 +141,8 @@ export default function Profile() {
     };
 
     return (
-        <motion.div
+        <motion.form
+            onSubmit={handleSave}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -146,6 +160,7 @@ export default function Profile() {
                 </div>
                 {!isEditing ? (
                     <button
+                        type="button"
                         onClick={() => setIsEditing(true)}
                         className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-bold text-xs uppercase tracking-widest shadow-lg shadow-blue-200 active:scale-95"
                     >
@@ -155,6 +170,8 @@ export default function Profile() {
                 ) : (
                     <div className="flex gap-3 w-full sm:w-auto">
                         <button
+                            type="button"
+                            disabled={isSaving}
                             onClick={handleCancel}
                             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-all font-bold text-xs uppercase tracking-widest active:scale-95"
                         >
@@ -162,11 +179,12 @@ export default function Profile() {
                             Cancel
                         </button>
                         <button
-                            onClick={handleSave}
+                            type="submit"
+                            disabled={isSaving}
                             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all font-bold text-xs uppercase tracking-widest shadow-lg shadow-green-200 active:scale-95"
                         >
                             <Save size={16} />
-                            Save Changes
+                            {isSaving ? 'Saving...' : 'Save Changes'}
                         </button>
                     </div>
                 )}
@@ -221,6 +239,7 @@ export default function Profile() {
                             </div>
                             {isEditing && (profilePhoto || user?.profilePhoto) && (
                                 <button
+                                    type="button"
                                     onClick={handleRemovePhoto}
                                     className="block text-xs font-bold text-red-300 hover:text-red-200 uppercase tracking-widest transition-colors py-1"
                                 >
@@ -243,22 +262,25 @@ export default function Profile() {
                         {[
                             { label: 'Full Name', value: formData.name, key: 'name', icon: User, editable: true },
                             { label: 'Email Address', value: user?.email, key: 'email', icon: Mail, editable: false },
-                            { label: 'Phone Number', value: formData.phone, key: 'phone', icon: Phone, editable: true, placeholder: 'Enter Phone Number' },
+                            { label: 'Contact Number', value: formData.phone, key: 'phone', icon: Phone, editable: true, placeholder: 'e.g. +91 98765 43210', type: 'tel' },
                             { label: 'Designation', value: user?.designation, key: 'designation', icon: Briefcase, editable: false },
                             { label: 'Department', value: formData.department, key: 'department', icon: MapPin, editable: true, placeholder: 'Enter Department' },
-                            { label: 'Joining Date', value: formData.joinDate, key: 'joinDate', icon: Calendar, editable: true, type: 'date' },
+                            { label: 'Date of Joining (DOJ)', value: formData.joinDate, key: 'joinDate', icon: Calendar, editable: true, type: 'date' },
                             { label: 'Date of Birth', value: formData.dateOfBirth, key: 'dateOfBirth', icon: Calendar, editable: true, type: 'date' },
+                            { label: 'WhatsApp Link', value: formData.whatsappLink, key: 'whatsappLink', icon: Link, editable: true, type: 'url', placeholder: 'https://wa.me/919876543210' },
+                            { label: 'LinkedIn Link', value: formData.linkedinLink, key: 'linkedinLink', icon: Link, editable: true, type: 'url', placeholder: 'https://www.linkedin.com/in/your-name' },
                             { label: 'Personal Email', value: formData.personalEmail, key: 'personalEmail', icon: Mail, editable: true, placeholder: 'Enter Personal Email' },
                             { label: 'App Password', value: user?.appPassword, key: 'appPassword', icon: Shield, editable: true, placeholder: 'Enter App Password' }
                         ].map((field, idx) => (
                             <div key={idx} className="space-y-2">
-                                <label className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono ml-1">
+                                <label htmlFor={`profile-${field.key}`} className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono ml-1">
                                     <field.icon size={14} className="text-gray-300" />
                                     {field.label}
                                 </label>
                                 {isEditing && field.editable ? (
                                     field.type === 'date' ? (
                                         <input
+                                            id={`profile-${field.key}`}
                                             type="date"
                                             value={field.value ? field.value.split('T')[0] : ''}
                                             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
@@ -266,7 +288,8 @@ export default function Profile() {
                                         />
                                     ) : (
                                         <input
-                                            type="text"
+                                            id={`profile-${field.key}`}
+                                            type={field.type || 'text'}
                                             value={field.value}
                                             onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
                                             placeholder={field.placeholder}
@@ -275,7 +298,9 @@ export default function Profile() {
                                     )
                                 ) : (
                                     <div className="w-full px-5 py-3.5 bg-gray-50/50 rounded-2xl border border-gray-100 text-sm font-bold text-gray-700 shadow-inner">
-                                        {field.type === 'date' ? (field.value ? formatDate(field.value) : 'Not provided') : (field.value || 'Not provided')}
+                                        {field.type === 'url' && field.value && /^https:\/\//i.test(field.value) ? (
+                                            <a href={field.value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{field.value}</a>
+                                        ) : field.type === 'date' ? (field.value ? formatDate(field.value) : 'Not provided') : (field.value || 'Not provided')}
                                     </div>
                                 )}
                             </div>
@@ -283,6 +308,6 @@ export default function Profile() {
                     </div>
                 </div>
             </div>
-        </motion.div>
+        </motion.form>
     );
 }

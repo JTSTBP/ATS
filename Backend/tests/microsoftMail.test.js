@@ -46,7 +46,8 @@ const model = {
 require.cache[require.resolve("../models/Users")] = { exports: model };
 let smtpCalls = 0;
 let smtpError = null;
-require.cache[require.resolve("../services/emailService")] = { exports: { sendMail: async () => { smtpCalls++; if (smtpError) throw smtpError; return { provider: "smtp" }; } } };
+let smtpMessage;
+require.cache[require.resolve("../services/emailService")] = { exports: { sendMail: async message => { smtpMessage = message; smtpCalls++; if (smtpError) throw smtpError; return { provider: "smtp" }; } } };
 const service = require("../services/microsoftMailService");
 const { sendUserMail, getUserEmailOptions } = require("../services/userEmailService");
 const response = (status, data = {}) => ({ status, ok: status >= 200 && status < 300, json: async () => data, headers: { get: () => "test-request" } });
@@ -100,7 +101,10 @@ test("Microsoft connection, token safety and follow-up sending", async t => {
       if (address.includes("/token")) { assert.equal(options.body.get("refresh_token"), "old-refresh"); return response(200, { access_token: "fresh-access", refresh_token: "rotated-refresh" }); }
       assert.equal(options.headers.Authorization, "Bearer fresh-access");
       const payload = JSON.parse(options.body); assert.equal(payload.message.toRecipients[0].emailAddress.address, "candidate@example.com");
-      assert.equal(payload.message.from, undefined); assert.equal(payload.message.body.contentType, "HTML"); return response(202);
+      assert.equal(payload.message.from, undefined); assert.equal(payload.message.body.contentType, "HTML");
+      assert.ok(payload.message.body.content.includes('data-ats-signature="true"'));
+      assert.ok(payload.message.body.content.includes(user.email));
+      return response(202);
     };
     const sent = await sendUserMail(user._id, { to: "candidate@example.com", subject: "Follow up", html: "<p>Hello</p>", from: "spoof@example.com" });
     assert.equal(sent.provider, "microsoft"); assert.equal(sent.accepted, true); assert.ok(calls[1].endsWith("/me/sendMail"));
@@ -132,6 +136,18 @@ test("Microsoft connection, token safety and follow-up sending", async t => {
   await t.test("Gmail continues using the stored app password", async () => {
     reset(); user.email = "sender@gmail.com"; user.appPassword = "dummy-app-password";
     assert.equal((await sendUserMail(user._id, { to: "candidate@example.com" })).provider, "smtp"); assert.equal(smtpCalls, 1);
+  });
+  await t.test("SMTP signatures use the latest saved profile on every send", async () => {
+    reset(); user.email = 'sender@gmail.com'; user.appPassword = 'dummy-app-password';
+    user.name = 'First Name'; user.phone = '1234567';
+    await sendUserMail(user._id, { to: 'candidate@example.com', text: 'Hello' });
+    assert.match(smtpMessage.text, /First Name\nsender@gmail.com\n1234567/);
+    assert.equal(smtpMessage.signatureProfile, undefined);
+    user.name = 'Updated Name'; user.linkedinLink = 'https://www.linkedin.com/in/updated';
+    await sendUserMail(user._id, { to: 'candidate@example.com', text: 'Hello' });
+    assert.match(smtpMessage.text, /Updated Name/);
+    assert.match(smtpMessage.html, /https:\/\/www.linkedin.com\/in\/updated/);
+    assert.doesNotMatch(smtpMessage.text, /First Name/);
   });
   await t.test("missing and incorrect app passwords show distinct safe messages", async () => {
     reset(); user.email = "sender@gmail.com";

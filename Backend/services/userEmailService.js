@@ -1,5 +1,6 @@
 const User = require("../models/Users");
 const { sendMail } = require("./emailService");
+const { withProfileSignature } = require("./emailSignature");
 const { assertMicrosoftConnection, sendMicrosoftMail, isOutlookAddress } = require("./microsoftMailService");
 
 const credentialError = (code, message) => Object.assign(new Error(message), {
@@ -10,15 +11,16 @@ const credentialError = (code, message) => Object.assign(new Error(message), {
 const getUserEmailOptions = async (userId) => {
   const id = userId?._id || userId;
   if (!id) throw credentialError("SENDER_NOT_FOUND", "The email sender is unavailable. Please sign in again.");
-  const user = await User.findById(id).select("name email appPassword isDisabled followUpEmailProvider microsoftMail").lean();
+  const user = await User.findById(id).select("name email phone phoneNumber whatsappLink linkedinLink appPassword isDisabled followUpEmailProvider microsoftMail").lean();
   if (!user || user.isDisabled) throw credentialError("SENDER_UNAVAILABLE", "The email sender account is unavailable or disabled.");
+  const signatureProfile = { name: user.name, email: user.email, phone: user.phone, phoneNumber: user.phoneNumber, whatsappLink: user.whatsappLink, linkedinLink: user.linkedinLink };
   const email = String(user.email || "").trim();
   if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(email)) {
     throw credentialError("USER_EMAIL_MISSING", "Save a valid email address in your user profile before sending follow-up emails.");
   }
   if (user.followUpEmailProvider === "microsoft" || isOutlookAddress(email)) {
     assertMicrosoftConnection(user);
-    return { provider: "microsoft", from: email, replyTo: email, senderId: id };
+    return { provider: "microsoft", from: email, replyTo: email, senderId: id, signatureProfile };
   }
   let password = String(user.appPassword || "").trim();
   if ((password.startsWith('"') && password.endsWith('"')) || (password.startsWith("'") && password.endsWith("'"))) password = password.slice(1, -1).trim();
@@ -28,6 +30,7 @@ const getUserEmailOptions = async (userId) => {
   }
   return {
     provider: "smtp",
+    signatureProfile,
     fromName: user.name || "Recruitment Team",
     from: email,
     replyTo: email,
@@ -36,7 +39,8 @@ const getUserEmailOptions = async (userId) => {
 };
 
 const sendUserMail = async (userId, message) => {
-  const options = await getUserEmailOptions(userId);
+  const { signatureProfile, ...options } = await getUserEmailOptions(userId);
+  message = withProfileSignature(message, signatureProfile);
   if (options.provider === "microsoft") return sendMicrosoftMail(options.senderId, message);
   // Apply identity/authentication last so caller data cannot override the sender.
   try {

@@ -52,6 +52,8 @@ const UserSchema = new mongoose.Schema({
   phone: {
     type: String,
   },
+  whatsappLink: { type: String, trim: true, default: "" },
+  linkedinLink: { type: String, trim: true, default: "" },
   department: {
     type: String,
   },

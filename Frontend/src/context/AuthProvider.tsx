@@ -29,6 +29,8 @@ interface User {
   appPassword?: string;
   personalEmail?: string;
   dateOfBirth?: string;
+  whatsappLink?: string;
+  linkedinLink?: string;
 }
 
 interface AuthContextType {

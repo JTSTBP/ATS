@@ -107,6 +107,10 @@ router.post("/login", async (req, res) => {
         phone: user.phone || (user.phoneNumber ? user.phoneNumber.official || user.phoneNumber.personal : ""),
         department: user.department,
         joinDate: user.joinDate || user.dateOfJoining,
+        dateOfBirth: user.dateOfBirth,
+        personalEmail: user.personalEmail,
+        whatsappLink: user.whatsappLink,
+        linkedinLink: user.linkedinLink,
         appPassword: user.appPassword,
         reporter: user.reporter // populated reporter info
           ? {
@@ -209,19 +213,46 @@ router.put(
       const user = await User.findById(req.user._id);
 
       if (user) {
+        for (const [field, domains] of Object.entries({ whatsappLink: ['wa.me', 'api.whatsapp.com', 'www.whatsapp.com', 'whatsapp.com'], linkedinLink: ['linkedin.com', 'www.linkedin.com'] })) {
+          if (req.body[field] === undefined) continue;
+          const value = req.body[field];
+          try {
+            if (typeof value !== 'string' || value.length > 2048) throw new Error();
+            if (value.trim()) {
+              const url = new URL(value.trim());
+              if (url.protocol !== 'https:' || !domains.includes(url.hostname) || url.username || url.password || url.port) throw new Error();
+            }
+          } catch {
+            return res.status(400).json({ message: `Please provide a valid HTTPS ${field === 'whatsappLink' ? 'WhatsApp' : 'LinkedIn'} link.` });
+          }
+        }
+        for (const field of ['joinDate', 'dateOfBirth']) {
+          const value = req.body[field];
+          if (value !== undefined && (typeof value !== 'string' || (value && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value)) || new Date(value).toISOString().slice(0, 10) !== value)))) {
+            return res.status(400).json({ message: `Please provide a valid ${field === 'joinDate' ? 'joining date' : 'date of birth'}.` });
+          }
+        }
         user.name = req.body.name || user.name;
         user.email = req.body.email || user.email;
-        user.phone = req.body.phone || user.phone;
-        user.department = req.body.department || user.department;
-        user.joinDate = req.body.joinDate || user.joinDate;
-        user.appPassword = req.body.appPassword || user.appPassword;
-
-        // Sync older field names for compatibility
-        if (req.body.joinDate) user.dateOfJoining = req.body.joinDate;
-        if (req.body.phone) {
+        if (req.body.phone !== undefined) {
+          if (typeof req.body.phone !== 'string' || (req.body.phone.trim() && !/^\+?[\d\s().-]{7,25}$/.test(req.body.phone.trim()))) {
+            return res.status(400).json({ message: 'Please provide a valid contact number.' });
+          }
+          user.phone = req.body.phone.trim();
           if (!user.phoneNumber) user.phoneNumber = {};
-          user.phoneNumber.official = req.body.phone;
+          user.phoneNumber.official = user.phone;
         }
+        user.department = req.body.department || user.department;
+        if (req.body.joinDate !== undefined) {
+          user.joinDate = req.body.joinDate || null;
+          user.dateOfJoining = user.joinDate;
+        }
+        if (req.body.dateOfBirth !== undefined) user.dateOfBirth = req.body.dateOfBirth || null;
+        for (const field of ['whatsappLink', 'linkedinLink']) {
+          if (req.body[field] !== undefined) user[field] = req.body[field].trim();
+        }
+        if (req.body.personalEmail !== undefined) user.personalEmail = req.body.personalEmail;
+        user.appPassword = req.body.appPassword || user.appPassword;
 
         // 🗑️ REMOVE PHOTO
         if (req.body.removePhoto === "true") {
@@ -254,6 +285,10 @@ router.put(
             designation: updatedUser.designation,
             department: updatedUser.department,
             joinDate: updatedUser.joinDate,
+            dateOfBirth: updatedUser.dateOfBirth,
+            personalEmail: updatedUser.personalEmail,
+            whatsappLink: updatedUser.whatsappLink,
+            linkedinLink: updatedUser.linkedinLink,
             profilePhoto: getSignedUrl(updatedUser.profilePhoto),
             appPassword: updatedUser.appPassword,
             isAdmin: updatedUser.isAdmin,
