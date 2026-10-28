@@ -110,6 +110,7 @@ function App() {
               <Route path="/Mentor/upload-source-candidate" element={<UploadSourceCandidatePage />} />
               <Route path="/Mentor/upload-source-candidate/:jobId" element={<UploadSourceCandidatePage />} />
               <Route path="/Mentor/talent-database" element={<TalentDatabase />} />
+              <Route path="profile" element={<Profile />} />
             </Route>
             {/* admin */}
 
@@ -148,6 +149,7 @@ function App() {
               <Route path="/Admin/talent-database" element={<TalentDatabase />} />
               <Route path="/Admin/upload-source-candidate" element={<UploadSourceCandidatePage />} />
               <Route path="/Admin/upload-source-candidate/:jobId" element={<UploadSourceCandidatePage />} />
+              <Route path="profile" element={<Profile />} />
             </Route>
             {/* recruiter */}
             <Route
