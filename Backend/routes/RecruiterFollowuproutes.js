@@ -1193,7 +1193,7 @@ router.get("/candidates/:candidateId/draft-studio", async (req, res) => {
 
 router.post("/candidates/:candidateId/draft-studio/generate", async (req, res) => {
   try {
-    if (req.query.channel === "whatsapp") return res.status(400).json({ success: false, message: "WhatsApp uses one template and direct messages, not sequences." });
+    if (req.query.channel === "whatsapp") return res.status(400).json({ success: false, message: "WhatsApp uses direct messages, not sequences." });
     const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);
     if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
     const recipient = getCandidateField(candidate, ["email", "Email"]);
@@ -1481,7 +1481,7 @@ router.post("/candidates/:candidateId/whatsapp/generate", async (req, res) => {
   const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);
   if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
   const category = WHATSAPP_CATEGORIES.includes(req.body.category) ? req.body.category : "Custom";
-  const templates = (job.communicationTemplates || []).filter(t => t.channel === "WHATSAPP").slice(0, 1).map(t => ({ label: t.label, subject: renderTemplate(t.subject, templateVariables(candidate, job, req.user)), body: renderTemplate(t.body, templateVariables(candidate, job, req.user)) }));
+  const templates = (job.communicationTemplates || []).filter(t => t.channel === "WHATSAPP").slice(0, 5).map(t => ({ label: t.label, subject: renderTemplate(t.subject, templateVariables(candidate, job, req.user)), body: renderTemplate(t.body, templateVariables(candidate, job, req.user)) }));
   logActivity(req.user._id, "generated", "candidate-whatsapp", `WhatsApp templates generated: ${category}`, candidate._id, "SourceCandidate", {
     actionType: "whatsapp_generated",
     candidateId: candidate._id,

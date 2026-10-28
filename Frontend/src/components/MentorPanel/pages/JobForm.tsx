@@ -87,7 +87,7 @@ type JobFormProps = {
 };
 
 const createTemplateSet = (channel: "EMAIL" | "WHATSAPP", offset = 0) =>
-  Array.from({ length: channel === "EMAIL" ? 5 : 1 }, (_, index) => ({
+  Array.from({ length: channel === "EMAIL" ? 5 : Math.max(0, 5 - offset) }, (_, index) => ({
     channel,
     label: `${channel === "EMAIL" ? "Email" : "WhatsApp"} ${offset + index + 1}`,
     subject: "",
@@ -427,7 +427,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
       return id && (user?.designation !== "Mentor" || allowed.has(id));
     });
     const lead = getUserReferenceId(ownAssignment?.leadRecruiter || job.leadRecruiter);
-    setFormData({ ...job, communicationTemplates: (job.communicationTemplates || []).filter((template, index, templates) => template.channel !== "WHATSAPP" || index === templates.findIndex(item => item.channel === "WHATSAPP")), assignedRecruiters: selected, assignedMentors: (job.assignedMentors || []).filter(reference => Boolean(getUserReferenceId(reference))), leadRecruiter: user?.designation === "Mentor" && !selected.some(reference => getUserReferenceId(reference) === lead) ? "" : lead });
+    setFormData({ ...job, communicationTemplates: (job.communicationTemplates || []), assignedRecruiters: selected, assignedMentors: (job.assignedMentors || []).filter(reference => Boolean(getUserReferenceId(reference))), leadRecruiter: user?.designation === "Mentor" && !selected.some(reference => getUserReferenceId(reference) === lead) ? "" : lead });
   }, [job, user?._id, users]);
 
 
@@ -975,10 +975,9 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
           {step === 3 && <section className="mt-5 space-y-3 rounded-xl border p-4">
             <h4 className="font-semibold">Email & WhatsApp follow-up templates</h4>
-            <p className="text-sm text-gray-500">The candidate profile name is filled automatically wherever you use {"{{candidateName}}"} in the subject or message. Email adds five templates. WhatsApp uses one template for direct messages. Templates start with only the greeting; fill in the remaining content. Personalise with {"{{candidateName}}, {{jobTitle}}, {{companyName}}, {{location}}, {{recruiterName}}"}.</p>
-            {(job?.communicationTemplates || []).filter(template => template.channel === "WHATSAPP").length > 1 && <p className="text-sm text-amber-700">WhatsApp now uses one message. The first existing WhatsApp template is kept when you save this requirement.</p>}
+            <p className="text-sm text-gray-500">The candidate profile name is filled automatically wherever you use {"{{candidateName}}"} in the subject or message. Email adds five templates. WhatsApp supports up to five templates for direct messages. Templates start with only the greeting; fill in the remaining content. Personalise with {"{{candidateName}}, {{jobTitle}}, {{companyName}}, {{location}}, {{recruiterName}}"}.</p>
             {(["EMAIL", "WHATSAPP"] as const).map(channel => <div key={channel} className="space-y-3">
-              <button type="button" disabled={channel === "WHATSAPP" && (formData.communicationTemplates || []).some(template => template.channel === "WHATSAPP")} className="rounded-lg bg-blue-50 px-3 py-2 text-blue-700 disabled:opacity-50" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: [...(prev.communicationTemplates || []), ...createTemplateSet(channel, (prev.communicationTemplates || []).filter(template => template.channel === channel).length)] }))}>{channel === "EMAIL" ? "Add 5 email templates" : "Add WhatsApp template"}</button>
+              <button type="button" disabled={channel === "WHATSAPP" && (formData.communicationTemplates || []).filter(template => template.channel === "WHATSAPP").length >= 5} className="rounded-lg bg-blue-50 px-3 py-2 text-blue-700 disabled:opacity-50" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: [...(prev.communicationTemplates || []), ...createTemplateSet(channel, (prev.communicationTemplates || []).filter(template => template.channel === channel).length)] }))}>{channel === "EMAIL" ? "Add 5 email templates" : "Add WhatsApp templates (up to 5)"}</button>
               {(formData.communicationTemplates || []).map((template, index) => template.channel === channel && <div key={index} className="space-y-2 rounded-lg border p-3">
                 {(["label", ...(channel === "EMAIL" ? ["subject"] : []), "body"] as ("label" | "subject" | "body")[]).map(field => <TextField key={field} fullWidth required label={field === "label" ? "Template name" : field === "subject" ? "Email subject" : "Message"} multiline={field === "body"} minRows={field === "body" ? 3 : undefined} value={template[field]} onChange={event => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, [field]: event.target.value } : item) }))} />)}
                 <button type="button" className="mr-3 text-sm text-blue-700" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, body: `${item.body}{{candidateName}}` } : item) }))}>Insert profile name</button>

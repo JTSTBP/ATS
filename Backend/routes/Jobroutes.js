@@ -24,6 +24,7 @@ router.post("/", jobDescriptionUpload.single("jdFile"), async (req, res) => {
       jobData = { ...req.body };
     }
     delete jobData._id; // <-- remove _id if sent accidentally
+    if (Array.isArray(jobData.communicationTemplates) && jobData.communicationTemplates.filter(template => template.channel === "WHATSAPP").length > 5) return res.status(400).json({ success: false, message: "Up to five WhatsApp templates are allowed per requirement" });
 
     if (req.file) {
       jobData.jdFile = req.file.location || req.file.path;
@@ -494,7 +495,7 @@ router.put("/:id", protect, jobDescriptionUpload.single("jdFile"), async (req, r
       updateData = { ...req.body };
     }
 
-    if (Array.isArray(updateData.communicationTemplates) && updateData.communicationTemplates.filter(template => template.channel === "WHATSAPP").length > 1) return res.status(400).json({ success: false, message: "Only one WhatsApp template is allowed per requirement" });
+    if (Array.isArray(updateData.communicationTemplates) && updateData.communicationTemplates.filter(template => template.channel === "WHATSAPP").length > 5) return res.status(400).json({ success: false, message: "Up to five WhatsApp templates are allowed per requirement" });
 
     const oldJob = await Job.findById(req.params.id);
     if (!oldJob) {

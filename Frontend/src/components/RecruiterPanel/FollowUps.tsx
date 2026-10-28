@@ -178,6 +178,8 @@ export default function FollowUps() {
   const [whatsappTemplateLoading, setWhatsappTemplateLoading] = useState(false);
   const [whatsappTemplateError, setWhatsappTemplateError] = useState("");
   const [hasWhatsappTemplate, setHasWhatsappTemplate] = useState(false);
+  const [whatsappTemplates, setWhatsappTemplates] = useState<{ label: string; body: string }[]>([]);
+  const [selectedWhatsappTemplate, setSelectedWhatsappTemplate] = useState(0);
 
   const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
   const [duplicateCheckLoading, setDuplicateCheckLoading] = useState(false);
@@ -1078,10 +1080,11 @@ export default function FollowUps() {
   useEffect(() => {
     if (!selectedCandidateId || (activeTab !== "WhatsApp" && modal !== "whatsapp")) return;
     const controller = new AbortController();
-    setWhatsappTemplateLoading(true); setWhatsappTemplateError(""); setHasWhatsappTemplate(false);
+    setWhatsappTemplateLoading(true); setWhatsappTemplateError(""); setHasWhatsappTemplate(false); setWhatsappTemplates([]); setSelectedWhatsappTemplate(0);
     setComposer((prev: any) => ({ ...prev, body: "", htmlBody: "", recipient: selectedCandidate?.phone || "" }));
     axios.post(`${API_URL}/candidates/${selectedCandidateId}/whatsapp/generate`, {}, { signal: controller.signal }).then(({ data }) => {
       if (controller.signal.aborted) return;
+      setWhatsappTemplates(data.templates || []);
       const template = data.templates?.[0];
       setHasWhatsappTemplate(Boolean(template));
       setComposer((prev: any) => ({ ...prev, body: template?.body || "" }));
@@ -1092,7 +1095,12 @@ export default function FollowUps() {
   }, [selectedCandidateId, activeTab, modal]);
 
   const WhatsAppMessageForm = () => <div className="space-y-4">
-    <p className="text-sm text-slate-500">Send a single message using the requirement's WhatsApp template.</p>
+    <p className="text-sm text-slate-500">Choose a WhatsApp template, edit the message if needed, then send it.</p>
+    {whatsappTemplates.length > 0 && <label className="block text-sm font-semibold text-slate-600">WhatsApp template<select value={selectedWhatsappTemplate} disabled={whatsappTemplateLoading || Boolean(saving)} onChange={event => {
+      const index = Number(event.target.value);
+      setSelectedWhatsappTemplate(index);
+      setComposer((prev: any) => ({ ...prev, body: whatsappTemplates[index].body }));
+    }} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2">{whatsappTemplates.map((template, index) => <option key={index} value={index}>{template.label || `WhatsApp ${index + 1}`}</option>)}</select></label>}
     {whatsappTemplateError && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{whatsappTemplateError}</p>}
     <label className="block text-sm font-semibold text-slate-600">Recipient<input readOnly value={composer.recipient || ""} className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2" /></label>
     <label className="block text-sm font-semibold text-slate-600">Message<textarea value={composer.body || ""} onChange={event => setComposer((prev: any) => ({ ...prev, body: event.target.value }))} disabled={whatsappTemplateLoading || !hasWhatsappTemplate} rows={7} placeholder={whatsappTemplateLoading ? "Loading template..." : "WhatsApp message"} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 font-normal" /></label>
