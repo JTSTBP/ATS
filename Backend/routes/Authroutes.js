@@ -210,6 +210,9 @@ router.put(
   async (req, res) => {
     try {
 
+      if ((req.body.joinDate !== undefined || req.body.dateOfJoining !== undefined) && req.user.designation !== 'Admin' && !req.user.isAdmin) {
+        return res.status(403).json({ message: 'Only admins can change the date of joining.' });
+      }
       const user = await User.findById(req.user._id);
 
       if (user) {

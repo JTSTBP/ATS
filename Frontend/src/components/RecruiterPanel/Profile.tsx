@@ -10,6 +10,7 @@ import { getImageUrl } from '../../utils/imageUtils';
 
 export default function Profile() {
     const { user, updateProfile } = useAuth();
+    const canEditJoiningDate = user?.designation === 'Admin' || user?.isAdmin === true;
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export default function Profile() {
         data.append('phone', formData.phone);
         data.append('designation', formData.designation);
         data.append('department', formData.department);
-        data.append('joinDate', formData.joinDate.split('T')[0]);
+        if (canEditJoiningDate) data.append('joinDate', formData.joinDate.split('T')[0]);
         data.append('appPassword', formData.appPassword);
         data.append('personalEmail', formData.personalEmail);
         data.append('dateOfBirth', formData.dateOfBirth.split('T')[0]);
@@ -265,7 +266,7 @@ export default function Profile() {
                             { label: 'Contact Number', value: formData.phone, key: 'phone', icon: Phone, editable: true, placeholder: 'e.g. +91 98765 43210', type: 'tel' },
                             { label: 'Designation', value: user?.designation, key: 'designation', icon: Briefcase, editable: false },
                             { label: 'Department', value: formData.department, key: 'department', icon: MapPin, editable: true, placeholder: 'Enter Department' },
-                            { label: 'Date of Joining (DOJ)', value: formData.joinDate, key: 'joinDate', icon: Calendar, editable: true, type: 'date' },
+                            { label: 'Date of Joining (DOJ)', value: formData.joinDate, key: 'joinDate', icon: Calendar, editable: canEditJoiningDate, type: 'date' },
                             { label: 'Date of Birth', value: formData.dateOfBirth, key: 'dateOfBirth', icon: Calendar, editable: true, type: 'date' },
                             { label: 'WhatsApp Link', value: formData.whatsappLink, key: 'whatsappLink', icon: Link, editable: true, type: 'url', placeholder: 'https://wa.me/919876543210' },
                             { label: 'LinkedIn Link', value: formData.linkedinLink, key: 'linkedinLink', icon: Link, editable: true, type: 'url', placeholder: 'https://www.linkedin.com/in/your-name' },

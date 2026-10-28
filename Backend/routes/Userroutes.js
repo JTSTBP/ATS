@@ -2,6 +2,7 @@ const express = require("express");
 const User = require("../models/Users");
 const bcrypt = require("bcryptjs");
 const logActivity = require("./logactivity");
+const { protect } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -130,7 +131,10 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", protect, async (req, res) => {
+  if ((req.body.joinDate !== undefined || req.body.dateOfJoining !== undefined) && req.user.designation !== 'Admin' && !req.user.isAdmin) {
+    return res.status(403).json({ message: 'Only admins can change the date of joining.' });
+  }
   const { name, email, designation, reporter, secondary_managers, password, isAdmin, personalEmail, phoneNumber, phone, department, joinDate, dateOfJoining, dateOfBirth, appPassword, isDisabled } = req.body;
 
   try {
