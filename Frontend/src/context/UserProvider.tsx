@@ -42,6 +42,7 @@ interface User {
 }
 
 interface UserFormData {
+  reportingMentors?: string[];
   name: string;
   email: string;
   designation: string;

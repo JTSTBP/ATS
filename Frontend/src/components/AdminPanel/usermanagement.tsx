@@ -165,6 +165,7 @@ export default function UserManagement() {
     appPassword: "",
     reporter: "",
     secondary_managers: [] as string[],
+    reportingMentors: [] as string[],
     isAdmin: false,
     isDisabled: false,
     personalEmail: "",
@@ -226,6 +227,7 @@ export default function UserManagement() {
       appPassword: "",
       reporter: "",
       secondary_managers: [],
+      reportingMentors: [],
       isAdmin: false,
       isDisabled: false,
       personalEmail: "",
@@ -262,7 +264,7 @@ export default function UserManagement() {
     setIsSubmitting(true);
     try {
       if (editUserId) {
-        const success = await updateUser(editUserId, formData);
+        const success = await updateUser(editUserId, { ...formData, reportingMentors: formData.designation === "Manager" ? formData.reportingMentors : undefined });
         if (success) {
           setShowModal(false);
           setEditUserId(null);
@@ -270,7 +272,7 @@ export default function UserManagement() {
           fetchPaginatedUsers(currentPage, limit, searchTerm, effectiveRole, adminFilter || "", reporterFilter);
         }
       } else {
-        const success = await addUser(formData);
+        const success = await addUser({ ...formData, reportingMentors: formData.designation === "Manager" ? formData.reportingMentors : undefined });
         if (success) {
           setShowModal(false);
           resetForm();
@@ -289,6 +291,10 @@ export default function UserManagement() {
       name: user.name,
       email: user.email,
       designation: user.designation,
+      reportingMentors: users.filter(mentor => mentor.designation === 'Mentor' && (
+        (typeof mentor.reporter === 'object' ? mentor.reporter?._id : mentor.reporter) === user._id ||
+        mentor.secondary_managers?.some(manager => (typeof manager === 'object' ? manager._id : manager) === user._id)
+      )).map(mentor => mentor._id),
       password: "",
       appPassword: user.appPassword || "",
       reporter: typeof user.reporter === 'object' && user.reporter !== null ? user.reporter._id : (user.reporter || ""),
@@ -1046,6 +1052,23 @@ export default function UserManagement() {
                           </div>
                         </div>
                       </div>
+
+                      {formData.designation === "Manager" && (
+                        <fieldset className="col-span-2">
+                          <legend className="text-xs font-bold text-slate-600 uppercase tracking-wider">Reporting Mentors</legend>
+                          <p className="mt-1 text-xs text-slate-500">Select mentors who report to this manager. Other manager assignments are kept.</p>
+                          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                            {users.filter(mentor => mentor.designation === 'Mentor').map(mentor => <label key={mentor._id} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm text-slate-700">
+                              <input type="checkbox" checked={formData.reportingMentors.includes(mentor._id)} onChange={event => {
+                                const checked = event.target.checked;
+                                setFormData(prev => ({ ...prev, reportingMentors: checked ? [...prev.reportingMentors, mentor._id] : prev.reportingMentors.filter(id => id !== mentor._id) }));
+                              }} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                              <span>{mentor.name}{mentor.isDisabled ? ' (disabled)' : ''}</span>
+                            </label>)}
+                          </div>
+                          {!users.some(mentor => mentor.designation === 'Mentor') && <p className="mt-2 text-sm text-slate-500">No mentors available.</p>}
+                        </fieldset>
+                      )}
 
                       {formData.designation === "Mentor" && (
                         <div className="col-span-2">

@@ -3,14 +3,16 @@ const User = require("../models/Users");
 const bcrypt = require("bcryptjs");
 const logActivity = require("./logactivity");
 const { protect } = require("../middleware/authMiddleware");
+const { validateReportingMentors, syncReportingMentors } = require('../services/reportingMentors');
 
 const router = express.Router();
 
 // ➕ Create New User
-router.post("/", async (req, res) => {
+router.post("/", protect, async (req, res) => {
   try {
     const { name, email, designation, password, reporter, secondary_managers, isAdmin, personalEmail, phoneNumber, phone, department, joinDate, dateOfJoining, dateOfBirth, appPassword } = req.body;
 
+    if (req.body.reportingMentors !== undefined) await validateReportingMentors(req.body.reportingMentors, designation, req.user);
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -35,10 +37,11 @@ router.post("/", async (req, res) => {
       appPassword,
     });
 
+    if (req.body.reportingMentors !== undefined) await syncReportingMentors(newUser._id, req.body.reportingMentors);
     res.status(201).json(newUser);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(error.status || 500).json({ message: error.status ? error.message : "Server Error" });
   }
 });
 
@@ -140,6 +143,7 @@ router.put("/:id", protect, async (req, res) => {
   try {
     let user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ msg: "User not found" });
+    if (req.body.reportingMentors !== undefined) await validateReportingMentors(req.body.reportingMentors, designation || user.designation, req.user);
 
     // Check if email exists but ignore the same user
     const existingUser = await User.findOne({
@@ -181,10 +185,11 @@ router.put("/:id", protect, async (req, res) => {
     }
 
     await user.save();
+    if (req.body.reportingMentors !== undefined) await syncReportingMentors(user._id, req.body.reportingMentors);
     res.json(user);
   } catch (err) {
     console.log(err);
-    res.status(500).json({ msg: "Server error" });
+    res.status(err.status || 500).json({ message: err.status ? err.message : "Server error" });
   }
 });
 
