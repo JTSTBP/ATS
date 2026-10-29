@@ -1,4 +1,4 @@
-import { Users, Briefcase, CalendarCheck, UserPlus, ClipboardCheck, Clock, CheckCircle, X, Building2, Database, Mail, Send } from "lucide-react";
+import { Users, Briefcase, CalendarCheck, UserPlus, ClipboardCheck, Clock, CheckCircle, X, Building2, Database, Mail, ArrowRight, MapPin } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { useUserContext } from "../../context/UserProvider";
@@ -6,10 +6,12 @@ import { useJobContext } from "../../context/DataProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
 import { formatDate } from "../../utils/dateUtils";
 import { useEffect, useMemo, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import FinanceDashboard from "./FinanceDashboard";
+import "./dashboard.css";
 import { getStatusTimestamp } from "../../utils/statusUtils";
 import {
   BarChart,
@@ -49,10 +51,10 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const screenSize = useScreenSize();
+  const reduceMotion = useReducedMotion();
   const [totalSourced, setTotalSourced] = useState<number>(0);
   const [ceoReportSending, setCeoReportSending] = useState("");
 
-  console.log(user, "user")
   // Fetch data on mount
   useEffect(() => {
     fetchUsers();
@@ -63,7 +65,7 @@ export default function AdminDashboard() {
 
     const fetchSourcedCount = async () => {
       try {
-        const res = await axios.get("/api/source-candidates", { params: { limit: 1 } });
+        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/source-candidates`, { params: { limit: 1 } });
         if (res.data.success) {
           setTotalSourced(res.data.totalCount ?? 0);
         }
@@ -88,10 +90,6 @@ export default function AdminDashboard() {
     return `${year}-${month}-${day}`;
   });
 
-  // If user is Finance, show Finance Dashboard
-  if (user?.designation === 'Finance') {
-    return <FinanceDashboard />;
-  }
 
   // Filter functions
   const filterByRange = (dateString: string | undefined | null) => {
@@ -303,429 +301,111 @@ export default function AdminDashboard() {
     }
   };
 
+  if (user?.designation === 'Finance') return <FinanceDashboard />;
+
+  const openJobs = jobs.filter(job => job.status === 'Open');
+  const recruiterHighlights = [
+    { label: '#1 TOP SOURCING', tone: 'blue', recruiter: recruiterPerformanceData.find(recruiter => recruiter.uploaded > 0) },
+    { label: '#2 CONVERSION', tone: 'amber', recruiter: [...recruiterPerformanceData].filter(recruiter => recruiter.uploaded > 0 && recruiter.joined > 0).sort((a, b) => b.joined / b.uploaded - a.joined / a.uploaded)[0] },
+    { label: '#3 SHORTLISTED', tone: 'violet', recruiter: [...recruiterPerformanceData].filter(recruiter => recruiter.shortlisted > 0).sort((a, b) => b.shortlisted - a.shortlisted)[0] },
+  ];
+  const pipeline = [
+    { label: 'Active Clients', value: stats.activeClients, detail: 'Clients with open jobs', icon: Building2, path: '/Admin/clients', tone: 'neutral' },
+    { label: 'Positions Left', value: stats.remainingPositions, detail: 'Open positions - joined', icon: Briefcase, path: '/Admin/jobs', tone: 'neutral' },
+    { label: 'Active Req.', value: stats.activeJobs, detail: 'Jobs with Open status', icon: CalendarCheck, path: '/Admin/jobs', tone: 'neutral' },
+    { label: 'Candidates', value: stats.activeCandidates, detail: 'In active pipelines', icon: Users, path: '/Admin/candidates', tone: 'neutral' },
+    { label: 'Sourced', value: totalSourced, detail: 'Stage 01', icon: Database, path: '/Admin/talent-database', tone: 'neutral' },
+    { label: 'New', value: stats.newCandidates, detail: 'Stage 02', icon: UserPlus, path: '/Admin/candidates', tone: 'blue' },
+    { label: 'Screen', value: stats.shortlistedCandidates, detail: 'Stage 03', icon: ClipboardCheck, path: '/Admin/candidates', tone: 'amber' },
+    { label: 'Interviewed', value: stats.interviewedCandidates, detail: 'Stage 04', icon: Clock, path: '/Admin/candidates', tone: 'violet' },
+    { label: 'Selected', value: stats.selectedCandidates, detail: 'Stage 05', icon: CheckCircle, path: '/Admin/candidates', tone: 'green' },
+    { label: 'Joined', value: stats.joinedCandidates, detail: 'Placement', icon: Users, path: '/Admin/candidates', tone: 'teal' },
+  ];
+
   return (
-    <div className="text-slate-800">
-      {/* Page Header */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">Dashboard Overview</h1>
-          <p className="text-sm sm:text-base text-slate-500 font-medium">
-            Welcome back, Admin! Here's a quick summary of your portal activity.
-          </p>
-        </div>
-
-        {/* Date Range Filter - Simplified */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/Admin/ceo-daily-report-settings")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:border-blue-300 hover:text-blue-700"
-          >
-            <Mail size={15} />
-            CEO Report Settings
-          </button>
-          <div className="flex items-center gap-3 px-4 py-2 bg-white/40 backdrop-blur-sm rounded-xl border border-slate-200 shadow-sm hover:border-slate-300 transition-all">
-            <CalendarCheck className="w-4 h-4 text-slate-500" />
-
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-slate-700 focus:ring-0 p-0 w-24 cursor-pointer"
-              />
-              <span className="text-slate-300 font-bold px-1">→</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-slate-700 focus:ring-0 p-0 w-24 cursor-pointer"
-              />
-            </div>
-
-            {(startDate || endDate) && (
-              <button
-                onClick={() => {
-                  setStartDate("");
-                  setEndDate("");
-                }}
-                className="p-1 text-slate-400 hover:text-red-500 transition-colors ml-1 border-l border-slate-200 pl-2"
-                title="Clear Filter"
-              >
-                <X size={14} />
-              </button>
-            )}
+    <div className="executive-dashboard">
+      <div className="dashboard-toolbar">
+        <p className="dashboard-breadcrumb">Admin Portal <span>/</span> <strong>Dashboard Overview</strong></p>
+        <div className="dashboard-date-controls">
+          <button type="button" className="dashboard-button" onClick={() => navigate('/Admin/ceo-daily-report-settings')}><Mail size={15} />CEO Report Settings</button>
+          <div className="dashboard-date-range">
+            <CalendarCheck size={16} aria-hidden="true" />
+            <input aria-label="Dashboard start date" type="date" value={startDate} onChange={event => setStartDate(event.target.value)} />
+            <span>—</span>
+            <input aria-label="Dashboard end date" type="date" value={endDate} onChange={event => setEndDate(event.target.value)} />
+            {(startDate || endDate) && <button type="button" aria-label="Clear date filters" onClick={() => { setStartDate(''); setEndDate(''); }}><X size={14} /></button>}
           </div>
         </div>
       </div>
 
-      <div className="mb-8 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="mb-3 flex items-center gap-2">
-          <Send size={18} className="text-blue-600" />
-          <h2 className="font-bold text-slate-800">CEO Daily Report Quick Actions</h2>
+      <section className="dashboard-panel dashboard-welcome">
+        <div>
+          <div className="dashboard-title-row"><h1>Dashboard Overview</h1><span className="dashboard-live"><span />LIVE OPS</span></div>
+          <p>Welcome back, {user?.name?.split(' ')[0] || 'Admin'}! Here's a quick summary of your portal activity.</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <button
-            disabled={Boolean(ceoReportSending)}
-            onClick={() => triggerCeoReport("Generate 12 PM Report Now", "/api/ceo-daily-reports/send/12PM", { force: true })}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            <Clock size={16} /> Generate 12 PM Report Now
-          </button>
-          <button
-            disabled={Boolean(ceoReportSending)}
-            onClick={() => triggerCeoReport("Generate 7 PM Report Now", "/api/ceo-daily-reports/send/7PM", { force: true })}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-          >
-            <Clock size={16} /> Generate 7 PM Report Now
-          </button>
-          <button
-            disabled={Boolean(ceoReportSending)}
-            onClick={() => triggerCeoReport("Send Test Email", "/api/ceo-daily-reports/test-email", { slot: "12PM" })}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-          >
-            <Mail size={16} /> Send Test Email
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-10">
-        {/* Active Clients */}
-        <div
-          onClick={() => navigate("/Admin/clients")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
+        <div className="dashboard-report-actions">
+          <h2>CEO Daily Report Quick Actions</h2>
           <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
-              Active Clients
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.activeClients}
-            </h2>
-            <p className="text-[10px] text-slate-400 mt-1">Clients with open jobs</p>
-          </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
-            <Building2 size={24} />
+            <button type="button" className="dashboard-button dashboard-button-primary" disabled={Boolean(ceoReportSending)} onClick={() => triggerCeoReport('Generate 12 PM Report Now', '/api/ceo-daily-reports/send/12PM', { force: true })}><Clock size={15} />{ceoReportSending === 'Generate 12 PM Report Now' ? 'Sending…' : 'Generate 12 PM Report Now'}</button>
+            <button type="button" className="dashboard-button dashboard-button-dark" disabled={Boolean(ceoReportSending)} onClick={() => triggerCeoReport('Generate 7 PM Report Now', '/api/ceo-daily-reports/send/7PM', { force: true })}><Clock size={15} />{ceoReportSending === 'Generate 7 PM Report Now' ? 'Sending…' : 'Generate 7 PM Report Now'}</button>
+            <button type="button" className="dashboard-button" disabled={Boolean(ceoReportSending)} onClick={() => triggerCeoReport('Send Test Email', '/api/ceo-daily-reports/test-email', { slot: '12PM' })}><Mail size={15} />{ceoReportSending === 'Send Test Email' ? 'Sending…' : 'Send Test Email'}</button>
           </div>
         </div>
+      </section>
 
-        {/* Positions Left */}
-        <div
-          onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-amber-600 transition-colors">
-              Positions Left
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.remainingPositions}
-            </h2>
-            <p className="text-[10px] text-slate-400 mt-1">Open positions – joined</p>
-          </div>
-          <div className="bg-amber-50 text-amber-600 p-3 rounded-xl group-hover:bg-amber-100 transition-colors">
-            <Briefcase size={24} />
-          </div>
+      <section className="dashboard-panel dashboard-pipeline" aria-labelledby="pipeline-title">
+        <div className="dashboard-section-heading"><h2 id="pipeline-title">PIPELINE TELEMETRY <span>•</span> <small>Real-Time Funnel Flow</small></h2><p>Activity follows the selected date range</p></div>
+        <div className="dashboard-metrics">
+          {pipeline.map(metric => <button type="button" key={metric.label} className={`dashboard-metric metric-${metric.tone}`} onClick={() => navigate(metric.path)}>
+            <span className="metric-heading" title={metric.label}>{metric.label}</span>
+            <strong>{metric.value.toLocaleString('en-IN')}</strong><span className="metric-detail" title={metric.detail}>{metric.detail}</span>
+            <span className="metric-footer"><span className="metric-icon"><metric.icon size={14} aria-hidden="true" /></span></span>
+          </button>)}
         </div>
+        <p className="dashboard-metric-note">Client, requirement, position and sourced totals show current inventory. Candidate stages reflect the date filters.</p>
+      </section>
 
-        {/* Active Requirements */}
-        <div
-          onClick={() => navigate("/Admin/jobs")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-blue-600 transition-colors">
-              Active Requirements
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.activeJobs}
-            </h2>
-            <p className="text-[10px] text-slate-400 mt-1">Jobs with Open status</p>
-          </div>
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-xl group-hover:bg-blue-100 transition-colors">
-            <CalendarCheck size={24} />
-          </div>
-        </div>
-
-        {/* Active Candidates */}
-        <div
-          onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-indigo-600 transition-colors">
-              Active Candidates
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.activeCandidates}
-            </h2>
-          </div>
-          <div className="bg-indigo-50 text-indigo-600 p-3 rounded-xl group-hover:bg-indigo-100 transition-colors">
-            <Users size={24} />
-          </div>
-        </div>
-
-        {/* Total Sourced Candidates */}
-        <div
-          onClick={() => navigate("/Admin/talent-database")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-purple-600 transition-colors">
-              Total Sourced
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {totalSourced}
-            </h2>
-          </div>
-          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-100 transition-colors">
-            <Database size={24} />
-          </div>
-        </div>
-
-        {/* New Candidates */}
-        <div
-          onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-sky-600 transition-colors">
-              New
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.newCandidates}
-            </h2>
-          </div>
-          <div className="bg-sky-50 text-sky-600 p-3 rounded-xl group-hover:bg-sky-100 transition-colors">
-            <UserPlus size={24} />
-          </div>
-        </div>
-
-        {/* Screened Candidates */}
-        <div
-          onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-orange-600 transition-colors">
-              Screen
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.shortlistedCandidates}
-            </h2>
-          </div>
-          <div className="bg-orange-50 text-orange-600 p-3 rounded-xl group-hover:bg-orange-100 transition-colors">
-            <ClipboardCheck size={24} />
-          </div>
-        </div>
-
-        {/* Interviewed Candidates */}
-        <div
-          onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-purple-600 transition-colors">
-              Interviewed
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.interviewedCandidates}
-            </h2>
-          </div>
-          <div className="bg-purple-50 text-purple-600 p-3 rounded-xl group-hover:bg-purple-100 transition-colors">
-            <Clock size={24} />
-          </div>
-        </div>
-
-        {/* Selected Candidates */}
-        <div
-          onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-green-600 transition-colors">
-              Selected
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.selectedCandidates}
-            </h2>
-          </div>
-          <div className="bg-green-50 text-green-600 p-3 rounded-xl group-hover:bg-green-100 transition-colors">
-            <CheckCircle size={24} />
-          </div>
-        </div>
-
-        {/* Joined Candidates */}
-        <div
-          onClick={() => navigate("/Admin/candidates")}
-          className="bg-white rounded-xl shadow p-6 flex justify-between items-center hover:shadow-lg transition-all border border-slate-100 cursor-pointer group"
-        >
-          <div>
-            <p className="text-slate-500 text-sm font-medium group-hover:text-emerald-600 transition-colors">
-              Joined
-            </p>
-            <h2 className="text-3xl font-bold mt-1 text-slate-800">
-              {stats.joinedCandidates}
-            </h2>
-          </div>
-          <div className="bg-emerald-50 text-emerald-600 p-3 rounded-xl group-hover:bg-emerald-100 transition-colors">
-            <Users size={24} />
-          </div>
-        </div>
-      </div>
-
-      {/* Recruiter Performance Chart */}
-      <div className="bg-white rounded-xl shadow border border-slate-100 p-4 sm:p-6 mb-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 sm:mb-6 gap-4">
-          <div>
-            <h3 className="font-bold text-base sm:text-lg text-slate-800">Recruiter Performance</h3>
-            <p className="text-xs sm:text-sm text-slate-500">
-              Candidates uploaded, shortlisted, and joined
-              {screenSize === 'mobile' && ' - Top 5'}
-              {screenSize === 'tablet' && ' - Top 8'}
-              {screenSize === 'desktop' && ' - Top 12'}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs font-medium">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-blue-500"></div>
-              <span>Uploaded</span>
+      <div className="dashboard-columns">
+        <div className="dashboard-performance-column">
+          <section className="dashboard-panel dashboard-performance" aria-labelledby="performance-title">
+            <div className="dashboard-performance-header">
+              <div><div className="dashboard-chart-title"><h2 id="performance-title">Recruiter Performance</h2><span className="dashboard-rank-badge">Top {recruiterPerformanceData.length} Agents</span></div><p>Candidates uploaded, shortlisted, and joined - Top {recruiterPerformanceData.length}</p></div>
+              <div className="dashboard-chart-legend"><span className="legend-blue">Uploaded</span><span className="legend-amber">Shortlisted</span><span className="legend-green">Joined/Selected</span></div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-orange-500"></div>
-              <span>Shortlisted</span>
+            <div className="dashboard-chart" role="img" aria-label="Recruiter performance chart showing uploads, shortlisted candidates and joined or selected candidates">
+              {recruiterPerformanceData.some(recruiter => recruiter.uploaded || recruiter.shortlisted || recruiter.joined) ? <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={recruiterPerformanceData} margin={{ top: 30, right: 0, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="2 3" vertical={false} stroke="#dbe5f1" />
+                  <XAxis dataKey="name" axisLine={{ stroke: '#dce4ef' }} tickLine={false} tick={{ fill: '#475569', fontSize: 10, fontFamily: 'Inter, sans-serif', fontWeight: 500 }} interval={0} height={38} tickMargin={12} tickFormatter={name => name.length > 8 ? `${name.slice(0, 6)}…` : name} />
+                  <YAxis axisLine={false} tickLine={false} width={34} tickMargin={8} allowDecimals={false} tick={{ fill: '#94a3b8', fontSize: 10, fontFamily: 'Inter, sans-serif' }} />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', padding: '12px 16px', fontSize: 12, boxShadow: '0 12px 32px #0f172a18' }} labelStyle={{ fontWeight: 700, color: '#0f172a', marginBottom: 8 }} itemStyle={{ color: '#475569', padding: '3px 0' }} cursor={{ fill: '#dbeafe', fillOpacity: 0.35, radius: 8 }} />
+                  <Bar name="Uploaded" dataKey="uploaded" fill="#3b82f6" radius={[0, 0, 0, 0]} maxBarSize={10} isAnimationActive={!reduceMotion} animationBegin={150} animationDuration={1000} animationEasing="ease-out" />
+                  <Bar name="Shortlisted" dataKey="shortlisted" fill="#f59e0b" radius={[0, 0, 0, 0]} maxBarSize={10} isAnimationActive={!reduceMotion} animationBegin={300} animationDuration={1000} animationEasing="ease-out" />
+                  <Bar name="Joined/Selected" dataKey="joined" fill="#10b981" radius={[0, 0, 0, 0]} maxBarSize={10} isAnimationActive={!reduceMotion} animationBegin={450} animationDuration={1000} animationEasing="ease-out" />
+                </BarChart>
+              </ResponsiveContainer> : <div className="dashboard-empty"><Users size={28} /><p>No recruiter activity for the selected dates.</p></div>}
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-sm bg-emerald-500"></div>
-              <span>Joined/Selected</span>
-            </div>
+            <div className="dashboard-chart-footer"><p><strong>NOTE:</strong> <span className="text-blue-600">Blue</span>: Total Upload | <span className="text-amber-600">Orange</span>: Shortlisted | <span className="text-emerald-600">Green</span>: Selected/Joined. <span className="dashboard-chart-note">• Showing top {recruiterPerformanceData.length} recruiters.</span></p><button type="button" onClick={() => navigate('/Admin/reports')}>Detailed Performance Report <ArrowRight size={15} /></button></div>
+          </section>
+          <div className="dashboard-leaders">
+            {recruiterHighlights.map(({ label, tone, recruiter }) => <div key={label} className={`dashboard-leader leader-${tone}`}>
+              <div><p>{label}</p><h3>{recruiter?.name || 'No activity'}</h3><span>{recruiter ? tone === 'violet' ? <><b>{recruiter.shortlisted} Shortlisted</b> / {recruiter.uploaded} Total</> : <><b>{recruiter.uploaded} Uploads</b> / {recruiter.joined} Joined/Selected</> : 'No activity for this period'}</span></div><span className="dashboard-avatar">{recruiter ? recruiter.name.split(' ').map(part => part[0]).slice(0, 2).join('') : '—'}</span>
+            </div>)}
           </div>
         </div>
-        <div className="h-64 sm:h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={recruiterPerformanceData} margin={{ top: 10, right: 10, left: -20, bottom: 80 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis
-                dataKey="name"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#64748b', fontSize: screenSize === 'mobile' ? 9 : 10 }}
-                interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={70}
-              />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} />
-              <Tooltip
-                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                cursor={{ fill: '#f8fafc' }}
-              />
-              <Bar dataKey="uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 20 : 24} />
-              <Bar dataKey="shortlisted" fill="#f97316" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 20 : 24} />
-              <Bar dataKey="joined" fill="#10b981" radius={[4, 4, 0, 0]} barSize={screenSize === 'mobile' ? 20 : 24} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
-          <p className="text-[10px] sm:text-[11px] text-slate-600 leading-relaxed">
-            <span className="font-bold text-slate-800 uppercase mr-1">Note:</span>
-            <span className="text-blue-600 font-semibold">Blue</span>: Total Uploads |
-            <span className="text-orange-600 font-semibold ml-1">Orange</span>: Shortlisted |
-            <span className="text-emerald-600 font-semibold ml-1">Green</span>: Selected/Joined.
-            {screenSize === 'desktop' ? ' Showing top 12 recruiters.' : screenSize === 'tablet' ? ' Showing top 8 recruiters.' : ' Showing top 5 recruiters.'}
-          </p>
-        </div>
-      </div>
 
-      {/* Active Jobs Section */}
-      <div className="bg-white rounded-xl shadow border border-slate-100 overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div>
-            <h3 className="font-bold text-base sm:text-lg text-slate-800">
-              Active Requirements
-            </h3>
-            <p className="text-xs sm:text-sm text-slate-500">Currently open positions</p>
+        <section className="dashboard-panel dashboard-requirements" aria-labelledby="requirements-title">
+          <div className="dashboard-requirements-header"><div><div className="dashboard-chart-title"><h2 id="requirements-title">Active Requirements</h2><span className="dashboard-count">{stats.remainingPositions} openings</span></div><p>Currently open positions</p></div><button type="button" className="dashboard-button dashboard-requirements-link" onClick={() => navigate('/Admin/jobs')}>View All Requirements <ArrowRight size={14} /></button></div>
+          <div className="dashboard-job-list">
+            {openJobs.slice(0, 5).map(job => <article key={job._id} className="dashboard-job">
+              <div className="dashboard-job-title"><h3>{job.title}</h3><span className="dashboard-open">Open</span></div>
+              <div className="dashboard-job-details"><p className="dashboard-job-client"><Building2 size={12} />{job.clientId?.companyName || 'Client not specified'}</p><span aria-hidden="true">•</span><p className="dashboard-job-location"><MapPin size={12} />{(Array.isArray(job.location) ? job.location.map((location: any) => location.name).join(', ') : typeof job.location === 'object' && job.location !== null ? (job.location as any).name : job.location) || <em>Location Not specified</em>}</p></div>
+              <div className="dashboard-job-meta"><span><span className="dashboard-mini-avatar">{(job.CreatedBy?.name || '?')[0]}</span>{job.CreatedBy?.name || 'Not specified'}</span><span>Posted {job.createdAt ? formatDate(job.createdAt) : 'Not specified'}</span></div>
+            </article>)}
+            {!openJobs.length && <div className="dashboard-empty"><Briefcase size={28} /><p>No active requirements found.</p></div>}
           </div>
-          <span className="bg-blue-100 text-blue-700 text-xs px-3 py-1 rounded-full font-bold">
-            {stats.remainingPositions} openings
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[800px]">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 font-semibold">
-              <tr>
-                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Job Title</th>
-                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Location</th>
-                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Client</th>
-                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Posted Date</th>
-                <th className="px-4 sm:px-6 py-4 whitespace-nowrap">Posted By</th>
-                <th className="px-4 sm:px-6 py-4 text-right whitespace-nowrap">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {jobs.filter((j) => j.status === "Open").slice(0, 5).length >
-                0 ? (
-                jobs
-                  .filter((j) => j.status === "Open")
-                  .slice(0, 5)
-                  .map((job) => (
-                    <tr
-                      key={job._id}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-4 sm:px-6 py-4 font-medium text-slate-800 text-sm">
-                        {job.title}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">
-                        {Array.isArray(job.location)
-                          ? job.location.map((l: any) => l.name).join(", ")
-                          : typeof job.location === "object" &&
-                            job.location !== null
-                            ? (job.location as any).name
-                            : job.location}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">
-                        {job.clientId?.companyName || "N/A"}
-                      </td>
-
-                      <td className="px-4 sm:px-6 py-4 text-slate-500 text-sm">
-                        {job.createdAt
-                          ? formatDate(job.createdAt)
-                          : "N/A"}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-slate-600 text-sm">
-                        {job.CreatedBy?.name || "N/A"}
-                      </td>
-                      <td className="px-4 sm:px-6 py-4 text-right">
-                        <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap">
-                          {job.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-              ) : (
-                <td
-                  colSpan={6}
-                  className="px-4 sm:px-6 py-8 text-center text-slate-500"
-                >
-                  No active requirements found.
-                </td>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {jobs.filter((j) => j.status === "Open").length > 5 && (
-          <div className="p-4 border-t border-slate-100 text-center">
-            <button
-              onClick={() => navigate("/Admin/jobs")}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              View All Requirements
-            </button>
-          </div>
-        )}
+          <div className="dashboard-jobs-footer"><span>Showing {Math.min(5, openJobs.length)} of {openJobs.length} open requirements</span><button type="button" onClick={() => navigate('/Admin/jobs')}>View All Requirements <ArrowRight size={15} /></button></div>
+        </section>
       </div>
     </div>
   );

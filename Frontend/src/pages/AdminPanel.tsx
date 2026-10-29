@@ -78,7 +78,7 @@ export default function AdminLayout() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className={`${user?.designation === 'Admin' ? 'admin-workspace' : ''} min-h-screen bg-slate-50`}>
       <Sidebar
         isOpen={isSidebarOpen}
         toggleSidebar={toggleSidebar}
