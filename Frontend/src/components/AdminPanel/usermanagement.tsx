@@ -6,6 +6,7 @@ import { useUserContext } from "../../context/UserProvider";
 import { useAuth } from "../../context/AuthProvider";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { formatDate } from "../../utils/dateUtils";
+import { getImageUrl } from "../../utils/imageUtils";
 
 interface AssignedJob {
   _id: string;
@@ -791,30 +792,35 @@ export default function UserManagement() {
               initial={{ scale: 0.95, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="user-details-title"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden"
             >
-              <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
-                <div className="flex items-center gap-4">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-lg font-bold text-white shadow-lg ${selectedUser.isAdmin
+              <div className="shrink-0 px-4 sm:px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-blue-50 to-white">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className={`w-14 h-14 shrink-0 overflow-hidden rounded-xl flex items-center justify-center text-lg font-bold text-white shadow-lg ${selectedUser.isAdmin
                     ? "bg-gradient-to-br from-violet-500 to-purple-600"
                     : "bg-gradient-to-br from-blue-500 to-indigo-600"
                     }`}>
-                    {selectedUser.name.charAt(0).toUpperCase()}
+                    {selectedUser.profilePhoto ? <img src={getImageUrl(selectedUser.profilePhoto)} alt={`${selectedUser.name} profile`} className="h-full w-full object-cover" /> : selectedUser.name.charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800">{selectedUser.name}</h2>
-                    <p className="text-sm text-slate-500">{selectedUser.email}</p>
+                  <div className="min-w-0">
+                    <h2 id="user-details-title" className="text-lg sm:text-xl font-bold text-slate-800 break-words">{selectedUser.name}</h2>
+                    <p className="text-sm text-slate-500 break-all">{selectedUser.email}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowDetailsModal(false)}
+                  aria-label="Close user details"
+                  autoFocus
                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-5">
                 {/* Role & Access */}
                 <div>
                   <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Role & Access</h3>
@@ -831,77 +837,32 @@ export default function UserManagement() {
                   </div>
                 </div>
 
-                {/* Contact Information */}
-                <div>
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Contact Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                      <Mail size={18} className="text-blue-500 mt-0.5" />
-                      <div>
-                        <p className="text-xs text-slate-500 font-medium">Official Email</p>
-                        <p className="text-sm text-slate-800 font-semibold">{selectedUser.email}</p>
-                      </div>
-                    </div>
-                    {selectedUser.personalEmail && (
-                      <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                        <Mail size={18} className="text-green-500 mt-0.5" />
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium">Personal Email</p>
-                          <p className="text-sm text-slate-800 font-semibold">{selectedUser.personalEmail}</p>
-                        </div>
-                      </div>
-                    )}
-                    {selectedUser.phoneNumber?.official && (
-                      <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                        <Phone size={18} className="text-blue-500 mt-0.5" />
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium">Official Phone</p>
-                          <p className="text-sm text-slate-800 font-semibold">{selectedUser.phoneNumber.official}</p>
-                        </div>
-                      </div>
-                    )}
-                    {selectedUser.phoneNumber?.personal && (
-                      <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                        <Phone size={18} className="text-green-500 mt-0.5" />
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium">Personal Phone</p>
-                          <p className="text-sm text-slate-800 font-semibold">{selectedUser.phoneNumber.personal}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Important Dates */}
-                {(selectedUser.dateOfJoining || selectedUser.dateOfBirth) && (
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Important Dates</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedUser.dateOfJoining && (
-                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                          <Briefcase size={18} className="text-blue-500 mt-0.5" />
-                          <div>
-                            <p className="text-xs text-slate-500 font-medium">Date of Joining</p>
-                            <p className="text-sm text-slate-800 font-semibold">
-                              {formatDate(selectedUser.dateOfJoining)}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedUser.dateOfBirth && (
-                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
-                          <Calendar size={18} className="text-purple-500 mt-0.5" />
-                          <div>
-                            <p className="text-xs text-slate-500 font-medium">Date of Birth</p>
-                            <p className="text-sm text-slate-800 font-semibold">
-                              {formatDate(selectedUser.dateOfBirth)}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                <section>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Profile Information</h3>
+                  <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { label: 'Full Name', value: selectedUser.name },
+                      { label: 'Official Email', value: selectedUser.email },
+                      { label: 'Personal Email', value: selectedUser.personalEmail },
+                      { label: 'Contact Number', value: selectedUser.phone || selectedUser.phoneNumber?.official || selectedUser.phoneNumber?.personal },
+                      { label: 'Official Phone', value: selectedUser.phoneNumber?.official },
+                      { label: 'Personal Phone', value: selectedUser.phoneNumber?.personal },
+                      { label: 'Designation', value: selectedUser.designation },
+                      { label: 'Department', value: selectedUser.department },
+                      { label: 'Date of Joining (DOJ)', value: (selectedUser.joinDate || selectedUser.dateOfJoining) ? formatDate(selectedUser.joinDate || selectedUser.dateOfJoining) : '' },
+                      { label: 'Date of Birth', value: selectedUser.dateOfBirth ? formatDate(selectedUser.dateOfBirth) : '' },
+                      { label: 'WhatsApp Link', value: selectedUser.whatsappLink, link: true },
+                      { label: 'LinkedIn Link', value: selectedUser.linkedinLink, link: true },
+                      { label: 'Reports To', value: selectedUser.reporter?.name },
+                      { label: 'Email App Password', value: selectedUser.appPassword ? 'Configured (hidden)' : 'Not configured' },
+                    ].map(field => <div key={field.label} className="min-w-0 p-3 bg-slate-50 rounded-lg">
+                      <dt className="text-xs text-slate-500 font-medium">{field.label}</dt>
+                      <dd className="mt-1 text-sm text-slate-800 font-semibold break-words [overflow-wrap:anywhere]">
+                        {field.link && /^https:\/\//i.test(field.value || '') ? <a href={field.value} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{field.value}</a> : field.value || 'Not provided'}
+                      </dd>
+                    </div>)}
+                  </dl>
+                </section>
 
                 {/* Assigned Jobs (Recruiter only) */}
                 {selectedUser.designation?.toLowerCase() === "recruiter" && (
@@ -919,7 +880,7 @@ export default function UserManagement() {
                         No requirements currently assigned to this recruiter.
                       </p>
                     ) : (
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                      <div className="space-y-2">
                         {recruiterJobs[selectedUser._id].map((job) => (
                           <div
                             key={job._id}
@@ -952,7 +913,8 @@ export default function UserManagement() {
                   </div>
                 )}
 
-                <div className="pt-4 flex gap-3 border-t border-slate-100">
+              </div>
+                <div className="shrink-0 p-4 sm:px-6 flex gap-3 border-t border-slate-100">
                   <button
                     onClick={() => {
                       setShowDetailsModal(false);
@@ -970,7 +932,6 @@ export default function UserManagement() {
                     Close
                   </button>
                 </div>
-              </div>
             </motion.div>
           </motion.div>
         )}
