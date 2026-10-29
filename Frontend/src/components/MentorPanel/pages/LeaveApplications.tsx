@@ -17,6 +17,7 @@ export default function MentorLeaveApplications() {
   const [filterFromDate, setFilterFromDate] = useState("");
   const [filterToDate, setFilterToDate] = useState("");
   const [filterMentorId, setFilterMentorId] = useState(""); // mentorId to filter team leaves
+  const [filterRecruiterId, setFilterRecruiterId] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   // Selection state
@@ -110,11 +111,18 @@ export default function MentorLeaveApplications() {
     return users.filter((u) => u.designation === "Mentor");
   })();
 
+  const recruiterOptions = users.filter(recruiter =>
+    recruiter.designation === "Recruiter" && filteredLeaves.some(leave =>
+      (typeof leave.user === "object" ? leave.user?._id : leave.user) === recruiter._id
+    )
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
   // --------------------------------
   // Apply client-side filters to team leaves
   // --------------------------------
   const applyFilters = (list: any[]) => {
     return list.filter((leave: any) => {
+      if (activeTab === "team" && filterRecruiterId && (typeof leave.user === "object" ? leave.user?._id : leave.user) !== filterRecruiterId) return false;
       // Date filter: leave's fromDate must fall within selected range
       if (filterFromDate || filterToDate) {
         const leaveFrom = leave.fromDate ? new Date(leave.fromDate) : null;
@@ -151,9 +159,11 @@ export default function MentorLeaveApplications() {
     setFilterFromDate("");
     setFilterToDate("");
     setFilterMentorId("");
+    setFilterRecruiterId("");
+    setSelectedIds([]);
   };
 
-  const hasActiveFilters = filterFromDate || filterToDate || filterMentorId;
+  const hasActiveFilters = filterFromDate || filterToDate || filterMentorId || filterRecruiterId;
 
   const calculateDays = (application: any) => {
     if (application.leaveCategory === "Half Day") return 0.5;
@@ -440,6 +450,19 @@ export default function MentorLeaveApplications() {
                         className="flex-1 bg-transparent text-sm font-semibold text-gray-700 focus:outline-none cursor-pointer"
                       />
                     </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="filter-recruiter" className="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-mono">Recruiter Name</label>
+                    <select
+                      id="filter-recruiter"
+                      value={filterRecruiterId}
+                      onChange={(event) => { setFilterRecruiterId(event.target.value); setSelectedIds([]); }}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 bg-gray-50 text-sm font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="">All Recruiters</option>
+                      {recruiterOptions.map(recruiter => <option key={recruiter._id} value={recruiter._id}>{recruiter.name}</option>)}
+                    </select>
                   </div>
 
                   {/* Mentor Filter (Manager / Admin only) */}
