@@ -84,6 +84,7 @@ app.get("/", (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/leaves", leaveRoutes);
+app.use("/api/payroll", require("./routes/Payrollroutes"));
 app.use("/api/jobs", jobRoutes);
 app.use("/api/CandidatesJob", CandidatesJob);
 

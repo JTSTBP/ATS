@@ -3,6 +3,7 @@ import { Calendar, Clock, CheckCircle, XCircle, Plus, X, Trash2, Loader2, Filter
 import { useEffect, useState } from "react";
 import { useUserContext } from "../../../context/UserProvider";
 import { useAuth } from "../../../context/AuthProvider";
+import Payroll from "../../AdminPanel/Payroll";
 
 export default function MentorLeaveApplications() {
   const { leaves, fetchAllLeaves, updateLeaveStatus, applyLeave, users } =
@@ -173,22 +174,20 @@ export default function MentorLeaveApplications() {
     return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
   };
 
-  // --------------------------------
-  // Count Boxes (Dynamic)
-  // --------------------------------
-  const pendingCount = filteredLeaves.filter(
-    (l) => l.status === "Pending"
-  ).length;
-  const approvedCount = filteredLeaves.filter(
-    (l) => l.status === "Approved"
-  ).length;
-  const rejectedCount = filteredLeaves.filter(
-    (l) => l.status === "Rejected"
-  ).length;
-
   // Active list based on tab, with filters applied
   const rawDisplayList = activeTab === "team" ? filteredLeaves : userLeaves;
   const displayList = applyFilters(rawDisplayList);
+
+  // Summary counts follow the same filters as the applications list.
+  const pendingCount = displayList.filter(
+    (l) => l.status === "Pending"
+  ).length;
+  const approvedCount = displayList.filter(
+    (l) => l.status === "Approved"
+  ).length;
+  const rejectedCount = displayList.filter(
+    (l) => l.status === "Rejected"
+  ).length;
 
   // -----------------------
   // Apply Leave handlers
@@ -336,6 +335,8 @@ export default function MentorLeaveApplications() {
           )}
         </div>
       </div>
+
+      {user && ['Admin', 'Finance'].includes(user.designation) && <Payroll />}
 
       {/* Summary Boxes */}
       {activeTab === "team" && (

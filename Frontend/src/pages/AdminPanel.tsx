@@ -55,7 +55,7 @@ export default function AdminLayout() {
       path: "/Admin/leaveApplications",
       label: "Leave Applications",
       icon: Calendar,
-      roles: ["Admin"]
+      roles: ["Admin", "Finance"]
     },
     { path: "/Admin/attendance", label: "Attendance", icon: ClipboardCheck, roles: ["Admin", "Finance"] },
     { path: "/Admin/finance", label: "Finance", icon: DollarSign, roles: ["Admin", "Finance"] },
