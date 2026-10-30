@@ -5,8 +5,8 @@ import { useUserContext } from "../../context/UserProvider";
 import { useJobContext } from "../../context/DataProvider";
 import { useClientsContext } from "../../context/ClientsProvider";
 import { formatDate } from "../../utils/dateUtils";
-import { useEffect, useMemo, useState } from "react";
-import { useReducedMotion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { animate, useReducedMotion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthProvider";
 import { useCandidateContext } from "../../context/CandidatesProvider";
@@ -41,6 +41,26 @@ function useScreenSize() {
   }, []);
 
   return screenSize;
+}
+
+function MetricValue({ value }: { value: number }) {
+  const element = useRef<HTMLElement>(null);
+  const reduceMotion = useReducedMotion();
+  useEffect(() => {
+    if (!element.current) return;
+    if (reduceMotion) {
+      element.current.textContent = value.toLocaleString('en-IN');
+      return;
+    }
+    element.current.textContent = '0';
+    const animation = animate(0, value, {
+      duration: 0.9,
+      ease: 'easeOut',
+      onUpdate: current => { if (element.current) element.current.textContent = Math.round(current).toLocaleString('en-IN'); },
+    });
+    return () => animation.stop();
+  }, [value, reduceMotion]);
+  return <strong ref={element} aria-label={value.toLocaleString('en-IN')}>{value.toLocaleString('en-IN')}</strong>;
 }
 
 export default function AdminDashboard() {
@@ -356,9 +376,9 @@ export default function AdminDashboard() {
       <section className="dashboard-panel dashboard-pipeline" aria-labelledby="pipeline-title">
         <div className="dashboard-section-heading"><h2 id="pipeline-title">PIPELINE TELEMETRY <span>•</span> <small>Real-Time Funnel Flow</small></h2><p>Activity follows the selected date range</p></div>
         <div className="dashboard-metrics">
-          {pipeline.map(metric => <button type="button" key={metric.label} className={`dashboard-metric metric-${metric.tone}`} onClick={() => navigate(metric.path)}>
+          {pipeline.map((metric, index) => <button type="button" key={metric.label} className={`dashboard-metric metric-${metric.tone}`} style={{ animationDelay: `${index * 45}ms` }} onClick={() => navigate(metric.path)}>
             <span className="metric-heading" title={metric.label}>{metric.label}</span>
-            <strong>{metric.value.toLocaleString('en-IN')}</strong><span className="metric-detail" title={metric.detail}>{metric.detail}</span>
+            <MetricValue value={metric.value} /><span className="metric-detail" title={metric.detail}>{metric.detail}</span>
             <span className="metric-footer"><span className="metric-icon"><metric.icon size={14} aria-hidden="true" /></span></span>
           </button>)}
         </div>

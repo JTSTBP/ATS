@@ -42,10 +42,11 @@
 .dashboard-section-heading>p { color:#64748b; font-size:11px; }
 .dashboard-metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; }
 .dashboard-metric { display:flex; flex-direction:column; align-items:stretch; text-align:left; padding:12px; border:1px solid #e2e8f0cc; border-radius:8px; background:#f8fafccc; min-width:0; }
-.dashboard-metric:hover { box-shadow:0 2px 8px #2563eb18; border-color:#93c5fd; }
+.dashboard-metric:hover { background:#fff; box-shadow:0 2px 8px #2563eb18; border-color:#93c5fd; }
 .metric-heading { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; color:#334155; font-size:12px; min-height:17px; line-height:17px; }
 .metric-footer { display:flex; justify-content:flex-end; margin-top:auto; padding-top:8px; border-top:1px solid #f1f5f9; }
-.metric-icon { display:inline-flex; align-items:center; justify-content:center; padding:4px; border-radius:4px; background:#f1f5f9; color:#475569; }
+.metric-icon { display:inline-flex; align-items:center; justify-content:center; padding:4px; border-radius:4px; background:#f1f5f9; color:#475569; transition:transform .2s ease; }
+.dashboard-metric:hover .metric-icon,.dashboard-metric:focus-visible .metric-icon { transform:scale(1.1); }
 .dashboard-metric:first-child .metric-icon { background:#ecfdf5; color:#059669; }
 .dashboard-metric:nth-child(2) .metric-icon { background:#fffbeb; color:#d97706; }
 .dashboard-metric:nth-child(3) .metric-icon { background:#eff6ff; color:#2563eb; }
@@ -94,12 +95,10 @@
 .dashboard-performance { animation:dashboard-enter .5s .16s ease-out both; }
 .dashboard-requirements { animation:dashboard-enter .5s .24s ease-out both; }
 .dashboard-metric { animation:dashboard-enter .4s ease-out backwards; transition:transform .2s,border-color .2s,box-shadow .2s; }
-.dashboard-metric:nth-child(2n) { animation-delay:.08s; }
-.dashboard-metric:nth-child(3n) { animation-delay:.16s; }
 .dashboard-leader { animation:dashboard-enter .5s .3s ease-out backwards; }
 @media(prefers-reduced-motion:reduce) {
   .executive-dashboard *, .executive-dashboard *:before { animation:none!important; transition:none!important; }
-  .dashboard-metric:hover,.dashboard-leader:hover { transform:none; }
+  .dashboard-metric:hover,.dashboard-leader:hover,.dashboard-metric:hover .metric-icon,.dashboard-metric:focus-visible .metric-icon { transform:none; }
 }
 .legend-blue { color:#1d4ed8; background:#eff6ff; border-color:#dbeafe!important; }
 .legend-amber { color:#b45309; background:#fffbeb; border-color:#fef3c7!important; }
