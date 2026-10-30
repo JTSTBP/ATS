@@ -623,12 +623,16 @@ router.get("/report", async (req, res) => {
     let dates;
     try { dates = reportDateRange(from, to); } catch (error) { return res.status(400).json({ message: error.message }); }
     if ([recruiterId, mentorId].some(id => id && !isObjectId(id))) return res.status(400).json({ message: "Invalid staff filter" });
-    const staff = await User.find(req.user.designation === 'Mentor' ? { _id: { $in: req.followUpTeamIds } } : {}).select('_id name designation reporter secondary_managers').lean();
+    const staff = await User.find(req.user.designation === 'Mentor' ? { _id: { $in: req.followUpTeamIds } } : {}).select('_id name designation reporter secondary_managers isDisabled').lean();
     const mentors = staff.filter(member => member.designation === 'Mentor');
-    const recruiters = staff.filter(member => member.designation === 'Recruiter');
+    const recruiters = staff.filter(member => member.designation === 'Recruiter' && !member.isDisabled);
     if ((recruiterId && !recruiters.some(member => toId(member) === recruiterId)) || (mentorId && !mentors.some(member => toId(member) === mentorId))) return res.status(400).json({ message: "Staff filter is outside your access" });
     const actors = staff.filter(member => (!recruiterId || toId(member) === recruiterId) && (!mentorId || toId(member) === mentorId || toId(member.reporter) === mentorId || (member.secondary_managers || []).some(id => toId(id) === mentorId))).map(member => member._id);
-    const jobs = await Job.find(recruiterJobQuery(req.user, req.followUpRequirementIds)).select('_id title clientId').populate('clientId', 'companyName name clientName').sort({ createdAt: -1 }).lean();
+    const requirementScope = scopedQuery(
+      recruiterJobQuery(req.user, req.followUpRequirementIds),
+      recruiterId ? { $or: [{ assignedRecruiters: recruiterId }, { leadRecruiter: recruiterId }] } : {},
+    );
+    const jobs = await Job.find({ ...requirementScope, status: 'Open' }).select('_id title clientId').populate('clientId', 'companyName name clientName').sort({ createdAt: -1 }).lean();
     const jobIds = jobs.map(job => job._id);
     const base = { requirementId: { $in: jobIds }, recruiterId: { $in: actors } };
     const dated = Object.keys(dates).length ? { createdAt: dates } : {};

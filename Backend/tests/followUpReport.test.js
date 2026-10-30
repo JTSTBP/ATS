@@ -28,6 +28,7 @@ function loadReport() {
     { _id: 'mentor', name: 'Mentor', designation: 'Mentor' },
     { _id: 'recruiter', name: 'Recruiter', designation: 'Recruiter', reporter: 'mentor' },
     { _id: 'other', name: 'Other', designation: 'Recruiter', reporter: 'elsewhere' },
+    { _id: 'disabled', name: 'Disabled recruiter', designation: 'Recruiter', isDisabled: true },
   ];
   const chain = value => ({ select() { return this; }, populate() { return this; }, sort() { return this; }, async lean() { return value; } });
   const router = { use() {}, get(url, handler) { handlers[url] = handler; }, post() {}, patch() {}, delete() {} };
@@ -50,6 +51,15 @@ function loadReport() {
 }
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; } });
 
+test('recruiter filter includes active accounts only, preserving historical totals', async () => {
+  const { handler, queries } = loadReport();
+  const res = response();
+  await handler({ user: { designation: 'Admin' }, query: {} }, res);
+  assert.equal(res.code, 200);
+  assert.deepEqual(Array.from(res.body.recruiters, member => member._id), ['recruiter', 'other']);
+  assert.ok(queries.added[0].$match.recruiterId.$in.includes('disabled'));
+});
+
 test('report denies Recruiter/Finance and rejects staff outside mentor scope', async () => {
   const { handler } = loadReport();
   for (const designation of ['Recruiter', 'Finance']) {
@@ -68,12 +78,27 @@ test('report intersects mentor, recruiter and requirement scope and dates actual
   await handler({ user: { _id: 'mentor', designation: 'Mentor' }, followUpTeamIds: ['mentor', 'recruiter'], followUpRequirementIds: ['job'], query: { recruiterId: 'recruiter', mentorId: 'mentor', from: '2026-10-01' } }, res);
   assert.equal(res.code, 200);
   assert.deepEqual(Array.from(queries.added[0].$match.recruiterId.$in), ['recruiter']);
-  assert.deepEqual(Array.from(queries.jobs._id.$in), ['job']);
+  assert.deepEqual(Array.from(queries.jobs.$and[0]._id.$in), ['job']);
+  assert.equal(queries.jobs.$and[1].$or[0].assignedRecruiters, 'recruiter');
+  assert.equal(queries.jobs.$and[1].$or[1].leadRecruiter, 'recruiter');
   assert.equal(queries.sent[0].$match.status, 'sent');
   assert.ok(queries.sent[0].$match.sentAt.$gte);
   assert.equal(queries.sent[0].$match.createdAt, undefined);
   assert.ok(queries.added.some(stage => stage.$unionWith));
   assert.equal(res.body.rows[0].added, 2);
+});
+
+test('selected recruiter limits open requirements; clearing retains open-only scope', async () => {
+  for (const designation of ['Admin', 'Manager']) {
+    const { handler, queries } = loadReport();
+    await handler({ user: { designation }, query: { recruiterId: 'recruiter' } }, response());
+    assert.equal(queries.jobs.$or[0].assignedRecruiters, 'recruiter');
+    assert.equal(queries.jobs.$or[1].leadRecruiter, 'recruiter');
+    assert.equal(queries.jobs.status, 'Open');
+    await handler({ user: { designation }, query: {} }, response());
+    assert.deepEqual(Object.keys(queries.jobs), ['status']);
+    assert.equal(queries.jobs.status, 'Open');
+  }
 });
 
 test('Admin and Manager can report, conflicting staff filters return an empty actor scope', async () => {
