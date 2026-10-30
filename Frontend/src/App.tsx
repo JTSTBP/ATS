@@ -105,6 +105,7 @@ function App() {
               />
               <Route path="/Mentor/clients" element={<ClientsManager />} />
               <Route path="/Mentor/reports" element={<MentorReports />} />
+              <Route path="/Mentor/follow-ups" element={<FollowUps />} />
               <Route path="/Mentor/activity" element={<ActivityLog />} />
               <Route path="/Mentor/team" element={<TeamRecruiters />} />
               <Route path="/Mentor/upload-source-candidate" element={<UploadSourceCandidatePage />} />
@@ -205,6 +206,7 @@ function App() {
               <Route path="team" element={<ManagerTeamRecruiters />} />
               <Route path="clients" element={<ClientsManager />} />
               <Route path="reports" element={<ManagerReports />} />
+              <Route path="follow-ups" element={<FollowUps />} />
               <Route
                 path="leave-applications"
                 element={<MentorLeaveApplications />}

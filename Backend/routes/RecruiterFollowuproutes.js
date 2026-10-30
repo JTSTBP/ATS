@@ -20,6 +20,7 @@ const { getLineupForm, validateLineupFields } = require("../services/lineupConve
 const { getSignedUrl } = require("../config/s3Config");
 
 const router = express.Router();
+const { reportDateRange, buildReportRows } = require('../services/followUpReport');
 
 const EMAIL_CATEGORIES = [
   "No Answer",
@@ -612,6 +613,47 @@ router.get("/requirements", async (req, res) => {
   } catch (error) {
     console.error("Follow-up requirements error:", error);
     res.status(500).json({ success: false, message: "Failed to load requirements" });
+  }
+});
+
+router.get("/report", async (req, res) => {
+  if (!["Admin", "Manager", "Mentor"].includes(req.user.designation)) return res.status(403).json({ message: "Not allowed" });
+  try {
+    const { from = '', to = '', recruiterId = '', mentorId = '' } = req.query;
+    let dates;
+    try { dates = reportDateRange(from, to); } catch (error) { return res.status(400).json({ message: error.message }); }
+    if ([recruiterId, mentorId].some(id => id && !isObjectId(id))) return res.status(400).json({ message: "Invalid staff filter" });
+    const staff = await User.find(req.user.designation === 'Mentor' ? { _id: { $in: req.followUpTeamIds } } : {}).select('_id name designation reporter secondary_managers').lean();
+    const mentors = staff.filter(member => member.designation === 'Mentor');
+    const recruiters = staff.filter(member => member.designation === 'Recruiter');
+    if ((recruiterId && !recruiters.some(member => toId(member) === recruiterId)) || (mentorId && !mentors.some(member => toId(member) === mentorId))) return res.status(400).json({ message: "Staff filter is outside your access" });
+    const actors = staff.filter(member => (!recruiterId || toId(member) === recruiterId) && (!mentorId || toId(member) === mentorId || toId(member.reporter) === mentorId || (member.secondary_managers || []).some(id => toId(id) === mentorId))).map(member => member._id);
+    const jobs = await Job.find(recruiterJobQuery(req.user, req.followUpRequirementIds)).select('_id title clientId').populate('clientId', 'companyName name clientName').sort({ createdAt: -1 }).lean();
+    const jobIds = jobs.map(job => job._id);
+    const base = { requirementId: { $in: jobIds }, recruiterId: { $in: actors } };
+    const dated = Object.keys(dates).length ? { createdAt: dates } : {};
+    const [added, sent] = await Promise.all([
+      SourcedCandidate.aggregate([
+        { $match: { ...base, ...dated } },
+        { $project: { candidate: '$_id', requirementId: 1 } },
+        // Addition logs preserve counts when a sourced profile is converted to lineup.
+        { $unionWith: { coll: ActivityLog.collection.name, pipeline: [
+          { $match: { jobId: { $in: jobIds }, userId: { $in: actors }, actionType: 'candidate_created', targetModel: 'SourceCandidate', ...dated } },
+          { $project: { candidate: '$targetId', requirementId: '$jobId' } },
+        ] } },
+        { $group: { _id: { job: '$requirementId', candidate: '$candidate' } } },
+        { $group: { _id: '$_id.job', count: { $sum: 1 } } },
+      ]),
+      Communication.aggregate([
+        { $match: { ...base, status: 'sent', channel: { $in: ['EMAIL', 'WHATSAPP'] }, ...(Object.keys(dates).length ? { sentAt: dates } : {}) } },
+        { $group: { _id: { job: '$requirementId', candidate: '$candidateId' }, emailed: { $max: { $cond: [{ $eq: ['$channel', 'EMAIL'] }, 1, 0] } }, whatsapp: { $max: { $cond: [{ $eq: ['$channel', 'WHATSAPP'] }, 1, 0] } } } },
+        { $group: { _id: '$_id.job', emailed: { $sum: '$emailed' }, whatsapp: { $sum: '$whatsapp' } } },
+      ]),
+    ]);
+    res.json({ rows: buildReportRows(jobs, added, sent), recruiters: recruiters.map(({ _id, name }) => ({ _id, name })), mentors: mentors.map(({ _id, name }) => ({ _id, name })) });
+  } catch (error) {
+    console.error('Follow-up report error:', error);
+    res.status(500).json({ message: 'Unable to load follow-up report' });
   }
 });
 

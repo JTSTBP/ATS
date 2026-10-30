@@ -1,4 +1,5 @@
 import EmailConnection from "./EmailConnection";
+import FollowUpReport from "./FollowUpReport";
 import "./FollowUps.css";
 import { useAuth } from "../../context/AuthProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -668,6 +669,8 @@ export default function FollowUps() {
           <RefreshCw size={16} /> Refresh
         </button>
       </div>
+
+      {["Admin", "Manager", "Mentor"].includes(user?.designation || "") && <FollowUpReport />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
