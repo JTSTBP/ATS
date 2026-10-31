@@ -51,6 +51,18 @@ function loadReport() {
 }
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; } });
 
+test('old candidate Send and Start routes reject all callers in favor of the client batch flow', async () => {
+  const { handlers } = loadReport();
+  for (const designation of ['Recruiter', 'Mentor', 'Manager', 'Admin']) {
+    for (const route of ['POST /candidates/:candidateId/email/send', 'POST /candidates/:candidateId/draft-studio/start']) {
+      const res = response();
+      await handlers[route]({ user: { designation } }, res);
+      assert.equal(res.code, 403);
+      assert.match(res.body.message, /Team email sequences/);
+    }
+  }
+});
+
 test('recruiter filter includes active accounts only, preserving historical totals', async () => {
   const { handler, queries } = loadReport();
   const res = response();

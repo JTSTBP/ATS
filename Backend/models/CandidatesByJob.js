@@ -16,6 +16,7 @@ const candidateSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    sourceCreatedAt: { type: Date },
     resumeUrl: String,
     linkedinUrl: String,
     portfolioUrl: String,

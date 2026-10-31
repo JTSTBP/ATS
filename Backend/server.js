@@ -102,6 +102,7 @@ app.use("/api/email", emailDiagnosticsRoutes);
 app.use("/api/microsoft-mail", require("./routes/MicrosoftMailroutes"));
 app.use("/api/email-sequences", emailSequenceWebhookRoutes);
 app.use("/api/recruiter/follow-ups", recruiterFollowupRoutes);
+app.use('/api/team-email', require('./routes/TeamEmailroutes'));
 app.use("/api/ceo-daily-reports", ceoDailyReportRoutes);
 
 

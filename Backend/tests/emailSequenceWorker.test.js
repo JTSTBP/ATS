@@ -5,6 +5,7 @@ let sends = 0;
 let suppress = false;
 let replyCheckError;
 let replied = false;
+let validDispatch = true;
 const model = {
   updateMany: async (filter, update) => { for (const doc of docs) if (doc.sequenceId === filter.sequenceId && (typeof filter.status === 'string' ? doc.status === filter.status : filter.status?.$in?.includes(doc.status))) Object.assign(doc, update.$set); return {}; },
   exists: async filter => docs.some(doc => (filter._id ? doc._id === filter._id : doc.sequenceId === filter.sequenceId) && (!filter.sequenceStep || doc.sequenceStep < filter.sequenceStep.$lt) && (typeof filter.status === 'string' ? doc.status === filter.status : filter.status.$in.includes(doc.status))),
@@ -15,6 +16,7 @@ const model = {
 };
 require.cache[require.resolve('../models/Communication')]={exports:model};
 require.cache[require.resolve('../models/EmailEnrollment')]={exports:{deleteOne:async()=>{}}};
+require.cache[require.resolve('../models/ClientEmailDispatch')]={exports:{exists:async()=>validDispatch}};
 require.cache[require.resolve('../services/emailSuppression')]={exports:{assertNotSuppressed:async()=>{if(suppress) throw Object.assign(new Error('Suppressed'),{code:'EMAIL_SUPPRESSED'});}}};
 require.cache[require.resolve('../services/emailReplyDetection')]={exports:{checkSequenceReplies:async item=>{if(replyCheckError) throw replyCheckError; if(replied) item.status='stopped'; return !replied;},pollSequenceReplies:async()=>{}}};
 require.cache[require.resolve('../services/emailService')]={exports:{formatEmailErrorResponse:e=>({message:e.message})}};
@@ -23,7 +25,7 @@ require.cache[require.resolve('../services/whatsappService')]={exports:{sendWhat
 const {runEmailSequenceWorkerOnce}=require('../services/emailSequenceWorker');
 test('worker defers night sends and sends only one overdue email per sequence per day', async t => {
   t.mock.timers.enable({apis:['Date'],now:new Date('2026-10-26T15:00:00Z')});
-  docs=[0,1].map(step=>({_id:String(step),recruiterId:'recruiter',sequenceId:'sequence',channel:'EMAIL',status:'scheduled',scheduledAt:new Date('2026-10-26T03:30:00Z'),sequenceStep:step,save:async()=>{}}));
+  docs=[0,1].map(step=>({_id:String(step),clientDispatchId:'dispatch',recruiterId:'recruiter',sequenceId:'sequence',channel:'EMAIL',status:'scheduled',scheduledAt:new Date('2026-10-26T03:30:00Z'),sequenceStep:step,save:async()=>{}}));
   assert.deepEqual(await runEmailSequenceWorkerOnce(),{checked:0,sent:0,failed:0});
   assert.equal(sends,0);
   t.mock.timers.setTime(new Date('2026-10-27T03:30:00Z').getTime());
@@ -42,9 +44,27 @@ test('worker defers night sends and sends only one overdue email per sequence pe
 
 test('worker never sends suppressed addresses, replied sequences or unchecked follow-ups', async t => {
   t.mock.timers.enable({apis:['Date'], now:new Date('2026-10-27T05:00:00Z')});
-  const fresh = () => { docs=[{_id:'guarded',recruiterId:'recruiter',sequenceId:'guarded',recipient:'candidate@example.com',channel:'EMAIL',detectReplies:true,status:'scheduled',scheduledAt:new Date('2026-10-27T03:30:00Z'),sequenceStep:1,save:async()=>{}}]; sends=0; suppress=false; replied=false; replyCheckError=null; };
+  const fresh = () => { docs=[{_id:'guarded',clientDispatchId:'dispatch',recruiterId:'recruiter',sequenceId:'guarded',recipient:'candidate@example.com',channel:'EMAIL',detectReplies:true,status:'scheduled',scheduledAt:new Date('2026-10-27T03:30:00Z'),sequenceStep:1,save:async()=>{}}]; sends=0; suppress=false; replied=false; replyCheckError=null; };
   fresh(); suppress=true; await runEmailSequenceWorkerOnce(); assert.equal(sends,0); assert.equal(docs[0].status,'stopped');
   fresh(); replied=true; await runEmailSequenceWorkerOnce(); assert.equal(sends,0); assert.equal(docs[0].status,'stopped');
   fresh(); replyCheckError=Object.assign(new Error('Graph unavailable'),{code:'MICROSOFT_READ_FAILED'}); await runEmailSequenceWorkerOnce(); assert.equal(sends,0); assert.equal(docs[0].status,'scheduled'); assert.match(docs[0].replyCheckError,/Graph unavailable/);
+});
+
+test('legacy recruiter sequences are held for mentor or manager approval without sending', async t => {
+  t.mock.timers.enable({apis:['Date'], now:new Date('2026-10-27T05:00:00Z')});
+  sends=0;
+  docs=[{_id:'legacy',recruiterId:'recruiter',sequenceId:'legacy',channel:'EMAIL',status:'scheduled',scheduledAt:new Date('2026-10-27T03:30:00Z')}];
+  await runEmailSequenceWorkerOnce();
+  assert.equal(sends,0);
+  assert.equal(docs[0].status,'stopped');
+  assert.equal(docs[0].stopReason,'team_email_approval_required');
+});
+
+test('unpublished or stopped client dispatches cannot send even when a draft is scheduled', async t => {
+  t.mock.timers.enable({apis:['Date'], now:new Date('2026-10-27T05:00:00Z')});
+  sends=0; validDispatch=false;
+  docs=[{_id:'unpublished',clientDispatchId:'dispatch',recruiterId:'recruiter',sequenceId:'new',channel:'EMAIL',status:'scheduled',scheduledAt:new Date('2026-10-27T03:30:00Z')}];
+  try { await runEmailSequenceWorkerOnce(); assert.equal(sends,0); assert.equal(docs[0].status,'scheduled'); }
+  finally { validDispatch=true; }
 });
 

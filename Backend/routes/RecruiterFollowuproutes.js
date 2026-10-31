@@ -13,17 +13,16 @@ const upload = require("../middleware/upload");
 const { protect } = require("../middleware/authMiddleware");
 const logActivity = require("./logactivity");
 const { formatEmailErrorResponse } = require("../services/emailService");
-const { getUserEmailOptions, sendUserMail } = require("../services/userEmailService");
+const { sendUserMail } = require("../services/userEmailService");
 const { sendWhatsAppMessage } = require("../services/whatsappService");
-const { runEmailSequenceWorkerOnce, scheduleForStep } = require("../services/emailSequenceWorker");
+const { scheduleForStep } = require("../services/emailSequenceWorker");
 const { getLineupForm, validateLineupFields } = require("../services/lineupConversion");
 const { getSignedUrl } = require("../config/s3Config");
 
 const router = express.Router();
 const { reportDateRange, buildReportRows } = require('../services/followUpReport');
 const { getEmailSequences, selectEmailSequence } = require('../services/emailSequences');
-const { assertNotSuppressed, suppressEmail, unsubscribeUrl, normalizeEmail } = require('../services/emailSuppression');
-const { assertReplyDetection } = require('../services/microsoftMailService');
+const { suppressEmail, normalizeEmail } = require('../services/emailSuppression');
 const EmailSuppression = require('../models/EmailSuppression');
 const EmailEnrollment = require('../models/EmailEnrollment');
 
@@ -83,6 +82,9 @@ const requireRecruiter = async (req, res, next) => {
 };
 
 router.use(protect, requireRecruiter);
+const teamEmailOnly = (_req, res) => res.status(403).json({
+  message: 'Email sequences are now started by a mentor or manager from Team email sequences. Recruiters can continue adding contacts and connecting their mailbox.',
+});
 
 const escapeRegex = (value = "") => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const toId = (value) => String(value?._id || value || "");
@@ -1090,7 +1092,7 @@ router.post("/candidates/:candidateId/lineup", async (req, res) => {
     if (!normal) {
       const block = await getCandidateAdditionBlock(req, job, dynamicFields.Email, dynamicFields.Phone, false);
       if (!block.canAdd) return res.status(409).json({ success: false, ...block });
-      normal = await CandidateByJob.create({ _id: candidate._id, jobId: job._id, createdBy: candidate.recruiterId?._id || candidate.recruiterId, dynamicFields, resumeUrl: candidate.resumeFileUrl, linkedinUrl: candidate.linkedinProfile, notes: "Converted to lineup from Follow-ups", status: "New" });
+      normal = await CandidateByJob.create({ _id: candidate._id, jobId: job._id, createdBy: candidate.recruiterId?._id || candidate.recruiterId, sourceCreatedAt: candidate.createdAt, dynamicFields, resumeUrl: candidate.resumeFileUrl, linkedinUrl: candidate.linkedinProfile, notes: "Converted to lineup from Follow-ups", status: "New" });
     }
     // Stop the source workflow before removing its profile. Preserve its history for audit.
     await Communication.updateMany({ candidateId: candidate._id, status: { $in: ["generated", "reviewed", "scheduled", "failed"] } }, { $set: { status: "stopped", stoppedAt: new Date(), stopReason: "converted_to_lineup" } });
@@ -1407,70 +1409,7 @@ router.post("/candidates/:candidateId/draft-studio/review", async (req, res) => 
   }
 });
 
-router.post("/candidates/:candidateId/draft-studio/start", async (req, res) => {
-  try {
-    if (req.query.channel === "whatsapp") return res.status(400).json({ success: false, message: "WhatsApp uses direct messages. Use Send message instead of a sequence." });
-    const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);
-    if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
-    const channel = req.query.channel === "whatsapp" ? "WHATSAPP" : "EMAIL";
-    if (channel === "EMAIL") await getUserEmailOptions(req.user._id);
-    const recipient = channel === "EMAIL" ? getCandidateField(candidate, ["email", "Email"]) : normalizeWhatsAppPhone(getCandidateField(candidate, ["phoneNumber", "Phone", "phone", "Mobile", "mobile"]));
-    if (!recipient || (channel === "EMAIL" ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) : recipient.length < 11 || recipient.length > 15)) return res.status(400).json({ success: false, message: "Invalid candidate contact details" });
-    const existing = await Communication.findOne({ candidateId: candidate._id, requirementId: job._id, recruiterId: req.user._id, channel, sequenceId: { $type: "string" }, status: { $in: ["scheduled", "pending"] } });
-    if (existing) return res.status(409).json({ success: false, message: "A sequence is already active" });
-    const selected = selectEmailSequence(job.communicationTemplates || [], req.body.sequenceName);
-    const templates = selected.templates;
-    await assertNotSuppressed(recipient);
-    await assertReplyDetection(req.user._id);
-    unsubscribeUrl(recipient);
-    if (!templates.length || templates.some(t => !t.body.trim() || (channel === "EMAIL" && !t.subject.trim()))) return res.status(400).json({ success: false, message: "Add complete templates to this requirement before starting" });
-    const sequenceId = `ats-${candidate._id}-${channel}-${Date.now()}`;
-    const vars = templateVariables(candidate, job, req.user);
-    try { await EmailEnrollment.init(); await EmailEnrollment.create({ key: `${req.user._id}:${normalizeEmail(recipient)}`, sequenceId }); }
-    catch (error) {
-      if (error.code === 11000) {
-        const enrollment = await EmailEnrollment.findOne({ key: `${req.user._id}:${normalizeEmail(recipient)}` }).lean();
-        if (enrollment && !(await Communication.exists({ sequenceId: enrollment.sequenceId, status: { $in: ['generated', 'reviewed', 'scheduled', 'pending'] } }))) {
-          await EmailEnrollment.deleteOne({ _id: enrollment._id, sequenceId: enrollment.sequenceId });
-          return res.status(409).json({ message: 'A previous sequence has finished. Please start again.' });
-        }
-        return res.status(409).json({ message: 'This mailbox already has an active sequence for this candidate email. Stop it before starting another.' });
-      }
-      throw error;
-    }
-    let drafts;
-    try { drafts = await Communication.insertMany(templates.map((t, step) => ({ candidateId: candidate._id, requirementId: job._id, recruiterId: req.user._id, channel, recipient: normalizeEmail(recipient), subject: renderTemplate(t.subject, vars), body: renderTemplate(t.body, vars), status: "generated", sequenceId, sequenceName: selected.name, detectReplies: true, sequenceStep: step, idempotencyKey: `${sequenceId}-${step}` }))); }
-    catch (error) { await Communication.deleteMany({ sequenceId, status: 'generated' }); await EmailEnrollment.deleteOne({ sequenceId }); throw error; }
-    const startedAt = new Date();
-    const scheduled = [];
-    for (const draft of drafts) {
-      if ((channel === "EMAIL" && !draft.subject) || !draft.body) throw new Error("All drafts need subject and body");
-      draft.status = "scheduled";
-      draft.scheduledAt = draft.scheduledAt || scheduleForStep(draft.sequenceStep || 0, startedAt);
-      draft.errorMessage = undefined;
-      await draft.save();
-      scheduled.push(draft);
-    }
-    const workerResult = await runEmailSequenceWorkerOnce();
-    const failedDraft = await Communication.findOne({ sequenceId, recruiterId: req.user._id, status: "failed" }).lean();
-    if (failedDraft) {
-      let failure = {};
-      try { failure = JSON.parse(failedDraft.errorMessage || "{}"); } catch { /* Show a safe fallback for legacy error strings. */ }
-      return res.status(422).json({ success: false, code: failure.code || "EMAIL_SEND_FAILED", message: failure.message || "The first email could not be sent. Check the error shown in the email draft.", sequenceId });
-    }
-
-    logActivity(req.user._id, "scheduled", "candidate-email-sequence", `Email sequence scheduled: ${scheduled.length} emails`, candidate._id, "SourceCandidate", {
-      actionType: "email_sequence_scheduled",
-      candidateId: candidate._id,
-      jobId: job._id,
-      performedByRole: req.user.designation,
-      metadata: { recipient, sequenceId, scheduled: scheduled.length, workerResult },
-    });
-    res.json({ success: true, scheduled, workerResult });
-  } catch (error) {
-    res.status(error.status || 500).json({ success: false, message: "Email sequence scheduling failed", ...formatEmailErrorResponse(error) });
-  }
-});
+router.post("/candidates/:candidateId/draft-studio/start", teamEmailOnly);
 
 router.post("/candidates/:candidateId/draft-studio/stop", async (req, res) => {
   try {
@@ -1541,59 +1480,7 @@ router.post("/candidates/:candidateId/email/generate", async (req, res) => {
   res.json({ success: true, templates });
 });
 
-router.post("/candidates/:candidateId/email/send", async (req, res) => {
-  try {
-    const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);
-    if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
-    const recipient = req.body.recipient || getCandidateField(candidate, ["email", "Email"]);
-    const { subject, body, htmlBody, idempotencyKey } = req.body;
-    if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) return res.status(400).json({ success: false, message: "Invalid candidate email" });
-    if (!subject || !body) return res.status(400).json({ success: false, message: "Subject and body are required" });
-    if (idempotencyKey) {
-      const existing = await Communication.findOne({ recruiterId: req.user._id, channel: "EMAIL", idempotencyKey });
-      if (existing) return res.json({ success: true, communication: existing, duplicate: true });
-    }
-    await getUserEmailOptions(req.user._id);
-    const communication = await Communication.create({
-      candidateId: candidate._id,
-      requirementId: job._id,
-      recruiterId: req.user._id,
-      channel: "EMAIL",
-      recipient,
-      subject,
-      body,
-      status: "pending",
-      idempotencyKey,
-    });
-    try {
-      const result = await sendUserMail(req.user._id, {
-        to: recipient,
-        subject,
-        html: htmlBody || body.replace(/\n/g, "<br/>"),
-        text: body,
-      });
-      communication.status = "sent";
-      communication.providerMessageId = result.messageId || result.traceId;
-      communication.sentAt = new Date();
-      await communication.save();
-      logActivity(req.user._id, "sent", "candidate-email", `Email sent: ${subject}`, candidate._id, "SourceCandidate", {
-        actionType: "email",
-        candidateId: candidate._id,
-        jobId: job._id,
-        performedByRole: req.user.designation,
-        metadata: { recipient, subject, sourceCandidateId: candidate._id },
-      });
-      res.json({ success: true, communication });
-    } catch (error) {
-      communication.status = "failed";
-      communication.errorMessage = JSON.stringify(formatEmailErrorResponse(error));
-      await communication.save();
-      res.status(500).json({ success: false, message: "Email sending failed", ...formatEmailErrorResponse(error), communication });
-    }
-  } catch (error) {
-    res.status(error.status || 500).json({ success: false, message: "Failed to send email", ...formatEmailErrorResponse(error) });
-  }
-});
+router.post("/candidates/:candidateId/email/send", teamEmailOnly);
 
 router.post("/candidates/:candidateId/whatsapp/generate", async (req, res) => {
   const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);

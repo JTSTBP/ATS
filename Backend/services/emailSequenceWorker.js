@@ -1,5 +1,6 @@
 const Communication = require("../models/Communication");
 const EmailEnrollment = require('../models/EmailEnrollment');
+const ClientEmailDispatch = require('../models/ClientEmailDispatch');
 const { formatEmailErrorResponse } = require("./emailService");
 
 const { sendUserMail } = require("./userEmailService");
@@ -9,7 +10,7 @@ const { checkSequenceReplies, pollSequenceReplies } = require('./emailReplyDetec
 
 const { scheduleForStep, sendingDayStart } = require("../utils/emailSchedule");
 
-const renderHtml = (body) => String(body || "").replace(/\n/g, "<br/>");
+const renderHtml = (body) => String(body || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, '<br/>');
 
 const sendCommunication = async (communication) => {
   const result = communication.channel === "WHATSAPP" ? await sendWhatsAppMessage({ to: communication.recipient, body: communication.body }) : await sendUserMail(communication.recruiterId, {
@@ -29,6 +30,7 @@ const sendCommunication = async (communication) => {
 
 const runEmailSequenceWorkerOnce = async () => {
   const now = new Date();
+  await Communication.updateMany({ channel: 'EMAIL', sequenceId: { $type: 'string' }, clientDispatchId: { $exists: false }, status: { $in: ['generated', 'reviewed', 'scheduled', 'failed'] } }, { $set: { status: 'stopped', stoppedAt: now, stopReason: 'team_email_approval_required' } });
   if (!sendingDayStart(now)) return { checked: 0, sent: 0, failed: 0 };
   await Communication.updateMany({ channel: "WHATSAPP", sequenceId: { $type: "string" }, status: { $in: ["generated", "reviewed", "scheduled", "failed"] } }, { $set: { status: "stopped", stoppedAt: now, stopReason: "whatsapp_direct_messages_only" } });
   const due = await Communication.find({
@@ -41,6 +43,11 @@ const runEmailSequenceWorkerOnce = async () => {
   let sent = 0;
   let failed = 0;
   for (const item of due) {
+    if (!item.clientDispatchId) {
+      await Communication.updateMany({ sequenceId: item.sequenceId, status: { $in: ['generated', 'reviewed', 'scheduled', 'failed'] } }, { $set: { status: 'stopped', stoppedAt: new Date(), stopReason: 'team_email_approval_required' } });
+      continue;
+    }
+    if (!(await ClientEmailDispatch.exists({ _id: item.clientDispatchId, sequenceId: item.sequenceId, recruiterId: item.recruiterId, email: item.recipient, state: 'queued' }))) continue;
     const dayStart = sendingDayStart(new Date());
     if (!dayStart) break;
     if (item.detectReplies && await Communication.exists({ sequenceId: item.sequenceId, sequenceStep: { $lt: item.sequenceStep }, status: { $in: ['generated', 'reviewed', 'scheduled', 'pending', 'failed', 'stopped'] } })) continue;

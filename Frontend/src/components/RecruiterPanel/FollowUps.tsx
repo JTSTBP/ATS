@@ -1,4 +1,5 @@
 import EmailConnection from "./EmailConnection";
+import TeamEmailSequences from './TeamEmailSequences';
 import FollowUpReport from "./FollowUpReport";
 import "./FollowUps.css";
 import { useAuth } from "../../context/AuthProvider";
@@ -1122,11 +1123,12 @@ export default function FollowUps() {
     const isWhatsApp = activeTab === "WhatsApp";
     const channelActivity = activity.filter(item => String(item.module || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email") || String(item.actionType || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email"));
     const preview = draftStudio.drafts.length && (draftStudio.status === 'Active' || !draftStudio.name || selectedEmailSequence === draftStudio.name) ? draftStudio.drafts : (draftStudio.templates || []);
-    const canStart = (draftStudio.templates || []).length > 0 && !draftStudio.suppressionReason && draftStudio.status !== 'Active' && (draftStudio.status !== 'Completed' || selectedEmailSequence !== draftStudio.name);
+    const canStart = false; // Sequence starts are managed through the client-level team screen.
     const canClear = Boolean(draftStudio.id) && draftStudio.status !== 'Completed';
     const showStopStep = draftStudio.status === "Active";
     return (
       <div className="space-y-5">
+        <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Email sequences are started by your mentor or manager from Team email sequences. Recruiters can add contacts, connect their own mailbox, and record opt-outs here.</p>
         {!isWhatsApp && <EmailConnection />}
         {!isWhatsApp && selectedCandidate && <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
           <label className="block text-sm font-semibold">Email sequence<select value={selectedEmailSequence} disabled={draftStudio.status === 'Active' || Boolean(draftSaving)} onChange={event => { setSelectedEmailSequence(event.target.value); loadDraftStudio(selectedCandidateId, event.target.value); }} className="ml-2 rounded-lg border px-3 py-2"><option value="">Select sequence</option>{(draftStudio.sequences || []).map((sequence: any) => <option key={sequence.name} value={sequence.name}>{sequence.name} ({sequence.count} emails)</option>)}</select></label>
@@ -1320,6 +1322,7 @@ export default function FollowUps() {
 
   return (
     <div className="followups-page min-w-0">
+      {['Mentor', 'Manager'].includes(user?.designation || '') && <TeamEmailSequences />}
       {selectedRequirement ? DetailView() : RequirementList()}
 
       {lineupCandidate && <ModalShell title={`Convert to lineup — ${lineupCandidate.name}`} onClose={() => { if (saving !== "convert-lineup") setLineupCandidate(null); }}>
@@ -1646,8 +1649,8 @@ export default function FollowUps() {
             <input value={composer.recipient} onChange={(e) => setComposer({ ...composer, recipient: e.target.value })} placeholder="Recipient email" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
             {modal === "email" && <input value={composer.subject} onChange={(e) => setComposer({ ...composer, subject: e.target.value })} placeholder="Subject" className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />}
             <textarea value={composer.body} onChange={(e) => setComposer({ ...composer, body: e.target.value })} placeholder="Message body" rows={8} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
-            <button disabled={saving.includes("send")} onClick={() => sendMessage(modal as any)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60">
-              <Send size={16} /> {saving.includes("send") ? "Sending..." : "Send"}
+            <button disabled={modal === 'email' || saving.includes("send")} onClick={() => sendMessage(modal as any)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60">
+              <Send size={16} /> {modal === 'email' ? 'Use Team email sequences to send' : saving.includes("send") ? "Sending..." : "Send"}
             </button>
           </div>
         </ModalShell>

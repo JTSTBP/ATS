@@ -17,6 +17,8 @@ const communicationSchema = new mongoose.Schema(
     sequenceId: { type: String, index: true },
     sequenceStep: { type: Number },
     sequenceName: { type: String },
+    clientDispatchId: { type: mongoose.Schema.Types.ObjectId, ref: 'ClientEmailDispatch', index: true },
+    initiatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     detectReplies: { type: Boolean, default: false },
     replyDetectedAt: { type: Date },
     replyCheckError: { type: String },
