@@ -110,7 +110,7 @@ router.get('/clients/:clientId/preview', endpoint(async (req, res) => {
   const dispatches = await ClientEmailDispatch.find({ clientId: req.params.clientId, recruiterId: { $in: req.emailTeam.map(member => member._id) } }).sort({ createdAt: -1 }).limit(100).lean();
   const messages = await Communication.find({ clientDispatchId: { $in: dispatches.map(dispatch => dispatch._id) } }).select('clientDispatchId status stopReason replyCheckError sentAt').lean();
   const sequences = dispatches.map(dispatch => ({ _id: dispatch._id, email: dispatch.email, name: dispatch.sequenceName, createdAt: dispatch.createdAt, state: dispatch.state, steps: messages.filter(message => id(message.clientDispatchId) === id(dispatch._id)).map(message => ({ status: message.status, stopReason: message.stopReason, replyCheckError: message.replyCheckError })) }));
-  res.json({ contacts: rows, templates, sequences, mailboxes: req.emailTeam.map(member => ({ _id: member._id, name: member.name, email: member.email, ready: !mailboxErrors.has(id(member._id)), reason: mailboxErrors.get(id(member._id)) || '' })) });
+  res.json({ contacts: rows, templates, sequences, mailboxes: req.emailTeam.filter(member => !member.isDisabled).map(member => ({ _id: member._id, name: member.name, email: member.email, ready: !mailboxErrors.has(id(member._id)), reason: mailboxErrors.get(id(member._id)) || '' })) });
 }));
 
 router.post('/clients/:clientId/templates', endpoint(async (req, res) => {

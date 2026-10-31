@@ -80,6 +80,22 @@ test('only active mentors/managers can access team email; recruiters and admins 
   assert.equal(res.code, 401);
 });
 
+test('team mailbox list excludes disabled recruiters without transferring their contact ownership', async () => {
+  const app = load();
+  const req = app.request();
+  req.emailTeam[0].isDisabled = true;
+  const res = response();
+  await app.handlers['GET /clients/:clientId/preview'](req, res);
+  assert.equal(res.code, 200);
+  assert.deepEqual(Array.from(res.body.mailboxes, mailbox => mailbox._id), [recruiterB]);
+  const first = res.body.contacts.find(contact => contact.candidateId === firstId);
+  const later = res.body.contacts.find(contact => contact.candidateId === laterId);
+  assert.equal(first.eligible, false);
+  assert.equal(first.reason, 'Recruiter account is disabled');
+  assert.equal(later.eligible, false);
+  assert.match(later.reason, /Duplicate/);
+});
+
 test('batch queues one sequence using the first recruiter identity and preserves the manager actor', async () => {
   const app = load(), res = response();
   await app.handlers['POST /clients/:clientId/start'](app.request(), res);
