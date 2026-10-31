@@ -77,6 +77,7 @@ const UserSchema = new mongoose.Schema({
     email: String,
     refreshToken: String,
     connectedAt: Date,
+    readEnabled: { type: Boolean, default: false },
     needsReconnect: { type: Boolean, default: false },
     pendingState: String,
     pendingVerifier: String,

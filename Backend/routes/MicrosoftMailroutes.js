@@ -32,6 +32,7 @@ router.get("/status", async (req, res) => {
     res.set("Cache-Control", "no-store");
     res.json({ configured, hasAppPassword: Boolean(String(user.appPassword || "").replace(/[\s"']/g, "")), provider: user.followUpEmailProvider || "smtp", email: user.email,
       configurationError,
+      replyDetectionReady: Boolean(user.microsoftMail?.readEnabled) && !user.microsoftMail?.needsReconnect,
       connected: Boolean(user.microsoftMail?.refreshToken) && !user.microsoftMail.needsReconnect && user.microsoftMail.email === user.email.trim().toLowerCase(),
       microsoftRequired: isOutlookAddress(user.email) || user.followUpEmailProvider === "microsoft" });
   } catch { res.status(500).json({ message: "Unable to load email connection" }); }

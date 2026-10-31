@@ -3,7 +3,7 @@ import axios from "axios";
 import { Mail, RefreshCw } from "lucide-react";
 
 const api = `${import.meta.env.VITE_BACKEND_URL}/api/microsoft-mail`;
-type Connection = { hasAppPassword: boolean; configured: boolean; connected: boolean; email: string; provider: string; microsoftRequired: boolean; configurationError?: string };
+type Connection = { hasAppPassword: boolean; configured: boolean; connected: boolean; email: string; provider: string; microsoftRequired: boolean; replyDetectionReady?: boolean; configurationError?: string };
 
 export default function EmailConnection() {
   const [connection, setConnection] = useState<Connection | null>(null);
@@ -78,5 +78,6 @@ export default function EmailConnection() {
     </div>
     {connection && !connection.configured && <p className="mt-3 text-xs text-amber-700">{connection.configurationError || "Microsoft sign-in requires administrator setup."}</p>}
     {message && <p role="status" className="mt-3 text-sm text-slate-600">{message}</p>}
+    {connection && <p className="mt-3 text-xs text-slate-600">{connection.replyDetectionReady && connection.connected ? 'Reply detection enabled. Follow-ups stop when the candidate replies to this sequence.' : 'Automatic sequences require Microsoft 365 with Mail.Read permission. Connect or reconnect your mailbox and ask your administrator to approve consent.'}</p>}
   </section>;
 }

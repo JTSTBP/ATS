@@ -64,10 +64,11 @@ const jobSchema = new mongoose.Schema(
     candidateFields: [candidateFieldSchema],
     communicationTemplates: { type: [new mongoose.Schema({
       channel: { type: String, enum: ["EMAIL", "WHATSAPP"], required: true },
+      sequenceName: { type: String, default: 'Default', trim: true, maxlength: 100 },
       label: { type: String, required: true, trim: true },
       subject: { type: String, default: "" },
       body: { type: String, required: true, trim: true },
-    })], default: [], validate: { validator: templates => templates.filter(template => template.channel === "WHATSAPP").length <= 1, message: "Only one WhatsApp template is allowed per requirement" } },
+    })], default: [], validate: { validator: templates => templates.filter(template => template.channel === "WHATSAPP").length <= 5 && templates.filter(template => template.channel === 'EMAIL').every(template => templates.filter(other => other.channel === 'EMAIL' && String(other.sequenceName || 'Default').trim().toLowerCase() === String(template.sequenceName || 'Default').trim().toLowerCase()).length <= 5), message: "Up to five emails per named sequence and five WhatsApp templates per requirement are allowed" } },
     jdFile: { type: String }, // Path or URL to the uploaded Job Description document
     jdFileName: { type: String }, // Original file name of the Job Description document
   },

@@ -1,7 +1,8 @@
 const crypto = require("crypto");
 const User = require("../models/Users");
 
-const SCOPES = "offline_access https://graph.microsoft.com/User.Read https://graph.microsoft.com/Mail.Send";
+const SEND_SCOPES = "offline_access https://graph.microsoft.com/User.Read https://graph.microsoft.com/Mail.Send";
+const SCOPES = `${SEND_SCOPES} https://graph.microsoft.com/Mail.Read`;
 const mailError = (code, message, status = 400) => Object.assign(new Error(message), { code, status, provider: "microsoft" });
 const hash = value => crypto.createHash("sha256").update(value).digest("hex");
 const isOutlookAddress = email => /@(outlook\.[a-z.]+|hotmail\.[a-z.]+|live\.[a-z.]+|msn\.com)$/i.test(email || "");
@@ -95,6 +96,7 @@ const completeConnection = async ({ state, code, error }) => {
   const updated = await User.updateOne({ _id: user._id, email: user.email, isDisabled: { $ne: true } }, { $set: {
     followUpEmailProvider: "microsoft", "microsoftMail.email": email, "microsoftMail.refreshToken": seal(tokens.refresh_token),
     "microsoftMail.connectedAt": new Date(), "microsoftMail.needsReconnect": false,
+    "microsoftMail.readEnabled": String(tokens.scope || '').split(' ').some(scope => /(^|\/)Mail.Read$/i.test(scope)),
   } });
   if (!updated.matchedCount) throw mailError("MICROSOFT_ACCOUNT_CHANGED", "Your profile changed. Please connect again.");
 };
@@ -117,7 +119,7 @@ const getAccessToken = userId => {
     assertMicrosoftConnection(user);
     const previous = user.microsoftMail.refreshToken;
     let tokens;
-    try { tokens = await requestToken({ grant_type: "refresh_token", refresh_token: unseal(previous) }); }
+    try { tokens = await requestToken({ grant_type: "refresh_token", refresh_token: unseal(previous), scope: user.microsoftMail.readEnabled ? SCOPES : SEND_SCOPES }); }
     catch (error) {
       if (error.code === "MICROSOFT_RECONNECT_REQUIRED") await User.updateOne({ _id: id, "microsoftMail.refreshToken": previous }, { $set: { "microsoftMail.needsReconnect": true } });
       throw error;
@@ -137,7 +139,7 @@ const sendMicrosoftMail = async (userId, message) => {
   const response = await fetch("https://graph.microsoft.com/v1.0/me/sendMail", {
     method: "POST", signal: AbortSignal.timeout(30000),
     headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ message: { subject: message.subject, body: { contentType: message.html ? "HTML" : "Text", content: message.html || message.text || "" }, toRecipients, ccRecipients: recipients(message.cc), bccRecipients: recipients(message.bcc) }, saveToSentItems: true }),
+    body: JSON.stringify({ message: { subject: message.subject, body: { contentType: message.html ? "HTML" : "Text", content: message.html || message.text || "" }, toRecipients, ccRecipients: recipients(message.cc), bccRecipients: recipients(message.bcc), ...(message.followUpSequenceId ? { internetMessageHeaders: [{ name: 'x-ats-sequence-id', value: message.followUpSequenceId }] } : {}) }, saveToSentItems: true }),
   });
   if (response.status !== 202) {
     const data = await response.json().catch(() => null);
@@ -157,5 +159,31 @@ const sendMicrosoftMail = async (userId, message) => {
   return { provider: "microsoft", messageId: response.headers.get("request-id") || crypto.randomUUID(), accepted: true };
 };
 
-module.exports = { getConfig, startConnection, completeConnection, assertMicrosoftConnection, sendMicrosoftMail, isOutlookAddress, seal, unseal };
+async function assertReplyDetection(userId) {
+  const user = await User.findById(userId).select('email isDisabled followUpEmailProvider microsoftMail').lean();
+  if (!user || user.isDisabled || user.followUpEmailProvider !== 'microsoft' || !user.microsoftMail?.readEnabled) throw mailError('MICROSOFT_READ_CONSENT_REQUIRED', 'Connect or reconnect Microsoft 365 and approve Mail.Read to enable reply detection. Your administrator may need to approve this permission.');
+  assertMicrosoftConnection(user);
+}
+
+async function listMailboxMessages(userId, folder, since) {
+  await assertReplyDetection(userId);
+  const token = await getAccessToken(userId);
+  const dateField = folder === 'sentitems' ? 'sentDateTime' : 'receivedDateTime';
+  const params = new URLSearchParams({ '$filter': `${dateField} ge ${new Date(since).toISOString()}`, '$select': 'id,from,toRecipients,receivedDateTime,sentDateTime,conversationId,internetMessageId,internetMessageHeaders', '$top': '100' });
+  let next = `https://graph.microsoft.com/v1.0/me/${folder === 'sentitems' ? 'mailFolders/sentitems/' : ''}messages?${params}`;
+  const messages = [];
+  for (let page = 0; next && page < 50; page++) {
+    const url = new URL(next);
+    if (url.origin !== 'https://graph.microsoft.com' || !url.pathname.startsWith('/v1.0/me/')) throw mailError('MICROSOFT_READ_FAILED', 'Invalid mailbox continuation URL', 502);
+    const response = await fetch(next, { signal: AbortSignal.timeout(30000), headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) throw mailError('MICROSOFT_READ_FAILED', `Reply check failed (HTTP ${response.status}). Follow-ups are paused until mailbox access recovers.`, 502);
+    const data = await response.json();
+    if (!Array.isArray(data.value)) throw mailError('MICROSOFT_READ_FAILED', 'Invalid reply-check response', 502);
+    messages.push(...data.value);
+    next = data['@odata.nextLink'];
+  }
+  if (next) throw mailError('MICROSOFT_READ_FAILED', 'Reply check exceeded its page limit. Follow-ups remain paused; contact your administrator.', 502);
+  return messages;
+}
+module.exports = { getConfig, startConnection, completeConnection, assertMicrosoftConnection, sendMicrosoftMail, isOutlookAddress, seal, unseal, assertReplyDetection, listMailboxMessages };
 

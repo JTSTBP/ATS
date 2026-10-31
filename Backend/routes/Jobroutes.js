@@ -9,6 +9,7 @@ const { protect } = require("../middleware/authMiddleware");
 const { mergeMentorAssignments } = require("../services/mentorJobAssignments");
 
 const router = express.Router();
+const { validateEmailSequences } = require('../services/emailSequences');
 
 // ➕ Create a new job
 router.post("/", jobDescriptionUpload.single("jdFile"), async (req, res) => {
@@ -24,6 +25,7 @@ router.post("/", jobDescriptionUpload.single("jdFile"), async (req, res) => {
       jobData = { ...req.body };
     }
     delete jobData._id; // <-- remove _id if sent accidentally
+    if (jobData.communicationTemplates !== undefined) validateEmailSequences(jobData.communicationTemplates);
     if (Array.isArray(jobData.communicationTemplates) && jobData.communicationTemplates.filter(template => template.channel === "WHATSAPP").length > 5) return res.status(400).json({ success: false, message: "Up to five WhatsApp templates are allowed per requirement" });
 
     if (req.file) {
@@ -58,7 +60,7 @@ router.post("/", jobDescriptionUpload.single("jdFile"), async (req, res) => {
     res.status(201).json({ success: true, job: jobObj });
   } catch (error) {
     console.error("Error creating job:", error);
-    res.status(500).json({
+    res.status(error.status || 500).json({
       success: false,
       message: error.message || "Failed to create job. Please check all required fields.",
     });
@@ -497,6 +499,7 @@ router.put("/:id", protect, jobDescriptionUpload.single("jdFile"), async (req, r
 
     if (Array.isArray(updateData.communicationTemplates) && updateData.communicationTemplates.filter(template => template.channel === "WHATSAPP").length > 5) return res.status(400).json({ success: false, message: "Up to five WhatsApp templates are allowed per requirement" });
 
+    if (updateData.communicationTemplates !== undefined) validateEmailSequences(updateData.communicationTemplates);
     const oldJob = await Job.findById(req.params.id);
     if (!oldJob) {
       return res.status(404).json({ success: false, message: "Job not found" });
@@ -592,6 +595,7 @@ router.put("/:id", protect, jobDescriptionUpload.single("jdFile"), async (req, r
     res.json({ success: true, job: jobObj });
   } catch (error) {
     console.error("Error updating job:", error);
+    if (error.name === "ValidationError") return res.status(400).json({ success: false, message: Object.values(error.errors).map(detail => detail.message).join("; ") });
     res.status(error.status || 500).json({ success: false, message: error.status ? error.message : "Failed to update job" });
   }
 });

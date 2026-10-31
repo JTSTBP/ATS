@@ -76,7 +76,7 @@ type Job = {
   CreatedBy?: string;
   UpdatedBy?: string;
   clientId?: string;
-  communicationTemplates?: { channel: "EMAIL" | "WHATSAPP"; label: string; subject: string; body: string }[];
+  communicationTemplates?: { channel: "EMAIL" | "WHATSAPP"; sequenceName?: string; label: string; subject: string; body: string }[];
   jdFile?: string;
   jdFileName?: string;
 };
@@ -86,9 +86,10 @@ type JobFormProps = {
   onClose: () => void;
 };
 
-const createTemplateSet = (channel: "EMAIL" | "WHATSAPP", offset = 0) =>
+const createTemplateSet = (channel: "EMAIL" | "WHATSAPP", offset = 0, sequenceName = 'Default') =>
   Array.from({ length: channel === "EMAIL" ? 5 : Math.max(0, 5 - offset) }, (_, index) => ({
     channel,
+    sequenceName,
     label: `${channel === "EMAIL" ? "Email" : "WhatsApp"} ${offset + index + 1}`,
     subject: "",
     body: "Hi {{candidateName}},\n\n",
@@ -98,6 +99,7 @@ const getUserReferenceId = (value: string | { _id: string } | null | undefined):
   typeof value === "string" ? value : value?._id || "";
 
 export const JobForm = ({ job, onClose }: JobFormProps) => {
+  const [newSequenceName, setNewSequenceName] = useState('');
   const [step, setStep] = useState(1);
   const totalSteps = 8;
   const { users } = useUserContext();
@@ -975,10 +977,17 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
           {step === 3 && <section className="mt-5 space-y-3 rounded-xl border p-4">
             <h4 className="font-semibold">Email & WhatsApp follow-up templates</h4>
-            <p className="text-sm text-gray-500">The candidate profile name is filled automatically wherever you use {"{{candidateName}}"} in the subject or message. Email adds five templates. WhatsApp supports up to five templates for direct messages. Templates start with only the greeting; fill in the remaining content. Personalise with {"{{candidateName}}, {{jobTitle}}, {{companyName}}, {{location}}, {{recruiterName}}"}.</p>
+            <p className="text-sm text-gray-500">Create named email sequences with up to five emails total each. Remove unused emails. Each candidate runs one selected sequence. WhatsApp supports up to five direct-message templates. Personalise with {"{{candidateName}}, {{jobTitle}}, {{companyName}}, {{location}}, {{recruiterName}}"}.</p>
+            <TextField fullWidth label="New email sequence name" placeholder="e.g. Initial outreach" value={newSequenceName} onChange={event => setNewSequenceName(event.target.value)} inputProps={{ maxLength: 100 }} />
             {(["EMAIL", "WHATSAPP"] as const).map(channel => <div key={channel} className="space-y-3">
-              <button type="button" disabled={channel === "WHATSAPP" && (formData.communicationTemplates || []).filter(template => template.channel === "WHATSAPP").length >= 5} className="rounded-lg bg-blue-50 px-3 py-2 text-blue-700 disabled:opacity-50" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: [...(prev.communicationTemplates || []), ...createTemplateSet(channel, (prev.communicationTemplates || []).filter(template => template.channel === channel).length)] }))}>{channel === "EMAIL" ? "Add 5 email templates" : "Add WhatsApp templates (up to 5)"}</button>
+              <button type="button" disabled={channel === "WHATSAPP" && (formData.communicationTemplates || []).filter(template => template.channel === "WHATSAPP").length >= 5} className="rounded-lg bg-blue-50 px-3 py-2 text-blue-700 disabled:opacity-50" onClick={() => {
+                const name = newSequenceName.trim();
+                if (channel === 'EMAIL' && (!name || (formData.communicationTemplates || []).some(template => template.channel === 'EMAIL' && (template.sequenceName || 'Default').toLowerCase() === name.toLowerCase()))) { setError('Enter a new, unique email sequence name'); return; }
+                setFormData(prev => ({ ...prev, communicationTemplates: [...(prev.communicationTemplates || []), ...createTemplateSet(channel, channel === 'EMAIL' ? 0 : (prev.communicationTemplates || []).filter(template => template.channel === channel).length, name || 'Default')] }));
+                if (channel === 'EMAIL') setNewSequenceName('');
+              }}>{channel === "EMAIL" ? "Add named sequence (5 emails)" : "Add WhatsApp templates (up to 5)"}</button>
               {(formData.communicationTemplates || []).map((template, index) => template.channel === channel && <div key={index} className="space-y-2 rounded-lg border p-3">
+                {channel === 'EMAIL' && <TextField fullWidth label="Sequence name" value={template.sequenceName ?? 'Default'} inputProps={{ maxLength: 100 }} onChange={event => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, itemIndex) => itemIndex === index ? { ...item, sequenceName: event.target.value } : item) }))} helperText="Emails with the same sequence name are sent together (maximum five)." />}
                 {(["label", ...(channel === "EMAIL" ? ["subject"] : []), "body"] as ("label" | "subject" | "body")[]).map(field => <TextField key={field} fullWidth required label={field === "label" ? "Template name" : field === "subject" ? "Email subject" : "Message"} multiline={field === "body"} minRows={field === "body" ? 3 : undefined} value={template[field]} onChange={event => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, [field]: event.target.value } : item) }))} />)}
                 <button type="button" className="mr-3 text-sm text-blue-700" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).map((item, i) => i === index ? { ...item, body: `${item.body}{{candidateName}}` } : item) }))}>Insert profile name</button>
                 <button type="button" className="text-sm text-red-600" onClick={() => setFormData(prev => ({ ...prev, communicationTemplates: (prev.communicationTemplates || []).filter((_, i) => i !== index) }))}>Remove template</button>
@@ -1566,7 +1575,7 @@ export const JobForm = ({ job, onClose }: JobFormProps) => {
 
               <div className="rounded-xl border p-4">
                 <h5 className="font-semibold">Follow-up templates</h5>
-                {(formData.communicationTemplates || []).map((t, i) => <div key={i} className="mt-2 text-sm"><b>{t.channel}: {t.label}</b>{t.subject && <p>{t.subject}</p>}<p className="whitespace-pre-wrap text-gray-600">{t.body}</p></div>)}
+                {(formData.communicationTemplates || []).map((t, i) => <div key={i} className="mt-2 text-sm"><b>{t.channel}: {t.channel === 'EMAIL' ? `${t.sequenceName || 'Default'} / ` : ''}{t.label}</b>{t.subject && <p>{t.subject}</p>}<p className="whitespace-pre-wrap text-gray-600">{t.body}</p></div>)}
                 {!formData.communicationTemplates?.length && <p className="text-sm text-gray-500">No templates configured.</p>}
               </div>
               {/* Grid Layout of Clean Cards */}

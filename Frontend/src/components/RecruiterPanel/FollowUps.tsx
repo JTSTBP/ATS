@@ -176,6 +176,8 @@ export default function FollowUps() {
     drafts: [],
   });
   const [draftSaving, setDraftSaving] = useState("");
+  const [selectedEmailSequence, setSelectedEmailSequence] = useState('');
+  const [suppressionReason, setSuppressionReason] = useState('declined');
   const [whatsappTemplateLoading, setWhatsappTemplateLoading] = useState(false);
   const [whatsappTemplateError, setWhatsappTemplateError] = useState("");
   const [hasWhatsappTemplate, setHasWhatsappTemplate] = useState(false);
@@ -535,12 +537,13 @@ export default function FollowUps() {
     }
   };
 
-  const loadDraftStudio = async (candidateId = selectedCandidateId) => {
+  const loadDraftStudio = async (candidateId = selectedCandidateId, sequenceName = selectedEmailSequence) => {
     if (!candidateId) return;
     setDraftSaving("load");
     try {
-      const { data } = await axios.get(`${API_URL}/candidates/${candidateId}/draft-studio?channel=email`);
+      const { data } = await axios.get(`${API_URL}/candidates/${candidateId}/draft-studio`, { params: { channel: 'email', sequenceName } });
       setDraftStudio(data.sequence || { id: "", status: "Empty", sent: 0, drafts: [] });
+      setSelectedEmailSequence(data.sequence?.selectedName || '');
     } catch (error: any) {
       toast.error(error.response?.data?.message || "Failed to load draft studio");
       setDraftStudio({ id: "", status: "Empty", sent: 0, drafts: [] });
@@ -558,7 +561,7 @@ export default function FollowUps() {
     if (!selectedCandidateId) return;
     setDraftSaving("start");
     try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start?channel=email`, { sequenceId: draftStudio.id });
+      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start?channel=email`, { sequenceId: draftStudio.id, sequenceName: selectedEmailSequence });
       await loadDraftStudio();
       await refreshCurrent();
       toast.success("Sequence scheduled");
@@ -670,7 +673,7 @@ export default function FollowUps() {
         </button>
       </div>
 
-      {["Admin", "Manager", "Mentor"].includes(user?.designation || "") && <FollowUpReport />}
+      {["Admin", "Manager", "Mentor"].includes(user?.designation || "") && <FollowUpReport isAdmin={isAdmin} />}
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
@@ -1118,13 +1121,20 @@ export default function FollowUps() {
   const EmailStudio = () => {
     const isWhatsApp = activeTab === "WhatsApp";
     const channelActivity = activity.filter(item => String(item.module || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email") || String(item.actionType || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email"));
-    const preview = draftStudio.drafts.length ? draftStudio.drafts : (draftStudio.templates || []);
-    const canStart = (draftStudio.templates || []).length > 0 && !["Active", "Completed"].includes(draftStudio.status);
-    const canClear = Boolean(draftStudio.id);
+    const preview = draftStudio.drafts.length && (draftStudio.status === 'Active' || !draftStudio.name || selectedEmailSequence === draftStudio.name) ? draftStudio.drafts : (draftStudio.templates || []);
+    const canStart = (draftStudio.templates || []).length > 0 && !draftStudio.suppressionReason && draftStudio.status !== 'Active' && (draftStudio.status !== 'Completed' || selectedEmailSequence !== draftStudio.name);
+    const canClear = Boolean(draftStudio.id) && draftStudio.status !== 'Completed';
     const showStopStep = draftStudio.status === "Active";
     return (
       <div className="space-y-5">
         {!isWhatsApp && <EmailConnection />}
+        {!isWhatsApp && selectedCandidate && <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+          <label className="block text-sm font-semibold">Email sequence<select value={selectedEmailSequence} disabled={draftStudio.status === 'Active' || Boolean(draftSaving)} onChange={event => { setSelectedEmailSequence(event.target.value); loadDraftStudio(selectedCandidateId, event.target.value); }} className="ml-2 rounded-lg border px-3 py-2"><option value="">Select sequence</option>{(draftStudio.sequences || []).map((sequence: any) => <option key={sequence.name} value={sequence.name}>{sequence.name} ({sequence.count} emails)</option>)}</select></label>
+          {draftStudio.name && <p className="text-xs text-slate-500">Last started sequence: {draftStudio.name}. Stop an active sequence before switching. Completed email history is retained.</p>}
+          {draftStudio.suppressionReason ? <p role="status" className="text-sm font-semibold text-red-700">Email suppressed: {draftStudio.suppressionReason}. Only Admin can remove this suppression.</p> : <div className="flex flex-wrap items-center gap-2"><label className="text-sm">Stop all emails to this address: <select aria-label="Suppression reason" value={suppressionReason} onChange={event => setSuppressionReason(event.target.value)} className="rounded-lg border px-2 py-2"><option value="declined">Candidate declined</option><option value="unsubscribed">Requested unsubscribe</option><option value="bounced">Invalid / bounced email</option><option value="manual">Manual suppression</option></select></label><button type="button" disabled={Boolean(draftSaving)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onClick={async () => { setDraftSaving('suppress'); try { await axios.post(`${API_URL}/candidates/${selectedCandidateId}/suppress-email`, { reason: suppressionReason }); await loadDraftStudio(); toast.success('Email suppressed across all recruiters'); } catch (error: any) { toast.error(error.response?.data?.message || 'Unable to suppress email'); } finally { setDraftSaving(''); } }}>Suppress email</button></div>}
+          {(draftStudio.drafts || []).some((draft: any) => draft.replyCheckError) && <p role="alert" className="text-sm text-amber-700">{draftStudio.drafts.find((draft: any) => draft.replyCheckError)?.replyCheckError}</p>}
+          {(draftStudio.drafts || []).some((draft: any) => draft.replyDetectedAt) && <p role="status" className="text-sm font-semibold text-emerald-700">Reply detected — remaining follow-ups stopped.</p>}
+        </div>}
         <div className="followups-studio-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold text-slate-900">{isWhatsApp ? "WhatsApp studio" : "Email draft studio"}</h2><label className="text-sm font-semibold text-slate-600">Candidate <select value={selectedCandidateId || ""} onChange={event => { const candidate = candidates.find(item => item._id === event.target.value); if (candidate) openCandidateContext(candidate); else setSelectedCandidate(null); }} className="ml-2 rounded-lg border border-slate-200 px-3 py-2"><option value="">Select candidate</option>{candidates.map(candidate => <option key={candidate._id} value={candidate._id}>{candidate.name} — {(isWhatsApp ? candidate.phone : candidate.email) || "No contact"}</option>)}</select></label></div>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">

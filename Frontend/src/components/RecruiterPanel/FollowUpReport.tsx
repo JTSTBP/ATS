@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
+import EmailOperations from './EmailOperations';
 
 type Staff = { _id: string; name: string };
 type Row = { requirementId: string; title: string; company: string; added: number; emailed: number; whatsapp: number };
 
-export default function FollowUpReport() {
+export default function FollowUpReport({ isAdmin = false }: { isAdmin?: boolean }) {
   const [filters, setFilters] = useState({ from: '', to: '', recruiterId: '', mentorId: '' });
   const [report, setReport] = useState<{ rows: Row[]; recruiters: Staff[]; mentors: Staff[] }>({ rows: [], recruiters: [], mentors: [] });
   const [rowFilters, setRowFilters] = useState({ requirement: '', client: '' });
@@ -46,5 +47,6 @@ export default function FollowUpReport() {
         <tfoot className="border-t bg-slate-50 font-bold"><tr><td colSpan={2} className="p-3">Total</td><td className="p-3 text-right">{totals.added}</td><td className="p-3 text-right">{totals.emailed}</td><td className="p-3 text-right">{totals.whatsapp}</td></tr></tfoot>
       </table>
     </div>}
+    {isAdmin && <EmailOperations filters={filters} />}
   </section>;
 }

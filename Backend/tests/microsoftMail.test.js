@@ -44,6 +44,7 @@ const model = {
   },
 };
 require.cache[require.resolve("../models/Users")] = { exports: model };
+require.cache[require.resolve('../services/emailSuppression')] = { exports: { assertNotSuppressed: async () => {}, unsubscribeUrl: () => 'https://example.com/unsubscribe' } };
 let smtpCalls = 0;
 let smtpError = null;
 let smtpMessage;
@@ -71,6 +72,7 @@ test("Microsoft connection, token safety and follow-up sending", async t => {
     const verifier = service.unseal(user.microsoftMail.pendingVerifier);
     assert.equal(url.searchParams.get("code_challenge"), crypto.createHash("sha256").update(verifier).digest("base64url"));
     assert.ok(url.searchParams.get("scope").includes("Mail.Send")); assert.ok(url.searchParams.get("scope").includes("offline_access"));
+    assert.ok(url.searchParams.get('scope').includes('Mail.Read'));
     assert.notEqual(user.microsoftMail.pendingState, state);
     global.fetch = async (address, options) => {
       if (address.includes("/token")) { assert.equal(options.body.get("code_verifier"), verifier); return response(200, { access_token: "test-access", refresh_token: "test-refresh" }); }
@@ -160,6 +162,33 @@ test("Microsoft connection, token safety and follow-up sending", async t => {
     smtpError = Object.assign(new Error("Network timeout"), { code: "SMTP_CONNECTION_FAILED" });
     await assert.rejects(sendUserMail(user._id, { to: "candidate@example.com" }), { code: "SMTP_CONNECTION_FAILED" });
     smtpError = null;
+  });
+  await t.test('reply reads require explicit consent and paginate only trusted Graph URLs', async () => {
+    reset(); user.followUpEmailProvider = 'microsoft';
+    user.microsoftMail = { email: user.email, refreshToken: service.seal('refresh'), readEnabled: false };
+    await assert.rejects(service.assertReplyDetection(user._id), { code: 'MICROSOFT_READ_CONSENT_REQUIRED' });
+    user.microsoftMail.readEnabled = true;
+    let pages = 0;
+    global.fetch = async address => {
+      if (address.includes('/token')) return response(200, { access_token: 'access' });
+      pages++;
+      return response(200, pages === 1 ? { value: [{ id: 'first' }], '@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/messages?$skip=100' } : { value: [{ id: 'second' }] });
+    };
+    assert.equal((await service.listMailboxMessages(user._id, 'all', '2026-10-01')).length, 2);
+    global.fetch = async address => address.includes('/token') ? response(200, { access_token: 'access' }) : response(200, { value: [], '@odata.nextLink': 'https://untrusted.example/steal-token' });
+    await assert.rejects(service.listMailboxMessages(user._id, 'all', '2026-10-01'), { code: 'MICROSOFT_READ_FAILED' });
+    global.fetch = async address => address.includes('/token') ? response(200, { access_token: 'access' }) : response(403, {});
+    await assert.rejects(service.listMailboxMessages(user._id, 'all', '2026-10-01'), { code: 'MICROSOFT_READ_FAILED' });
+  });
+  await t.test('sequence sends include correlation header and unsubscribe link', async () => {
+    let payload;
+    global.fetch = async (address, options) => {
+      if (address.includes('/token')) return response(200, { access_token: 'access' });
+      payload = JSON.parse(options.body); return response(202);
+    };
+    await sendUserMail(user._id, { to: 'candidate@example.com', subject: 'Role', text: 'Hello', html: '<p>Hello</p>', followUpSequenceId: 'sequence-test' });
+    assert.equal(payload.message.internetMessageHeaders[0].value, 'sequence-test');
+    assert.match(payload.message.body.content, /example.com\/unsubscribe/);
   });
 });
 

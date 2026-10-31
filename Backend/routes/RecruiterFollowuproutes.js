@@ -21,6 +21,11 @@ const { getSignedUrl } = require("../config/s3Config");
 
 const router = express.Router();
 const { reportDateRange, buildReportRows } = require('../services/followUpReport');
+const { getEmailSequences, selectEmailSequence } = require('../services/emailSequences');
+const { assertNotSuppressed, suppressEmail, unsubscribeUrl, normalizeEmail } = require('../services/emailSuppression');
+const { assertReplyDetection } = require('../services/microsoftMailService');
+const EmailSuppression = require('../models/EmailSuppression');
+const EmailEnrollment = require('../models/EmailEnrollment');
 
 const EMAIL_CATEGORIES = [
   "No Answer",
@@ -661,6 +666,42 @@ router.get("/report", async (req, res) => {
   }
 });
 
+router.get('/email-operations', async (req, res) => {
+  if (req.user.designation !== 'Admin') return res.status(403).json({ message: 'Admin only' });
+  try {
+    const dates = reportDateRange(req.query.from || '', req.query.to || '');
+    const match = { channel: 'EMAIL', sequenceId: { $type: 'string' }, ...(Object.keys(dates).length ? { createdAt: dates } : {}) };
+    if (req.query.recruiterId) {
+      if (!isObjectId(req.query.recruiterId)) return res.status(400).json({ message: 'Invalid recruiter' });
+      match.recruiterId = new mongoose.Types.ObjectId(req.query.recruiterId);
+    }
+    const counts = await Communication.aggregate([{ $match: match }, { $group: { _id: '$status', count: { $sum: 1 } } }]);
+    const recent = await Communication.find(match).select('candidateId requirementId recruiterId recipient sequenceId sequenceName sequenceStep status sentAt scheduledAt stopReason replyDetectedAt replyCheckError replyCheckedAt createdAt').populate('recruiterId', 'name').populate('requirementId', 'title').sort({ createdAt: -1 }).limit(100).lean();
+    const suppressions = await EmailSuppression.find({}).select('email reason createdAt').sort({ createdAt: -1 }).limit(200).lean();
+    res.json({ counts, recent, suppressions });
+  } catch (error) { res.status(error.message?.includes('date') ? 400 : 500).json({ message: 'Unable to load email operations report' }); }
+});
+
+router.post('/suppressions', async (req, res) => {
+  if (req.user.designation !== 'Admin') return res.status(403).json({ message: 'Admin only' });
+  try { await suppressEmail(req.body.email, req.body.reason, req.user._id); res.json({ success: true }); }
+  catch (error) { res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to suppress email' }); }
+});
+router.delete('/suppressions/:id', async (req, res) => {
+  if (req.user.designation !== 'Admin') return res.status(403).json({ message: 'Admin only' });
+  if (!isObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid suppression' });
+  try { await EmailSuppression.deleteOne({ _id: req.params.id }); res.json({ success: true }); }
+  catch { res.status(500).json({ message: 'Unable to remove suppression' }); }
+});
+router.post('/candidates/:candidateId/suppress-email', async (req, res) => {
+  try {
+    const { candidate } = await assertCandidateAccess(req, req.params.candidateId);
+    if (!candidate) return res.status(404).json({ message: 'Candidate not found' });
+    await suppressEmail(getCandidateField(candidate, ['email', 'Email']), req.body.reason, req.user._id);
+    res.json({ success: true });
+  } catch (error) { res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to stop email' }); }
+});
+
 router.get("/summary", async (req, res) => {
   try {
     const start = new Date();
@@ -1221,6 +1262,10 @@ router.get("/candidates/:candidateId/draft-studio", async (req, res) => {
     const stopped = drafts.some((draft) => draft.status === "stopped" && !draft.sentAt);
     const scheduled = activeDrafts.some((draft) => ["scheduled", "pending"].includes(draft.status) && draft.scheduledAt);
     const reviewed = activeDrafts.length > 0 && activeDrafts.every((draft) => ["reviewed", "sent"].includes(draft.status));
+    const sequences = getEmailSequences(job.communicationTemplates || []);
+    const chosenName = String(req.query.sequenceName || drafts[0]?.sequenceName || sequences[0]?.name || '');
+    const chosen = sequences.find(item => item.name === chosenName) || sequences[0];
+    const suppression = await EmailSuppression.findOne({ email: normalizeEmail(getCandidateField(candidate, ['email', 'Email'])) }).lean();
     res.json({
       success: true,
       candidate: buildCandidateSummary(candidate),
@@ -1228,8 +1273,12 @@ router.get("/candidates/:candidateId/draft-studio", async (req, res) => {
         id: currentSequenceId,
         status: stopped ? "Stopped" : drafts.length > 0 && sent >= drafts.length ? "Completed" : scheduled || sent > 0 ? "Active" : reviewed ? "Ready" : activeDrafts.length ? "Draft" : "Empty",
         sent,
+        name: drafts[0]?.sequenceName || '',
+        selectedName: chosen?.name || '',
+        sequences: sequences.map(item => ({ name: item.name, count: item.templates.length })),
+        suppressionReason: suppression?.reason || '',
         drafts: activeDrafts,
-        templates: (job.communicationTemplates || []).filter(t => t.channel === (req.query.channel === "whatsapp" ? "WHATSAPP" : "EMAIL")).map((t, index) => ({ label: t.label, _id: `template-${index}`, subject: renderTemplate(t.subject, templateVariables(candidate, job, req.user)), body: renderTemplate(t.body, templateVariables(candidate, job, req.user)) })),
+        templates: (chosen?.templates || []).map((t, index) => ({ label: t.label, _id: `template-${index}`, subject: renderTemplate(t.subject, templateVariables(candidate, job, req.user)), body: renderTemplate(t.body, templateVariables(candidate, job, req.user)) })),
       },
     });
   } catch (error) {
@@ -1258,7 +1307,8 @@ router.post("/candidates/:candidateId/draft-studio/generate", async (req, res) =
     const sequenceId = `ats-${candidate._id}-${Date.now()}`;
 
     const createdAt = new Date();
-    const drafts = await Communication.insertMany((job.communicationTemplates || []).filter(t => t.channel === "EMAIL").map((t, step) => ({ step, subject: renderTemplate(t.subject, templateVariables(candidate, job, req.user)), body: renderTemplate(t.body, templateVariables(candidate, job, req.user)) })).map((draft) => ({
+    const selected = selectEmailSequence(job.communicationTemplates || [], req.body.sequenceName);
+    const drafts = await Communication.insertMany(selected.templates.map((t, step) => ({ step, subject: renderTemplate(t.subject, templateVariables(candidate, job, req.user)), body: renderTemplate(t.body, templateVariables(candidate, job, req.user)) })).map((draft) => ({
       candidateId: candidate._id,
       requirementId: job._id,
       recruiterId: req.user._id,
@@ -1268,6 +1318,7 @@ router.post("/candidates/:candidateId/draft-studio/generate", async (req, res) =
       body: draft.body,
       status: "generated",
       sequenceId,
+      sequenceName: selected.name,
       sequenceStep: draft.step,
       scheduledAt: scheduleForStep(draft.step, createdAt),
       idempotencyKey: `${sequenceId}-${draft.step}`,
@@ -1297,7 +1348,7 @@ router.patch("/candidates/:candidateId/draft-studio/:draftId", async (req, res) 
       channel: req.query.channel === "whatsapp" ? "WHATSAPP" : "EMAIL",
     });
     if (!draft) return res.status(404).json({ success: false, message: "Draft not found" });
-    if (draft.status === "sent") return res.status(400).json({ success: false, message: "Sent emails cannot be edited" });
+    if (['sent', 'scheduled', 'pending', 'stopped'].includes(draft.status)) return res.status(400).json({ success: false, message: "Only unscheduled drafts can be edited" });
     if (req.body.subject !== undefined) draft.subject = String(req.body.subject || "");
     if (req.body.body !== undefined) draft.body = String(req.body.body || "");
     if (req.body.scheduledAt !== undefined) {
@@ -1367,11 +1418,29 @@ router.post("/candidates/:candidateId/draft-studio/start", async (req, res) => {
     if (!recipient || (channel === "EMAIL" ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) : recipient.length < 11 || recipient.length > 15)) return res.status(400).json({ success: false, message: "Invalid candidate contact details" });
     const existing = await Communication.findOne({ candidateId: candidate._id, requirementId: job._id, recruiterId: req.user._id, channel, sequenceId: { $type: "string" }, status: { $in: ["scheduled", "pending"] } });
     if (existing) return res.status(409).json({ success: false, message: "A sequence is already active" });
-    const templates = (job.communicationTemplates || []).filter(t => t.channel === channel);
+    const selected = selectEmailSequence(job.communicationTemplates || [], req.body.sequenceName);
+    const templates = selected.templates;
+    await assertNotSuppressed(recipient);
+    await assertReplyDetection(req.user._id);
+    unsubscribeUrl(recipient);
     if (!templates.length || templates.some(t => !t.body.trim() || (channel === "EMAIL" && !t.subject.trim()))) return res.status(400).json({ success: false, message: "Add complete templates to this requirement before starting" });
     const sequenceId = `ats-${candidate._id}-${channel}-${Date.now()}`;
     const vars = templateVariables(candidate, job, req.user);
-    const drafts = await Communication.insertMany(templates.map((t, step) => ({ candidateId: candidate._id, requirementId: job._id, recruiterId: req.user._id, channel, recipient, subject: renderTemplate(t.subject, vars), body: renderTemplate(t.body, vars), status: "generated", sequenceId, sequenceStep: step, idempotencyKey: `${sequenceId}-${step}` })));
+    try { await EmailEnrollment.init(); await EmailEnrollment.create({ key: `${req.user._id}:${normalizeEmail(recipient)}`, sequenceId }); }
+    catch (error) {
+      if (error.code === 11000) {
+        const enrollment = await EmailEnrollment.findOne({ key: `${req.user._id}:${normalizeEmail(recipient)}` }).lean();
+        if (enrollment && !(await Communication.exists({ sequenceId: enrollment.sequenceId, status: { $in: ['generated', 'reviewed', 'scheduled', 'pending'] } }))) {
+          await EmailEnrollment.deleteOne({ _id: enrollment._id, sequenceId: enrollment.sequenceId });
+          return res.status(409).json({ message: 'A previous sequence has finished. Please start again.' });
+        }
+        return res.status(409).json({ message: 'This mailbox already has an active sequence for this candidate email. Stop it before starting another.' });
+      }
+      throw error;
+    }
+    let drafts;
+    try { drafts = await Communication.insertMany(templates.map((t, step) => ({ candidateId: candidate._id, requirementId: job._id, recruiterId: req.user._id, channel, recipient: normalizeEmail(recipient), subject: renderTemplate(t.subject, vars), body: renderTemplate(t.body, vars), status: "generated", sequenceId, sequenceName: selected.name, detectReplies: true, sequenceStep: step, idempotencyKey: `${sequenceId}-${step}` }))); }
+    catch (error) { await Communication.deleteMany({ sequenceId, status: 'generated' }); await EmailEnrollment.deleteOne({ sequenceId }); throw error; }
     const startedAt = new Date();
     const scheduled = [];
     for (const draft of drafts) {
@@ -1405,6 +1474,7 @@ router.post("/candidates/:candidateId/draft-studio/start", async (req, res) => {
 
 router.post("/candidates/:candidateId/draft-studio/stop", async (req, res) => {
   try {
+    if (typeof req.body.sequenceId !== 'string' || !req.body.sequenceId) return res.status(400).json({ message: 'Sequence id is required' });
     const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);
     if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
     const result = await Communication.updateMany({
@@ -1413,8 +1483,9 @@ router.post("/candidates/:candidateId/draft-studio/stop", async (req, res) => {
       recruiterId: req.user._id,
       channel: req.query.channel === "whatsapp" ? "WHATSAPP" : "EMAIL",
       sequenceId: req.body.sequenceId,
-      status: { $in: ["generated", "reviewed", "scheduled", "failed"] },
+      status: { $in: ["generated", "reviewed", "scheduled", "pending", "failed"] },
     }, { $set: { status: "stopped", stoppedAt: new Date(), stopReason: req.body.reason || "manual_stop" } });
+    await EmailEnrollment.deleteOne({ sequenceId: req.body.sequenceId, key: `${req.user._id}:${normalizeEmail(getCandidateField(candidate, ['email', 'Email']))}` });
     logActivity(req.user._id, "stopped", "candidate-email-sequence", "Email sequence stopped", candidate._id, "SourceCandidate", {
       actionType: "email_sequence_stopped",
       candidateId: candidate._id,
@@ -1441,6 +1512,7 @@ router.delete("/candidates/:candidateId/draft-studio", async (req, res) => {
       sequenceId: req.body.sequenceId,
       status: { $in: ["generated", "reviewed", "scheduled", "pending", "failed", "stopped"] },
     });
+    await EmailEnrollment.deleteOne({ sequenceId: req.body.sequenceId, key: `${req.user._id}:${normalizeEmail(getCandidateField(candidate, ['email', 'Email']))}` });
     logActivity(req.user._id, "deleted", "candidate-email-sequence", "Email draft sequence cleared", candidate._id, "SourceCandidate", {
       actionType: "email_sequence_cleared",
       candidateId: candidate._id,

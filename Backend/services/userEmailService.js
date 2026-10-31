@@ -1,6 +1,7 @@
 const User = require("../models/Users");
 const { sendMail } = require("./emailService");
 const { withProfileSignature } = require("./emailSignature");
+const { assertNotSuppressed, unsubscribeUrl } = require('./emailSuppression');
 const { assertMicrosoftConnection, sendMicrosoftMail, isOutlookAddress } = require("./microsoftMailService");
 
 const credentialError = (code, message) => Object.assign(new Error(message), {
@@ -39,8 +40,14 @@ const getUserEmailOptions = async (userId) => {
 };
 
 const sendUserMail = async (userId, message) => {
+  await assertNotSuppressed(message.to);
   const { signatureProfile, ...options } = await getUserEmailOptions(userId);
   message = withProfileSignature(message, signatureProfile);
+  if (message.followUpSequenceId) {
+    const link = unsubscribeUrl(message.to);
+    const footer = `<p><a href="${link}">Unsubscribe from recruitment emails</a></p>`;
+    message = { ...message, html: /<\/body\s*>/i.test(message.html) ? message.html.replace(/<\/body\s*>/i, `${footer}</body>`) : message.html + footer, text: `${message.text || ''}\n\nUnsubscribe: ${link}` };
+  }
   if (options.provider === "microsoft") return sendMicrosoftMail(options.senderId, message);
   // Apply identity/authentication last so caller data cannot override the sender.
   try {

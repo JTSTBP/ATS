@@ -31,7 +31,7 @@ function loadReport() {
     { _id: 'disabled', name: 'Disabled recruiter', designation: 'Recruiter', isDisabled: true },
   ];
   const chain = value => ({ select() { return this; }, populate() { return this; }, sort() { return this; }, async lean() { return value; } });
-  const router = { use() {}, get(url, handler) { handlers[url] = handler; }, post() {}, patch() {}, delete() {} };
+  const router = { use() {}, get(url, handler) { handlers[url] = handler; }, post(url, ...args) { handlers[`POST ${url}`] = args.at(-1); }, patch() {}, delete(url, ...args) { handlers[`DELETE ${url}`] = args.at(-1); } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../routes/RecruiterFollowuproutes.js'), 'utf8'), {
     module: { exports: {} }, console,
     require(name) {
@@ -47,7 +47,7 @@ function loadReport() {
       return {};
     },
   });
-  return { handler: handlers['/report'], queries };
+  return { handler: handlers['/report'], handlers, queries };
 }
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; } });
 
@@ -109,5 +109,16 @@ test('Admin and Manager can report, conflicting staff filters return an empty ac
     assert.equal(res.code, 200);
     assert.equal(queries.added[0].$match.recruiterId.$in.length, 0);
     assert.equal(queries.sent[0].$match.recruiterId.$in.length, 0);
+  }
+});
+
+test('email operations and global suppression management are restricted to Admin', async () => {
+  const { handlers } = loadReport();
+  for (const designation of ['Recruiter', 'Mentor', 'Manager', 'Finance']) {
+    for (const route of ['/email-operations', 'POST /suppressions', 'DELETE /suppressions/:id']) {
+      const res = response();
+      await handlers[route]({ user: { designation }, query: {}, body: {}, params: {} }, res);
+      assert.equal(res.code, 403);
+    }
   }
 });

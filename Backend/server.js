@@ -65,6 +65,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(express.json());
+app.use('/api/email-unsubscribe', require('./routes/EmailUnsubscriberoutes'));
 
 app.use(
   "/uploads",
