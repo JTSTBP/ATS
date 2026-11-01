@@ -16,7 +16,7 @@ function load() {
   const handlers = {}, middleware = [], dispatches = [], messages = [];
   const team = [{ _id: recruiterA, name: 'First recruiter', email: 'first@example.com', designation: 'Recruiter' }, { _id: recruiterB, name: 'Later recruiter', email: 'later@example.com', designation: 'Recruiter' }];
   const job = { _id: jobId, clientId: { _id: clientId, companyName: 'Client' }, title: 'Developer', status: 'Open', assignedRecruiters: [recruiterA, recruiterB] };
-  let allowed = true, mailboxAvailable = true, failInsert = false, userResults = [team];
+  let allowed = true, mailboxAvailable = true, failInsert = false, replyAccess = true, userResults = [team];
   const userQueries = [];
   const router = { use(...args) { middleware.push(...args); }, get(url, handler) { handlers[`GET ${url}`] = handler; }, post(url, handler) { handlers[`POST ${url}`] = handler; } };
   const template = { _id: templateId, name: 'Two steps', steps: [{ subject: 'Hi {{candidateName}}', body: 'From {{recruiterName}}' }, { subject: 'Follow up', body: 'More details' }] };
@@ -46,13 +46,13 @@ function load() {
     '../services/emailSequences': sequences,
     '../services/teamEmailSequences': policy,
     '../services/userEmailService': { getUserEmailOptions: async () => { if (!mailboxAvailable) throw Error('Missing mailbox'); } },
-    '../services/microsoftMailService': { assertReplyDetection: async () => {} },
+    '../services/microsoftMailService': { assertReplyDetection: async () => { if (!replyAccess) throw Object.assign(Error('Read consent required'), { code: 'MICROSOFT_READ_CONSENT_REQUIRED' }); } },
     '../services/emailSuppression': { assertNotSuppressed: async () => {}, unsubscribeUrl: () => 'https://example.com/unsubscribe' },
     '../utils/emailSchedule': { scheduleForStep: step => new Date(2026, 10, 1 + step) },
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../routes/TeamEmailroutes.js'), 'utf8'), { require: name => { if (!(name in dependencies)) throw Error(name); return dependencies[name]; }, module: { exports: {} }, console, Date, Map, Set });
   const request = () => ({ user: actor, params: { clientId }, emailTeam: team, emailJobScope: {}, body: { candidateIds: [firstId, laterId], templateKey: templateId } });
-  return { handlers, middleware, dispatches, messages, request, userQueries, setUserResults: value => { userResults = value; }, setAllowed: value => { allowed = value; }, setMailbox: value => { mailboxAvailable = value; }, setFailInsert: value => { failInsert = value; } };
+  return { handlers, middleware, dispatches, messages, request, userQueries, setUserResults: value => { userResults = value; }, setAllowed: value => { allowed = value; }, setReplyAccess: value => { replyAccess = value; }, setMailbox: value => { mailboxAvailable = value; }, setFailInsert: value => { failInsert = value; } };
 }
 
 test('manager team follows primary/secondary reporting mentors instead of granting company-wide mailbox access', async () => {
@@ -149,4 +149,15 @@ test('sequence templates reject empty content and more than five steps', async (
     const req = app.request(); req.body = { name: 'Template', steps }; const res = response();
     await app.handlers['POST /clients/:clientId/templates'](req, res); assert.equal(res.code, 400);
   }
+});
+
+test('sending connection without reply consent is identified as missing Mail.Read, not disconnected', async () => {
+  const app = load(); app.setReplyAccess(false);
+  const res = response();
+  await app.handlers['GET /clients/:clientId/preview'](app.request(), res);
+  assert.equal(res.code, 200);
+  assert.equal(res.body.mailboxes[0].ready, false);
+  assert.match(res.body.mailboxes[0].reason, /connected for sending/);
+  assert.match(res.body.mailboxes[0].reason, /Mail.Read/);
+  assert.doesNotMatch(res.body.mailboxes[0].reason, /Mailbox connection needed/);
 });

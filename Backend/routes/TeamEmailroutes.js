@@ -77,7 +77,14 @@ async function loadPlan(req, jobs) {
   for (const member of req.emailTeam) {
     if (member.isDisabled) { mailboxErrors.set(id(member._id), 'Recruiter account is disabled'); continue; }
     try { await getUserEmailOptions(member._id); await assertReplyDetection(member._id); }
-    catch { mailboxErrors.set(id(member._id), 'Mailbox connection needed — recruiter must connect Microsoft 365 with reply access'); }
+    catch (error) {
+      const reason = error.code === 'MICROSOFT_READ_CONSENT_REQUIRED'
+        ? 'Mailbox connected for sending; reply access (Mail.Read) is missing. Recruiter must reconnect Microsoft 365 and approve access.'
+        : error.code === 'MICROSOFT_RECONNECT_REQUIRED'
+          ? 'Microsoft mailbox needs reconnection. Recruiter must reconnect their sending account.'
+          : 'Mailbox connection could not be verified. Recruiter should check their sending account.';
+      mailboxErrors.set(id(member._id), reason);
+    }
   }
   const rows = selectClientContacts({ contacts, teamIds: req.emailTeam.map(member => member._id), mailboxErrors, suppressed: new Set(suppressed.map(item => normalizeEmail(item.email))), contacted: new Set([...dispatches.map(item => normalizeEmail(item.email)), ...previous.map(item => normalizeEmail(item.recipient))]) });
   const members = new Map(req.emailTeam.map(member => [id(member._id), member]));

@@ -66,7 +66,7 @@ export default function EmailConnection() {
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="min-w-0"><h3 className="flex items-center gap-2 text-sm font-bold text-slate-900"><Mail size={16} />Sending account</h3>
         <p className="mt-1 break-all text-sm text-slate-600">{connection?.email || "Checking account…"}</p>
-        {connection && <p className="mt-1 text-xs text-slate-500">{connection.connected && connection.provider === "microsoft" ? "Microsoft connected · sends from your mailbox" : connection.microsoftRequired ? "Connect Microsoft to send from this mailbox" : connection.hasAppPassword ? "Uses the app password saved in your user profile" : "No app password saved. Open Profile and add your email app password before sending."}</p>}
+        {connection && <p className="mt-1 text-xs text-slate-500">{connection.connected && connection.provider === "microsoft" ? connection.replyDetectionReady ? "Microsoft connected · sending and sequence reply access enabled" : "Microsoft connected for sending · reply access required for sequences" : connection.microsoftRequired ? "Connect Microsoft to send from this mailbox" : connection.hasAppPassword ? "Uses the app password saved in your user profile" : "No app password saved. Open Profile and add your email app password before sending."}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" aria-label="Refresh email connection" onClick={load} className="rounded-lg p-2 text-slate-500 hover:bg-slate-200"><RefreshCw size={16} /></button>
