@@ -1,4 +1,5 @@
 import EmailConnection from "./EmailConnection";
+import CandidateEmailReplies from './CandidateEmailReplies';
 import TeamEmailSequences from './TeamEmailSequences';
 import FollowUpReport from "./FollowUpReport";
 import "./FollowUps.css";
@@ -881,6 +882,7 @@ export default function FollowUps() {
                   <div className="font-bold text-slate-900 flex items-center gap-2">
                     {isAdmin && activeTab === "Candidates" && <input type="checkbox" aria-label={`Select ${candidate.name}`} checked={selectedCandidateIds.includes(candidate._id)} onChange={event => setSelectedCandidateIds(prev => event.target.checked ? [...prev, candidate._id] : prev.filter(id => id !== candidate._id))} />}
                     <span>{candidate.name}</span>
+                    {candidate.emailRespondedAt && <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700" title={`Responded: ${new Date(candidate.emailRespondedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST`}>Email responded</span>}
                     {candidate.resumeUrl && (
                       <a
                         href={candidate.resumeUrl}
@@ -1140,12 +1142,13 @@ export default function FollowUps() {
       <div className="space-y-5">
         <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Email sequences are started by your mentor or manager from Team email sequences. Recruiters can add contacts, connect their own mailbox, and record opt-outs here.</p>
         {!isWhatsApp && <EmailConnection />}
+        {!isWhatsApp && selectedRequirement && <CandidateEmailReplies requirementId={selectedRequirement._id} />}
         {!isWhatsApp && selectedCandidate && <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
           <label className="block text-sm font-semibold">Email sequence<select value={selectedEmailSequence} disabled={draftStudio.status === 'Active' || Boolean(draftSaving)} onChange={event => { setSelectedEmailSequence(event.target.value); loadDraftStudio(selectedCandidateId, event.target.value); }} className="ml-2 rounded-lg border px-3 py-2"><option value="">Select sequence</option>{(draftStudio.sequences || []).map((sequence: any) => <option key={sequence.name} value={sequence.name}>{sequence.name} ({sequence.count} emails)</option>)}</select></label>
           {draftStudio.name && <p className="text-xs text-slate-500">Last started sequence: {draftStudio.name}. Stop an active sequence before switching. Completed email history is retained.</p>}
           {draftStudio.suppressionReason ? <p role="status" className="text-sm font-semibold text-red-700">Email suppressed: {draftStudio.suppressionReason}. Only Admin can remove this suppression.</p> : <div className="flex flex-wrap items-center gap-2"><label className="text-sm">Stop all emails to this address: <select aria-label="Suppression reason" value={suppressionReason} onChange={event => setSuppressionReason(event.target.value)} className="rounded-lg border px-2 py-2"><option value="declined">Candidate declined</option><option value="unsubscribed">Requested unsubscribe</option><option value="bounced">Invalid / bounced email</option><option value="manual">Manual suppression</option></select></label><button type="button" disabled={Boolean(draftSaving)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onClick={async () => { setDraftSaving('suppress'); try { await axios.post(`${API_URL}/candidates/${selectedCandidateId}/suppress-email`, { reason: suppressionReason }); await loadDraftStudio(); toast.success('Email suppressed across all recruiters'); } catch (error: any) { toast.error(error.response?.data?.message || 'Unable to suppress email'); } finally { setDraftSaving(''); } }}>Suppress email</button></div>}
           {(draftStudio.drafts || []).some((draft: any) => draft.replyCheckError) && <p role="alert" className="text-sm text-amber-700">{draftStudio.drafts.find((draft: any) => draft.replyCheckError)?.replyCheckError}</p>}
-          {(draftStudio.drafts || []).some((draft: any) => draft.replyDetectedAt) && <p role="status" className="text-sm font-semibold text-emerald-700">Reply detected — remaining follow-ups stopped.</p>}
+          {(draftStudio.drafts || []).some((draft: any) => draft.replyDetectedAt) && <p role="status" className="text-sm font-semibold text-emerald-700">Responded on {new Date(draftStudio.drafts.find((draft: any) => draft.replyDetectedAt).replyDetectedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST — remaining follow-ups stopped.</p>}
         </div>}
         <div className="followups-studio-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold text-slate-900">{isWhatsApp ? "WhatsApp studio" : "Email draft studio"}</h2><label className="text-sm font-semibold text-slate-600">Candidate <select value={selectedCandidateId || ""} onChange={event => { const candidate = candidates.find(item => item._id === event.target.value); if (candidate) openCandidateContext(candidate); else setSelectedCandidate(null); }} className="ml-2 rounded-lg border border-slate-200 px-3 py-2"><option value="">Select candidate</option>{candidates.map(candidate => <option key={candidate._id} value={candidate._id}>{candidate.name} — {(isWhatsApp ? candidate.phone : candidate.email) || "No contact"}</option>)}</select></label></div>
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -1154,7 +1157,7 @@ export default function FollowUps() {
               <div className="space-y-4">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
                   <h3 className="font-black text-slate-900">{isWhatsApp ? "WhatsApp templates" : "Email drafts"}</h3>
-                  <p className="mt-1 text-sm text-slate-600">Select a candidate to start a sequence using the templates saved with this requirement.</p>
+                  <p className="mt-1 text-sm text-slate-600">Select a candidate to view their email sequence and response status.</p>
                 </div>
               </div>
             ) : (

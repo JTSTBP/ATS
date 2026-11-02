@@ -569,6 +569,7 @@ const getCandidateCommunicationSnapshot = async (candidateIds, scope = {}) => {
   communications.forEach((communication) => {
     const bucket = byCandidate.get(String(communication.candidateId));
     if (bucket && !bucket.lastCommunication) bucket.lastCommunication = communication;
+    if (bucket && communication.channel === 'EMAIL' && communication.replyDetectedAt && (!bucket.emailRespondedAt || new Date(communication.replyDetectedAt) > new Date(bucket.emailRespondedAt))) bucket.emailRespondedAt = communication.replyDetectedAt;
   });
   followUps.forEach((followUp) => {
     const bucket = byCandidate.get(String(followUp.candidateId));
@@ -797,6 +798,29 @@ router.get("/requirements/:requirementId/candidates/check-duplicate", async (req
     console.error("Check duplicate error:", error);
     res.status(500).json({ success: false, message: "Failed to check duplicate" });
   }
+});
+
+router.get('/requirements/:requirementId/email-replies', async (req, res) => {
+  try {
+    const job = await assertJobAccess(req, req.params.requirementId);
+    if (!job) return res.status(404).json({ message: 'Requirement not found' });
+    const replies = await Communication.aggregate([
+      { $match: { ...candidateJobScope(req, job._id), channel: 'EMAIL', replyDetectedAt: { $type: 'date' } } },
+      { $group: { _id: '$candidateId', email: { $first: '$recipient' }, respondedAt: { $max: '$replyDetectedAt' } } },
+      { $sort: { respondedAt: -1, _id: 1 } },
+    ]);
+    const ids = replies.map(reply => reply._id).filter(Boolean);
+    const [sourced, converted] = await Promise.all([
+      SourcedCandidate.find({ _id: { $in: ids } }).select('name email phoneNumber').lean(),
+      CandidateByJob.find({ _id: { $in: ids } }).select('dynamicFields').lean(),
+    ]);
+    const profiles = new Map([...converted, ...sourced].map(candidate => [String(candidate._id), candidate]));
+    res.set('Cache-Control', 'no-store');
+    res.json({ replies: replies.map(reply => {
+      const candidate = profiles.get(String(reply._id)) || {};
+      return { candidateId: reply._id, name: getCandidateField(candidate, ['name', 'candidateName', 'CandidateName', 'Name']) || 'Candidate unavailable', email: reply.email, phone: getCandidateField(candidate, ['phoneNumber', 'Phone', 'phone', 'Mobile', 'mobile']), respondedAt: reply.respondedAt };
+    }) });
+  } catch { res.status(500).json({ message: 'Unable to load candidate email responses' }); }
 });
 
 router.get("/requirements/:requirementId/candidates", async (req, res) => {
@@ -1249,9 +1273,8 @@ router.get("/candidates/:candidateId/draft-studio", async (req, res) => {
     const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);
     if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
     const allDrafts = await Communication.find({
+      ...candidateJobScope(req, job._id),
       candidateId: candidate._id,
-      requirementId: job._id,
-      recruiterId: req.user._id,
       channel: req.query.channel === "whatsapp" ? "WHATSAPP" : "EMAIL",
       sequenceId: { $type: "string" },
     }).sort({ createdAt: -1 }).lean();
