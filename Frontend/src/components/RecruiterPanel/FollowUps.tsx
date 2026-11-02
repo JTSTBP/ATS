@@ -19,11 +19,9 @@ import {
   Mail,
   MessageCircle,
   Phone,
-  Play,
   RefreshCw,
   Search,
   Send,
-  Square,
   Upload,
   Trash2,
   Users,
@@ -34,11 +32,6 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 const API_URL = `${API_BASE_URL}/api/recruiter/follow-ups`;
 
 const CANDIDATE_STATUSES = ["Not interested", "Wrong number", "No answer", "Busy", "Lineup"];
-
-const emailErrorMessage = (value: string) => {
-  try { return JSON.parse(value)?.message || "Unable to send this email. Please check your sending account."; }
-  catch { return value; }
-};
 
 const CALL_STATUSES = ["Connected", "No Answer", "Busy", "Switched Off", "Not Reachable", "Call Back Later"];
 const CALL_OUTCOMES = [
@@ -60,12 +53,6 @@ const todayDate = () => new Date().toISOString().slice(0, 10);
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "-";
 const formatDateTime = (value?: string) => value ? new Date(value).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "-";
-const toDateTimeLocal = (value?: string) => {
-  const date = value ? new Date(value) : new Date();
-  if (Number.isNaN(date.getTime())) return "";
-  const offset = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-};
 const getRequirementId = (candidate: any) => {
   const requirement = candidate?.requirementId ?? candidate?.jobId;
   if (typeof requirement === "string") return requirement;
@@ -567,52 +554,6 @@ export default function FollowUps() {
   const openEmailStudio = async (candidate: any) => {
     await openCandidateContext(candidate);
     setActiveTab("Emails");
-  };
-
-  const startEmailSequence = async () => {
-    if (!selectedCandidateId) return;
-    setDraftSaving("start");
-    try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/start?channel=email`, { sequenceId: draftStudio.id, sequenceName: selectedEmailSequence });
-      await loadDraftStudio();
-      await refreshCurrent();
-      toast.success("Sequence scheduled");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || error.response?.data?.code || "Failed to send sequence");
-      await loadDraftStudio();
-    } finally {
-      setDraftSaving("");
-    }
-  };
-
-  const stopEmailSequence = async () => {
-    if (!selectedCandidateId || !draftStudio.id) return;
-    setDraftSaving("stop");
-    try {
-      await axios.post(`${API_URL}/candidates/${selectedCandidateId}/draft-studio/stop?channel=email`, { sequenceId: draftStudio.id, reason: "manual_stop" });
-      await loadDraftStudio();
-      toast.success("Sequence stopped");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to stop sequence");
-    } finally {
-      setDraftSaving("");
-    }
-  };
-
-  const clearEmailSequence = async () => {
-    if (!selectedCandidateId || !draftStudio.id) return;
-    setDraftSaving("clear");
-    try {
-      await axios.delete(`${API_URL}/candidates/${selectedCandidateId}/draft-studio?channel=email`, {
-        data: { sequenceId: draftStudio.id },
-      });
-      await loadDraftStudio();
-      toast.success("Sequence cleared");
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to clear email drafts");
-    } finally {
-      setDraftSaving("");
-    }
   };
 
   const updateCandidateStatus = async (candidate: any, status: string) => {
@@ -1132,158 +1073,18 @@ export default function FollowUps() {
   </div>;
 
   const EmailStudio = () => {
-    const isWhatsApp = activeTab === "WhatsApp";
-    const channelActivity = activity.filter(item => String(item.module || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email") || String(item.actionType || "").toLowerCase().includes(isWhatsApp ? "whatsapp" : "email"));
-    const preview = draftStudio.drafts.length && (draftStudio.status === 'Active' || !draftStudio.name || selectedEmailSequence === draftStudio.name) ? draftStudio.drafts : (draftStudio.templates || []);
-    const canStart = false; // Sequence starts are managed through the client-level team screen.
-    const canClear = Boolean(draftStudio.id) && draftStudio.status !== 'Completed';
-    const showStopStep = draftStudio.status === "Active";
     return (
       <div className="space-y-5">
         <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">Email sequences are started by your mentor or manager from Team email sequences. Recruiters can add contacts, connect their own mailbox, and record opt-outs here.</p>
-        {!isWhatsApp && <EmailConnection />}
-        {!isWhatsApp && selectedRequirement && <CandidateEmailReplies requirementId={selectedRequirement._id} />}
-        {!isWhatsApp && selectedCandidate && <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-          <label className="block text-sm font-semibold">Email sequence<select value={selectedEmailSequence} disabled={draftStudio.status === 'Active' || Boolean(draftSaving)} onChange={event => { setSelectedEmailSequence(event.target.value); loadDraftStudio(selectedCandidateId, event.target.value); }} className="ml-2 rounded-lg border px-3 py-2"><option value="">Select sequence</option>{(draftStudio.sequences || []).map((sequence: any) => <option key={sequence.name} value={sequence.name}>{sequence.name} ({sequence.count} emails)</option>)}</select></label>
-          {draftStudio.name && <p className="text-xs text-slate-500">Last started sequence: {draftStudio.name}. Stop an active sequence before switching. Completed email history is retained.</p>}
+        <EmailConnection />
+        {selectedRequirement && <CandidateEmailReplies requirementId={selectedRequirement._id} />}
+        {selectedCandidate && <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+          <h3 className="font-semibold text-slate-900">{selectedCandidate.name} — {selectedCandidate.email || 'No email'}</h3>
           {draftStudio.suppressionReason ? <p role="status" className="text-sm font-semibold text-red-700">Email suppressed: {draftStudio.suppressionReason}. Only Admin can remove this suppression.</p> : <div className="flex flex-wrap items-center gap-2"><label className="text-sm">Stop all emails to this address: <select aria-label="Suppression reason" value={suppressionReason} onChange={event => setSuppressionReason(event.target.value)} className="rounded-lg border px-2 py-2"><option value="declined">Candidate declined</option><option value="unsubscribed">Requested unsubscribe</option><option value="bounced">Invalid / bounced email</option><option value="manual">Manual suppression</option></select></label><button type="button" disabled={Boolean(draftSaving)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700" onClick={async () => { setDraftSaving('suppress'); try { await axios.post(`${API_URL}/candidates/${selectedCandidateId}/suppress-email`, { reason: suppressionReason }); await loadDraftStudio(); toast.success('Email suppressed across all recruiters'); } catch (error: any) { toast.error(error.response?.data?.message || 'Unable to suppress email'); } finally { setDraftSaving(''); } }}>Suppress email</button></div>}
           {(draftStudio.drafts || []).some((draft: any) => draft.replyCheckError) && <p role="alert" className="text-sm text-amber-700">{draftStudio.drafts.find((draft: any) => draft.replyCheckError)?.replyCheckError}</p>}
           {(draftStudio.drafts || []).some((draft: any) => draft.replyDetectedAt) && <p role="status" className="text-sm font-semibold text-emerald-700">Responded on {new Date(draftStudio.drafts.find((draft: any) => draft.replyDetectedAt).replyDetectedAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST — remaining follow-ups stopped.</p>}
         </div>}
-        <div className="followups-studio-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold text-slate-900">{isWhatsApp ? "WhatsApp studio" : "Email draft studio"}</h2><label className="text-sm font-semibold text-slate-600">Candidate <select value={selectedCandidateId || ""} onChange={event => { const candidate = candidates.find(item => item._id === event.target.value); if (candidate) openCandidateContext(candidate); else setSelectedCandidate(null); }} className="ml-2 rounded-lg border border-slate-200 px-3 py-2"><option value="">Select candidate</option>{candidates.map(candidate => <option key={candidate._id} value={candidate._id}>{candidate.name} — {(isWhatsApp ? candidate.phone : candidate.email) || "No contact"}</option>)}</select></label></div>
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="space-y-4">
-            {!selectedCandidate ? (
-              <div className="space-y-4">
-                <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-                  <h3 className="font-black text-slate-900">{isWhatsApp ? "WhatsApp templates" : "Email drafts"}</h3>
-                  <p className="mt-1 text-sm text-slate-600">Select a candidate to view their email sequence and response status.</p>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-black text-slate-900">{selectedCandidate.name}</h3>
-                        <span className={statusBadge(draftStudio.status)}>{draftStudio.status}</span>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{draftStudio.sent || 0} sent</span>
-                      </div>
-                      <p className="mt-1 text-sm text-slate-500">{(isWhatsApp ? selectedCandidate.phone : selectedCandidate.email) || "No contact"} • {selectedRequirement?.title}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={clearEmailSequence}
-                        disabled={Boolean(draftSaving) || !canClear}
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                      >
-                        <X size={16} /> Clear
-                      </button>
-                      {!showStopStep && (
-                        <button
-                          onClick={startEmailSequence}
-                          disabled={Boolean(draftSaving) || !canStart}
-                          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60"
-                        >
-                          <Play size={16} /> Start sequence
-                        </button>
-                      )}
-                      {showStopStep && (
-                        <button
-                          onClick={stopEmailSequence}
-                          disabled={Boolean(draftSaving) || !draftStudio.id}
-                          className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                        >
-                          <Square size={15} /> Stop
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                {draftSaving === "load" ? (
-                  <div className="rounded-xl bg-slate-50 p-8 text-center text-slate-500">Loading draft studio...</div>
-                ) : preview.length === 0 ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-8 text-center">
-                    <p className="font-black text-slate-900">No sequence yet</p>
-                    <p className="mt-1 text-sm text-slate-500">Add templates when creating or editing this requirement to start a sequence.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {preview.map((draft: any, index: number) => (
-                      <div key={draft._id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                        <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-black text-white">{isWhatsApp ? "WhatsApp" : "Email"} {index + 1}</span>
-                            <span className={statusBadge(draft.status)}>{draft.status}</span>
-                            {draft.scheduledAt && draft.status !== "sent" && <span className="text-xs font-bold text-blue-600">Scheduled {formatDateTime(draft.scheduledAt)}</span>}
-                            {draft.sentAt && <span className="text-xs font-bold text-slate-400">{formatDateTime(draft.sentAt)}</span>}
-                          </div>
-
-                        </div>
-                        {!isWhatsApp && <input
-                          value={draft.subject || ""}
-                          readOnly
-                          disabled={draft.status === "sent"}
-                          className="mb-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 disabled:bg-slate-50"
-                        />}
-                        <label className="mb-3 block">
-                          <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-400">Send date and time</span>
-                          <input
-                            type="datetime-local"
-                            value={toDateTimeLocal(draft.scheduledAt)}
-                            readOnly
-                            disabled={draft.status === "sent"}
-                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
-                          />
-                        </label>
-                        <textarea
-                          value={draft.body || ""}
-                          readOnly
-                          disabled={draft.status === "sent"}
-                          rows={8}
-                          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm leading-6 text-slate-700 outline-none focus:border-blue-500 disabled:bg-slate-50"
-                        />
-                        {draft.errorMessage && <p className="mt-2 text-xs font-semibold text-red-600">{emailErrorMessage(draft.errorMessage)}</p>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          <aside className="space-y-4">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <h3 className="font-black text-slate-900">Sequence controls</h3>
-              <div className="mt-3 space-y-3 text-sm">
-                <div className="flex justify-between gap-3"><span className="text-slate-500">Status</span><b>{draftStudio.status}</b></div>
-                <div className="flex justify-between gap-3"><span className="text-slate-500">Drafts</span><b>{preview.length}</b></div>
-                <div className="flex justify-between gap-3"><span className="text-slate-500">Submitted</span><b>{draftStudio.sent || 0}</b></div>
-                <div className="flex justify-between gap-3"><span className="text-slate-500">Recipient</span><b className="text-right">{(isWhatsApp ? selectedCandidate?.phone : selectedCandidate?.email) || "-"}</b></div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-              <b>Stop behavior</b>
-              <p className="mt-1">Stop marks only unsent drafts as stopped. Messages already submitted through the provider cannot be recalled.</p>
-            </div>
-            {selectedCandidate && (
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                <h3 className="font-black text-slate-900">Recent activity</h3>
-                <div className="mt-3 space-y-3">
-                  {channelActivity.slice(0, 5).map((item) => (
-                    <div key={item._id} className="border-b border-slate-100 pb-2 last:border-0">
-                      <p className="text-xs font-bold text-slate-800">{item.description || item.module || item.action}</p>
-                      <p className="text-[11px] text-slate-400">{formatDateTime(item.createdAt)}</p>
-                    </div>
-                  ))}
-                  {channelActivity.length === 0 && <p className="text-sm text-slate-500">No {isWhatsApp ? "WhatsApp" : "email"} activity yet.</p>}
-                </div>
-              </div>
-            )}
-          </aside>
-        </div>
       </div>
     );
   };
