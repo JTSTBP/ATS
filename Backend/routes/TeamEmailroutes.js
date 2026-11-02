@@ -52,6 +52,13 @@ async function clientJobs(req) {
   return Job.find({ clientId: req.params.clientId }).populate('clientId', 'companyName name clientName').lean();
 }
 
+async function positionFor(req, jobs, requirementId, required = false) {
+  if (!requirementId && !required) return '';
+  if (!objectId(requirementId)) fail(400, 'Select a position before starting email sequences');
+  if (!jobs.some(job => id(job._id) === requirementId && job.status === 'Open') || !await Job.exists({ _id: requirementId, clientId: req.params.clientId, ...req.emailJobScope, status: 'Open' })) fail(403, 'Position is closed or outside your client/team');
+  return requirementId;
+}
+
 async function loadPlan(req, jobs) {
   const jobIds = jobs.map(job => job._id);
   const [sourced, lineup, suppressed, dispatches, previous] = await Promise.all([
@@ -96,11 +103,11 @@ async function loadPlan(req, jobs) {
   return { contacts, rows, members, mailboxErrors };
 }
 
-async function templatesFor(req, jobs) {
+async function templatesFor(req, jobs, requirementId) {
   const saved = await ClientEmailSequence.find({ clientId: req.params.clientId }).sort({ name: 1 }).lean();
   return [
     ...saved.map(template => ({ key: id(template._id), name: template.name, steps: template.steps })),
-    ...jobs.filter(job => job.status === 'Open' && job.assignedRecruiters?.some(member => req.emailTeam.some(recruiter => id(recruiter._id) === id(member)))).flatMap(job => getEmailSequences(job.communicationTemplates || []).map(sequence => ({ key: `${job._id}:${sequence.name}`, name: `${job.title} — ${sequence.name}`, steps: sequence.templates.map(template => ({ subject: template.subject, body: template.body })) }))),
+    ...jobs.filter(job => id(job._id) === requirementId && job.status === 'Open').flatMap(job => getEmailSequences(job.communicationTemplates || []).map(sequence => ({ key: `${job._id}:${sequence.name}`, name: `${job.title} — ${sequence.name}`, steps: sequence.templates.map(template => ({ subject: template.subject, body: template.body })) }))),
   ];
 }
 
@@ -112,12 +119,14 @@ router.get('/clients', endpoint(async (req, res) => {
 
 router.get('/clients/:clientId/preview', endpoint(async (req, res) => {
   const jobs = await clientJobs(req);
+  const requirementId = await positionFor(req, jobs, req.query?.requirementId);
+  const requirements = await Job.find({ clientId: req.params.clientId, ...req.emailJobScope, status: 'Open' }).select('_id title').lean();
   const { rows, mailboxErrors } = await loadPlan(req, jobs);
-  const templates = await templatesFor(req, jobs);
+  const templates = await templatesFor(req, jobs, requirementId);
   const dispatches = await ClientEmailDispatch.find({ clientId: req.params.clientId, recruiterId: { $in: req.emailTeam.map(member => member._id) } }).sort({ createdAt: -1 }).limit(100).lean();
   const messages = await Communication.find({ clientDispatchId: { $in: dispatches.map(dispatch => dispatch._id) } }).select('clientDispatchId status stopReason replyCheckError sentAt').lean();
   const sequences = dispatches.map(dispatch => ({ _id: dispatch._id, email: dispatch.email, name: dispatch.sequenceName, createdAt: dispatch.createdAt, state: dispatch.state, steps: messages.filter(message => id(message.clientDispatchId) === id(dispatch._id)).map(message => ({ status: message.status, stopReason: message.stopReason, replyCheckError: message.replyCheckError })) }));
-  res.json({ contacts: rows, templates, sequences, mailboxes: req.emailTeam.filter(member => !member.isDisabled).map(member => ({ _id: member._id, name: member.name, email: member.email, ready: !mailboxErrors.has(id(member._id)), reason: mailboxErrors.get(id(member._id)) || '' })) });
+  res.json({ requirements: requirements.map(job => ({ _id: job._id, title: job.title })), contacts: rows.filter(row => row.requirementId === requirementId), templates, sequences, mailboxes: req.emailTeam.filter(member => !member.isDisabled).map(member => ({ _id: member._id, name: member.name, email: member.email, ready: !mailboxErrors.has(id(member._id)), reason: mailboxErrors.get(id(member._id)) || '' })) });
 }));
 
 router.post('/clients/:clientId/templates', endpoint(async (req, res) => {
@@ -131,16 +140,17 @@ router.post('/clients/:clientId/templates', endpoint(async (req, res) => {
 }));
 
 router.post('/clients/:clientId/start', endpoint(async (req, res) => {
-  const { candidateIds, templateKey } = req.body || {};
+  const { candidateIds, templateKey, requirementId: requestedPosition } = req.body || {};
   if (!Array.isArray(candidateIds) || !candidateIds.length || candidateIds.length > 500 || candidateIds.some(value => !objectId(value)) || new Set(candidateIds).size !== candidateIds.length || typeof templateKey !== 'string') fail(400, 'Select one sequence and 1–500 unique contacts');
   const jobs = await clientJobs(req);
-  const template = (await templatesFor(req, jobs)).find(item => item.key === templateKey);
+  const requirementId = await positionFor(req, jobs, requestedPosition, true);
+  const template = (await templatesFor(req, jobs, requirementId)).find(item => item.key === templateKey);
   if (!template) fail(400, 'Select a sequence saved for this client');
   validateEmailSequences(template.steps.map((step, index) => ({ ...step, channel: 'EMAIL', label: `Email ${index + 1}`, sequenceName: 'Selected' })));
   if (!template.steps.length) fail(400, 'The sequence has no email steps');
   const plan = await loadPlan(req, jobs);
-  const rows = new Map(plan.rows.map(row => [row.candidateId, row]));
-  if (candidateIds.some(candidateId => !rows.has(candidateId))) fail(403, 'One or more contacts are outside your team or client');
+  const rows = new Map(plan.rows.filter(row => row.requirementId === requirementId).map(row => [row.candidateId, row]));
+  if (candidateIds.some(candidateId => !rows.has(candidateId))) fail(403, 'One or more contacts are outside your team, client or selected position');
   // Validate global configuration before creating any permanent contact claims.
   unsubscribeUrl('setup-check@example.com');
   await ClientEmailDispatch.init();

@@ -1,6 +1,6 @@
 # Mentor and manager email sequences
 
-Mentors and managers use **Follow-ups → Team email sequences** to select a client,
+Mentors and managers use **Follow-ups → Team email sequences** to select a client and position,
 choose or create a sequence template, select contacts, and queue the batch. Templates
 are reusable per client and contain one to five email steps. Existing named requirement
 sequences are also offered for the team's open requirements. The existing daytime
@@ -62,3 +62,14 @@ part of implementing or testing this feature.
 Verification: `node --test tests/*.test.js` from Backend; `npm run build` and
 `npm run typecheck` from Frontend. Browser checks use intercepted test responses, never
 real recipient addresses or mailbox credentials.
+
+## Position selection
+
+A position is required before selecting contacts or starting a batch. The preview only
+shows contacts from that position, and requirement-specific templates belong to the
+selected position. Saved client-level templates can be reused for a selected position.
+The server validates that the position is open and accessible in the selected client,
+and rejects a batch containing any contact from another position before queuing emails.
+Changing the client or position clears recipient and template selections. Ownership and
+previous-contact checks still run across all positions for the client; filtering the
+preview never gives a later duplicate ownership of an email address.

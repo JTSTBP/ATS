@@ -9,6 +9,7 @@ const sequences = require('../services/emailSequences');
 const oid = number => String(number).padStart(24, '0');
 const actor = { _id: oid(1), designation: 'Manager' };
 const clientId = oid(2), firstId = oid(3), laterId = oid(4), recruiterA = oid(5), recruiterB = oid(6), jobId = oid(7), templateId = oid(8);
+const otherJobId = oid(30), otherCandidateId = oid(31);
 const response = () => ({ code: 200, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } });
 const chain = data => ({ select() { return this; }, populate() { return this; }, sort() { return this; }, limit() { return this; }, async lean() { return data; } });
 
@@ -16,7 +17,8 @@ function load() {
   const handlers = {}, middleware = [], dispatches = [], messages = [];
   const team = [{ _id: recruiterA, name: 'First recruiter', email: 'first@example.com', designation: 'Recruiter' }, { _id: recruiterB, name: 'Later recruiter', email: 'later@example.com', designation: 'Recruiter' }];
   const job = { _id: jobId, clientId: { _id: clientId, companyName: 'Client' }, title: 'Developer', status: 'Open', assignedRecruiters: [recruiterA, recruiterB] };
-  let allowed = true, mailboxAvailable = true, failInsert = false, replyAccess = true, userResults = [team];
+  const otherJob = { ...job, _id: otherJobId, title: 'Other position', communicationTemplates: [{ channel: 'EMAIL', sequenceName: 'Other sequence', label: 'Email 1', subject: 'Other role', body: 'Other role message' }] };
+  let allowed = true, positionAllowed = true, mailboxAvailable = true, failInsert = false, replyAccess = true, userResults = [team];
   const userQueries = [];
   const router = { use(...args) { middleware.push(...args); }, get(url, handler) { handlers[`GET ${url}`] = handler; }, post(url, handler) { handlers[`POST ${url}`] = handler; } };
   const template = { _id: templateId, name: 'Two steps', steps: [{ subject: 'Hi {{candidateName}}', body: 'From {{recruiterName}}' }, { subject: 'Follow up', body: 'More details' }] };
@@ -24,8 +26,8 @@ function load() {
     express: { Router: () => router }, mongoose, 'node:crypto': require('node:crypto'),
     '../middleware/authMiddleware': { protect: (_req, _res, next) => next() },
     '../models/Users': { find: query => { const position = userQueries.length; userQueries.push(query); return chain(userResults[position] || []); } },
-    '../models/Jobs': { exists: async () => allowed, find: () => chain([job]) },
-    '../models/SourcedCandidate': { find: () => chain([{ _id: laterId, recruiterId: recruiterB, requirementId: jobId, name: 'Later', email: ' PERSON@example.com ', createdAt: '2026-10-02' }, { _id: firstId, recruiterId: recruiterA, requirementId: jobId, name: 'First', email: 'person@example.com', createdAt: '2026-10-01' }]) },
+    '../models/Jobs': { exists: async query => allowed && (!query._id || positionAllowed), find: () => chain([job, otherJob]) },
+    '../models/SourcedCandidate': { find: () => chain([{ _id: laterId, recruiterId: recruiterB, requirementId: jobId, name: 'Later', email: ' PERSON@example.com ', createdAt: '2026-10-02' }, { _id: firstId, recruiterId: recruiterA, requirementId: jobId, name: 'First', email: 'person@example.com', createdAt: '2026-10-01' }, { _id: otherCandidateId, recruiterId: recruiterA, requirementId: otherJobId, name: 'Other position contact', email: 'other@example.com', createdAt: '2026-10-01' }]) },
     '../models/CandidatesByJob': { find: () => chain([]) },
     '../models/EmailSuppression': { find: () => chain([]) },
     '../models/ClientEmailSequence': { find: () => chain([template]), create: async data => data },
@@ -51,8 +53,8 @@ function load() {
     '../utils/emailSchedule': { scheduleForStep: step => new Date(2026, 10, 1 + step) },
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../routes/TeamEmailroutes.js'), 'utf8'), { require: name => { if (!(name in dependencies)) throw Error(name); return dependencies[name]; }, module: { exports: {} }, console, Date, Map, Set });
-  const request = () => ({ user: actor, params: { clientId }, emailTeam: team, emailJobScope: {}, body: { candidateIds: [firstId, laterId], templateKey: templateId } });
-  return { handlers, middleware, dispatches, messages, request, userQueries, setUserResults: value => { userResults = value; }, setAllowed: value => { allowed = value; }, setReplyAccess: value => { replyAccess = value; }, setMailbox: value => { mailboxAvailable = value; }, setFailInsert: value => { failInsert = value; } };
+  const request = () => ({ user: actor, params: { clientId }, query: { requirementId: jobId }, emailTeam: team, emailJobScope: {}, body: { requirementId: jobId, candidateIds: [firstId, laterId], templateKey: templateId } });
+  return { handlers, middleware, dispatches, messages, request, userQueries, setUserResults: value => { userResults = value; }, setPositionAllowed: value => { positionAllowed = value; }, setAllowed: value => { allowed = value; }, setReplyAccess: value => { replyAccess = value; }, setMailbox: value => { mailboxAvailable = value; }, setFailInsert: value => { failInsert = value; } };
 }
 
 test('manager team follows primary/secondary reporting mentors instead of granting company-wide mailbox access', async () => {
@@ -160,4 +162,43 @@ test('sending connection without reply consent is identified as missing Mail.Rea
   assert.match(res.body.mailboxes[0].reason, /connected for sending/);
   assert.match(res.body.mailboxes[0].reason, /Mail.Read/);
   assert.doesNotMatch(res.body.mailboxes[0].reason, /Mailbox connection needed/);
+});
+
+
+test('preview shows no contacts until a position is selected, then only contacts for that position', async () => {
+  const app = load(), req = app.request(); req.query = {};
+  let res = response(); await app.handlers['GET /clients/:clientId/preview'](req, res);
+  assert.equal(res.body.contacts.length, 0);
+  assert.ok(res.body.requirements.some(job => String(job._id) === jobId));
+  req.query = { requirementId: jobId }; res = response();
+  await app.handlers['GET /clients/:clientId/preview'](req, res);
+  assert.equal(res.body.contacts.length, 2);
+  assert.ok(res.body.contacts.every(contact => contact.requirementId === jobId));
+  assert.ok(!res.body.templates.some(template => template.key.startsWith(otherJobId + ':')));
+});
+
+test('batch rejects contacts and requirement templates from a different position before any writes', async () => {
+  const app = load(), req = app.request();
+  req.body.candidateIds = [firstId, otherCandidateId];
+  let res = response(); await app.handlers['POST /clients/:clientId/start'](req, res);
+  assert.equal(res.code, 403); assert.equal(app.dispatches.length, 0);
+  req.body.candidateIds = [firstId]; req.body.templateKey = otherJobId + ':Other sequence'; res = response();
+  await app.handlers['POST /clients/:clientId/start'](req, res);
+  assert.equal(res.code, 400); assert.equal(app.dispatches.length, 0);
+});
+
+test('starting requires a valid accessible position belonging to the selected client', async () => {
+  const app = load();
+  for (const requirementId of [undefined, 'bad', oid(999)]) {
+    const req = app.request(); req.body.requirementId = requirementId; const res = response();
+    await app.handlers['POST /clients/:clientId/start'](req, res);
+    assert.ok([400, 403].includes(res.code)); assert.equal(app.dispatches.length, 0);
+  }
+});
+
+test('access to a client does not grant access to every position in that client', async () => {
+  const app = load(); app.setPositionAllowed(false);
+  const res = response();
+  await app.handlers['POST /clients/:clientId/start'](app.request(), res);
+  assert.equal(res.code, 403); assert.equal(app.dispatches.length, 0);
 });
