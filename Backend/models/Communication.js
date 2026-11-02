@@ -21,6 +21,7 @@ const communicationSchema = new mongoose.Schema(
     initiatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     detectReplies: { type: Boolean, default: false },
     replyDetectedAt: { type: Date },
+    replyNotificationReadAt: { type: Date },
     replyCheckError: { type: String },
     replyCheckedAt: { type: Date },
     reviewedAt: { type: Date },
@@ -37,5 +38,6 @@ communicationSchema.index(
   { recruiterId: 1, channel: 1, idempotencyKey: 1 },
   { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
 );
+communicationSchema.index({ recruiterId: 1, replyDetectedAt: -1 });
 
 module.exports = mongoose.model("Communication", communicationSchema);

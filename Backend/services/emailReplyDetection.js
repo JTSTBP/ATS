@@ -28,7 +28,14 @@ async function checkSequenceReplies(item, mailbox) {
   return !reply;
 }
 async function pollSequenceReplies() {
-  const active = await Communication.find({ detectReplies: true, status: 'scheduled' }).sort({ scheduledAt: 1 }).limit(500).lean();
+  const active = await Communication.find({
+    detectReplies: true,
+    replyDetectedAt: null,
+    $or: [
+      { status: 'scheduled' },
+      { status: 'sent', sentAt: { $gte: new Date(Date.now() - 30 * 86400000) } },
+    ],
+  }).sort({ replyCheckedAt: 1, createdAt: 1 }).limit(500).lean();
   const mailboxes = new Map();
   for (const item of active) {
     const key = String(item.recruiterId);

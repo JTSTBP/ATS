@@ -59,3 +59,29 @@ test('suppression normalizes addresses, stops pending emails globally, and enfor
   await assert.rejects(service.suppressEmail('invalid', 'manual'));
   await assert.rejects(service.suppressEmail('candidate@example.com', 'untrusted-reason'));
 });
+
+test('reply polling detects responses after the final email and does not repeat an already detected reply', async () => {
+  const startedAt = new Date(Date.now() - 3600000);
+  const docs = [{ sequenceId: 'seq', recruiterId: 'r', recipient: 'candidate@example.com', status: 'sent', sentAt: startedAt, createdAt: startedAt, detectReplies: true }];
+  const matches = (doc, query) => Object.entries(query).every(([key, value]) => {
+    if (key === '$or') return value.some(item => matches(doc, item));
+    if (value && typeof value === 'object' && '$gte' in value) return doc[key] >= value.$gte;
+    if (value && typeof value === 'object' && '$in' in value) return value.$in.includes(doc[key]);
+    return value == null ? doc[key] == null : doc[key] === value;
+  });
+  let reads = 0;
+  const service = load('emailReplyDetection.js', {
+    '../models/Communication': {
+      find: query => ({ sort() { return this; }, limit() { return this; }, lean: async () => docs.filter(doc => matches(doc, query)) }),
+      updateMany: async (query, update) => { for (const doc of docs.filter(item => matches(item, query))) Object.assign(doc, update.$set); },
+    },
+    '../models/EmailEnrollment': { deleteOne: async () => {} },
+    './emailSuppression': { normalizeEmail, pendingStatuses },
+    './microsoftMailService': { listMailboxMessages: async (_user, folder) => { reads++; return folder === 'sentitems' ? [sent] : [{ ...reply, receivedDateTime: new Date().toISOString() }]; } },
+  });
+  await service.pollSequenceReplies();
+  assert.ok(docs[0].replyDetectedAt instanceof Date);
+  assert.equal(reads, 2);
+  await service.pollSequenceReplies();
+  assert.equal(reads, 2);
+});

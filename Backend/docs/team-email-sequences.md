@@ -78,3 +78,23 @@ and rejects a batch containing any contact from another position before queuing 
 Changing the client or position clears recipient and template selections. Ownership and
 previous-contact checks still run across all positions for the client; filtering the
 preview never gives a later duplicate ownership of an email address.
+
+## Recruiter reply notifications
+
+Recruiters see **Email replies** inside the existing notification bell. Each item shows
+the contact name/address, requirement and response time; it never shows an email body or
+preview. The unread badge refreshes every 30 seconds while the page is visible, on window
+focus and when opening the bell. Recruiters can mark an individual reply or all replies
+read. Read state is saved on the server and survives logouts and device changes.
+
+The authenticated `/api/email-replies` endpoint groups detected responses by sequence
+and mailbox owner, returns the latest 50 notifications and the total unread count, and
+never accepts a different recipient user ID. Read actions use that same ownership scope.
+Notifications derive from the existing `replyDetectedAt` records, so concurrent polling,
+server restarts or an interrupted notification request cannot duplicate or lose an alert.
+
+The worker monitors active sequences and sent messages from the past 30 days, including
+completed sequences. Least-recently checked records are polled first in bounded batches.
+Normal and automatic replies both count as responses. Existing reply detection still
+stops pending follow-ups. Detection requires the backend worker and valid Microsoft
+Mail.Read access; alerts appear after detection, not immediately when Outlook receives mail.
