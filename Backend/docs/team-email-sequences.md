@@ -63,6 +63,11 @@ Verification: `node --test tests/*.test.js` from Backend; `npm run build` and
 `npm run typecheck` from Frontend. Browser checks use intercepted test responses, never
 real recipient addresses or mailbox credentials.
 
+Unsubscribe URLs prefer `PUBLIC_BASE_URL` or `BACKEND_PUBLIC_URL`. When both are absent,
+the server uses the origin of the configured `MICROSOFT_REDIRECT_URI`, provided it points
+to `/api/microsoft-mail/callback`. HTTPS and the signing secret are still required;
+the frontend URL is never used as an implicit backend address.
+
 ## Position selection
 
 A position is required before selecting contacts or starting a batch. The preview only
