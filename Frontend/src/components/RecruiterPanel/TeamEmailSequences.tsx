@@ -43,7 +43,7 @@ export default function TeamEmailSequences() {
     const controller = new AbortController();
     setPreview(null); setSelected([]); setPage(1); setSearch('');
     if (!clientId) { setLoading(false); return () => controller.abort(); }
-    setLoading(true); setError('');
+    setLoading(true);
     axios.get(`${API}/clients/${clientId}/preview`, { signal: controller.signal, params: { requirementId: requirementId || undefined } }).then(({ data }) => {
       setRequirements(data.requirements || []); setPreview(data); setTemplateKey(current => data.templates.some((template: Template) => template.key === current) ? current : '');
     }).catch(error => { if (!controller.signal.aborted) setError(errorMessage(error)); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
@@ -91,10 +91,10 @@ export default function TeamEmailSequences() {
   return <section aria-labelledby="team-email-title" className="mb-6 min-w-0 space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div><h2 id="team-email-title" className="text-xl font-bold text-slate-900">Team email sequences</h2><p className="mt-1 text-sm text-slate-600">Select a client, position and sequence. Each contact receives emails from the recruiter who added the address first for that client.</p></div>
-      <button type="button" className={button} disabled={!clientId || loading || !!busy} onClick={() => setRefresh(value => value + 1)}>Refresh preview</button>
+      <button type="button" className={button} disabled={!clientId || loading || !!busy} onClick={() => { setError(''); setRefresh(value => value + 1); }}>Refresh preview</button>
     </div>
-    <label className="block max-w-md text-sm font-semibold text-slate-700">Client<select className={input} value={clientId} disabled={!!busy} onChange={event => { setClientId(event.target.value); setRequirementId(''); setRequirements([]); setSelected([]); setPreview(null); setTemplateKey(''); setResults([]); setNotice(''); setEditing(false); }}><option value="">Select client</option>{clients.map(client => <option key={client._id} value={client._id}>{client.name}</option>)}</select></label>
-    {clientId && <label className="block max-w-md text-sm font-semibold text-slate-700">Position<select className={input} value={requirementId} disabled={!!busy || clientsLoading} onChange={event => { setRequirementId(event.target.value); setSelected([]); setTemplateKey(''); setPreview(null); setResults([]); setNotice(''); }}><option value="">Select position</option>{requirements.map(requirement => <option key={requirement._id} value={requirement._id}>{requirement.title}</option>)}</select></label>}
+    <label className="block max-w-md text-sm font-semibold text-slate-700">Client<select className={input} value={clientId} disabled={!!busy} onChange={event => { setError(''); setClientId(event.target.value); setRequirementId(''); setRequirements([]); setSelected([]); setPreview(null); setTemplateKey(''); setResults([]); setNotice(''); setEditing(false); }}><option value="">Select client</option>{clients.map(client => <option key={client._id} value={client._id}>{client.name}</option>)}</select></label>
+    {clientId && <label className="block max-w-md text-sm font-semibold text-slate-700">Position<select className={input} value={requirementId} disabled={!!busy || clientsLoading} onChange={event => { setError(''); setRequirementId(event.target.value); setSelected([]); setTemplateKey(''); setPreview(null); setResults([]); setNotice(''); }}><option value="">Select position</option>{requirements.map(requirement => <option key={requirement._id} value={requirement._id}>{requirement.title}</option>)}</select></label>}
     {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {notice && <p role="status" className="rounded-lg bg-blue-50 p-3 text-sm text-blue-800">{notice}</p>}
     {(loading || clientsLoading) && <p role="status" className="text-sm text-slate-500">Loading team email preview…</p>}
