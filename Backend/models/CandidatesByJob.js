@@ -17,6 +17,7 @@ const candidateSchema = new mongoose.Schema(
       required: true,
     },
     sourceCreatedAt: { type: Date },
+    contactSource: { type: String, enum: ['Shine', 'Naukri', 'LinkedIn', 'Other'], default: null },
     resumeUrl: String,
     linkedinUrl: String,
     portfolioUrl: String,

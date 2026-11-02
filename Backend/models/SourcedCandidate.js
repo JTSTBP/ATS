@@ -81,6 +81,7 @@ const sourcedCandidateSchema = new mongoose.Schema(
       type: String,
       default: "Resume Upload",
     },
+    contactSource: { type: String, enum: ['Shine', 'Naukri', 'LinkedIn', 'Other'], default: null },
     sourceIdentifier: {
       type: String,
       default: () => new mongoose.Types.ObjectId().toHexString()

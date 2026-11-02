@@ -142,10 +142,17 @@ export default function FollowUps() {
   const [candidateForm, setCandidateForm] = useState<any>({
     candidateName: "",
     linkedinProfile: '',
+    contactSource: '',
     email: "",
     phone: "",
     resume: null,
   });
+  const candidateJobBoard = ['Shine', 'Naukri'].includes(candidateForm.contactSource);
+  const candidateSocial = ['LinkedIn', 'Other'].includes(candidateForm.contactSource);
+  const candidateLegacy = Boolean(editingCandidate) && !candidateForm.contactSource;
+  const candidateNameRequired = candidateSocial || candidateLegacy;
+  const candidateContactsRequired = candidateJobBoard || candidateLegacy;
+  const candidateResumeRequired = candidateJobBoard && !editingCandidate?.resumeUrl;
   const [callForm, setCallForm] = useState<any>({
     callDate: todayDate(),
     callTime: nowTime(),
@@ -409,6 +416,7 @@ export default function FollowUps() {
     setCandidateForm({
       candidateName: "",
       linkedinProfile: '',
+      contactSource: '',
       email: "",
       phone: "",
       resume: null,
@@ -948,7 +956,7 @@ export default function FollowUps() {
                 </td>
                 <td data-label="Actions" className="px-4 py-3">
                   <div className="flex flex-wrap justify-end gap-1.5">
-                    <button type="button" title="Edit" aria-label={`Edit ${candidate.name}`} disabled={Boolean(saving)} onClick={() => { setEditingCandidate(candidate); setCandidateForm({ candidateName: candidate.name || "", email: candidate.email || "", phone: candidate.phone || "", linkedinProfile: candidate.linkedinProfile || "", resume: null }); setDuplicateWarning(null); setModal("candidate"); }} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"><Pencil size={16} /></button>
+                    <button type="button" title="Edit" aria-label={`Edit ${candidate.name}`} disabled={Boolean(saving)} onClick={() => { setEditingCandidate(candidate); setCandidateForm({ candidateName: candidate.name || "", email: candidate.email || "", phone: candidate.phone || "", linkedinProfile: candidate.linkedinProfile || "", contactSource: candidate.contactSource || "", resume: null }); setDuplicateWarning(null); setModal("candidate"); }} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"><Pencil size={16} /></button>
                     <button disabled={Boolean(saving)} onClick={() => openLineup(candidate)} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">{saving === `lineup-${candidate._id}` ? "Loading..." : "Convert to lineup"}</button>
                     {isAdmin && activeTab === "Candidates" && <button title="Delete candidate" aria-label={`Delete ${candidate.name}`} disabled={saving === "delete-candidates"} onClick={() => deleteCandidates([candidate._id])} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={16} /></button>}
                     {showDuplicateDetails && candidate.isDuplicate && (
@@ -1350,17 +1358,20 @@ export default function FollowUps() {
             setDuplicateWarning(null);
           }}
         >
-          <div className="grid gap-4 md:grid-cols-2">
+          <form onSubmit={event => { event.preventDefault(); void addCandidate(); }} className="grid gap-4 md:grid-cols-2">
+            <label className="block md:col-span-2"><span className="text-xs font-bold text-slate-600">Source{!editingCandidate || editingCandidate.contactSource ? ' *' : ' (optional)'}</span><select required={!editingCandidate || Boolean(editingCandidate.contactSource)} value={candidateForm.contactSource || ''} onChange={event => setCandidateForm({ ...candidateForm, contactSource: event.target.value })} className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"><option value="">Select source</option>{['Shine', 'Naukri', 'LinkedIn', 'Other'].map(source => <option key={source} value={source}>{source}</option>)}</select></label>
+            <p className="md:col-span-2 text-xs text-slate-500">{candidateJobBoard ? 'Email, phone number and CV/resume are required for this source.' : candidateSocial ? 'Candidate name and LinkedIn profile are required. Email, phone number and CV/resume are optional.' : 'Select the source to see which fields are required.'}</p>
             {[
-              ["candidateName", "Candidate Name *"],
-              ["email", "Email *"],
-              ["phone", "Phone Number *"],
-              ['linkedinProfile', 'LinkedIn Profile (optional)'],
+              ["candidateName", `Candidate Name${candidateNameRequired ? " *" : " (optional)"}`],
+              ["email", `Email${candidateContactsRequired ? " *" : " (optional)"}`],
+              ["phone", `Phone Number${candidateContactsRequired ? " *" : " (optional)"}`],
+              ['linkedinProfile', `LinkedIn Profile${candidateSocial ? ' *' : ' (optional)'}`],
             ].map(([key, label]) => (
               <label key={key} className="block">
                 <span className="text-xs font-bold text-slate-600">{label}</span>
                 <input
-                  type={key === 'linkedinProfile' ? 'url' : 'text'}
+                  type={key === 'linkedinProfile' ? 'url' : key === 'email' ? 'email' : key === 'phone' ? 'tel' : 'text'}
+                  required={key === 'candidateName' ? candidateNameRequired : key === 'linkedinProfile' ? candidateSocial : candidateContactsRequired}
                   placeholder={key === 'linkedinProfile' ? 'https://www.linkedin.com/in/profile' : undefined}
                   maxLength={key === 'linkedinProfile' ? 2048 : undefined}
                   value={candidateForm[key] || ""}
@@ -1370,10 +1381,11 @@ export default function FollowUps() {
               </label>
             ))}
             <label className="block md:col-span-2">
-              <span className="text-xs font-bold text-slate-600">{editingCandidate ? "Replace CV/Resume (optional)" : "CV/Resume *"}</span>
-              {editingCandidate && <p className="mt-1 text-xs text-slate-500">Leave empty to keep the current resume.</p>}
+              <span className="text-xs font-bold text-slate-600">{candidateResumeRequired ? "CV/Resume *" : editingCandidate?.resumeUrl ? "Replace CV/Resume (optional)" : "CV/Resume (optional)"}</span>
+              {editingCandidate?.resumeUrl && <p className="mt-1 text-xs text-slate-500">Leave empty to keep the current resume.</p>}
               <input
                 type="file"
+                required={candidateResumeRequired}
                 accept=".pdf,.doc,.docx"
                 onChange={(e) => setCandidateForm({ ...candidateForm, resume: e.target.files?.[0] || null })}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -1437,7 +1449,7 @@ export default function FollowUps() {
 
             <button
               disabled={saving === "candidate" || duplicateWarning?.canAdd === false}
-              onClick={addCandidate}
+              type="submit"
               className="md:col-span-2 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm transition-all"
             >
               <Upload size={16} />{" "}
@@ -1448,7 +1460,7 @@ export default function FollowUps() {
                 ? "Add Candidate (Duplicate Profile)"
                 : "Add Candidate"}
             </button>
-          </div>
+          </form>
         </ModalShell>
       )}
 

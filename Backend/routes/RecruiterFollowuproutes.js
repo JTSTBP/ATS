@@ -18,7 +18,7 @@ const { sendWhatsAppMessage } = require("../services/whatsappService");
 const { scheduleForStep } = require("../services/emailSequenceWorker");
 const { getLineupForm, validateLineupFields } = require("../services/lineupConversion");
 const { getSignedUrl } = require("../config/s3Config");
-const { normalizeLinkedinProfile } = require('../services/candidateLinkedin');
+const { validateCandidateContact } = require('../services/candidateContact');
 
 const router = express.Router();
 const { reportDateRange, buildReportRows } = require('../services/followUpReport');
@@ -197,6 +197,7 @@ const buildCandidateSummary = (candidate, extras = {}) => ({
   currentCompany: getCandidateField(candidate, ["Current Company", "currentCompany", "company"]),
   resumeUrl: getSignedUrl(candidate.resumeFileUrl || candidate.resumeUrl),
   linkedinProfile: candidate.linkedinProfile || '',
+  contactSource: candidate.contactSource || null,
   status: candidate.status || "Sourced",
   createdAt: candidate.createdAt,
   recruiterId: candidate.recruiterId?._id || candidate.recruiterId,
@@ -237,6 +238,7 @@ const getCandidateAdditionBlock = async (req, job, email, phone, checkOwnSource 
   const jobId = job._id;
   const cleanEmail = String(email || "").trim().toLowerCase();
   const cleanPhone = String(phone || "").replace(/\D/g, "");
+  if (!cleanEmail && !cleanPhone) return { canAdd: true };
   const phoneKey = value => {
     const digits = String(value || "").replace(/\D/g, "");
     return digits.length >= 10 ? digits.slice(-10) : digits;
@@ -911,28 +913,19 @@ router.post("/requirements/:requirementId/candidates", upload.single("resume"), 
       return res.status(403).json({ success: false, message: "Candidates can only be added to open requirements" });
     }
 
-    const { candidateName, email, phone } = req.body;
-    const linkedinProfile = normalizeLinkedinProfile(req.body.linkedinProfile);
-    if (linkedinProfile === null) return res.status(400).json({ success: false, message: 'Enter a valid HTTPS LinkedIn profile link' });
-    if (!candidateName || !email || !phone || !req.file) {
-      return res.status(400).json({ success: false, message: "Candidate name, email, phone and resume are required" });
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return res.status(400).json({ success: false, message: "Invalid candidate email" });
-    }
-
-    const cleanEmail = email.trim();
-    const cleanPhone = phone.trim();
+    const validated = validateCandidateContact(req.body, { hasResume: Boolean(req.file) });
+    if (validated.error) return res.status(400).json({ success: false, message: validated.error });
+    const { name, email: cleanEmail, phoneNumber: cleanPhone, linkedinProfile, contactSource } = validated.data;
     const matchConditions = buildCandidateMatchConditions(cleanEmail, cleanPhone);
 
     const additionBlock = await getCandidateAdditionBlock(req, job, cleanEmail, cleanPhone);
     if (!additionBlock.canAdd) return res.status(409).json({ success: false, ...additionBlock });
 
-    const existingCandidates = await SourcedCandidate.find({ $or: matchConditions })
+    const existingCandidates = matchConditions.length ? await SourcedCandidate.find({ $or: matchConditions })
       .populate("recruiterId", "name email designation")
       .populate("requirementId", "title")
       .sort({ createdAt: 1 })
-      .lean();
+      .lean() : [];
 
     const isDuplicate = existingCandidates.length > 0;
     const earliestCandidate = isDuplicate ? existingCandidates[0] : null;
@@ -941,11 +934,12 @@ router.post("/requirements/:requirementId/candidates", upload.single("resume"), 
     const candidate = await SourcedCandidate.create({
       requirementId: job._id,
       recruiterId: req.user._id,
-      resumeFileUrl: req.file.location || req.file.path,
-      name: candidateName.trim(),
+      resumeFileUrl: req.file?.location || req.file?.path || null,
+      name,
       email: cleanEmail,
       phoneNumber: cleanPhone,
       linkedinProfile,
+      contactSource,
       sourceType: "Follow-up Upload",
       isDuplicate: isDuplicate,
       originalCandidateId: earliestCandidate ? earliestCandidate._id : null,
@@ -1013,25 +1007,23 @@ router.patch("/candidates/:candidateId", upload.single("resume"), async (req, re
   try {
     const { candidate, job } = await assertCandidateAccess(req, req.params.candidateId);
     if (!candidate) return res.status(404).json({ success: false, message: "Candidate not found" });
-    const name = String(req.body.candidateName || "").trim();
-    const email = String(req.body.email || "").trim();
-    const phoneNumber = String(req.body.phone || "").trim();
-    const linkedinProfile = normalizeLinkedinProfile(req.body.linkedinProfile);
-    if (linkedinProfile === null) return res.status(400).json({ success: false, message: 'Enter a valid HTTPS LinkedIn profile link' });
-    if (!name || !email || !phoneNumber) return res.status(400).json({ success: false, message: "Candidate name, email and phone are required" });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ success: false, message: "Invalid candidate email" });
-    if (!/^\d{10,15}$/.test(phoneNumber.replace(/\D/g, ""))) return res.status(400).json({ success: false, message: "Enter a valid phone number" });
+    const contactSource = req.body.contactSource ?? candidate.contactSource ?? null;
+    const validated = validateCandidateContact({
+      candidateName: candidate.name || '', email: candidate.email || '', phone: candidate.phoneNumber || '',
+      linkedinProfile: candidate.linkedinProfile || '', ...req.body, contactSource,
+    }, { hasResume: Boolean(req.file || candidate.resumeFileUrl), allowLegacySource: !candidate.contactSource && !contactSource });
+    if (validated.error) return res.status(400).json({ success: false, message: validated.error });
+    const { email, phoneNumber } = validated.data;
     const block = await getCandidateAdditionBlock(req, job, email, phoneNumber, true, candidate._id);
     if (!block.canAdd) return res.status(409).json({ success: false, ...block });
-    const updates = { name, email, phoneNumber };
-    if (req.body.linkedinProfile !== undefined) updates.linkedinProfile = linkedinProfile;
+    const updates = validated.data;
     if (req.file) updates.resumeFileUrl = req.file.location || req.file.path;
     const updated = await SourcedCandidate.findOneAndUpdate({ _id: candidate._id }, { $set: updates }, { new: true, runValidators: true }).populate("recruiterId", "name email designation").lean();
     if (!updated) return res.status(404).json({ success: false, message: "Candidate not found" });
     // Already-sent or in-flight messages retain their original recipient.
     const unsent = { candidateId: candidate._id, status: { $in: ["generated", "reviewed", "scheduled", "failed"] } };
-    await Communication.updateMany({ ...unsent, channel: "EMAIL" }, { $set: { recipient: email } });
-    await Communication.updateMany({ ...unsent, channel: "WHATSAPP" }, { $set: { recipient: normalizeWhatsAppPhone(phoneNumber) } });
+    if (email.toLowerCase() !== String(candidate.email || '').trim().toLowerCase()) await Communication.updateMany({ ...unsent, channel: 'EMAIL' }, { $set: { status: 'stopped', stoppedAt: new Date(), stopReason: 'candidate_email_changed' } });
+    if (phoneNumber !== String(candidate.phoneNumber || '').trim()) await Communication.updateMany({ ...unsent, channel: 'WHATSAPP' }, { $set: phoneNumber ? { recipient: normalizeWhatsAppPhone(phoneNumber) } : { status: 'stopped', stoppedAt: new Date(), stopReason: 'candidate_phone_removed' } });
     logActivity(req.user._id, "updated", "source-candidate", "Candidate profile updated", candidate._id, "SourceCandidate", { actionType: "candidate_updated", candidateId: candidate._id, jobId: job._id });
     res.json({ success: true, candidate: buildCandidateSummary(updated) });
   } catch (error) {
@@ -1100,7 +1092,7 @@ router.post("/candidates/:candidateId/lineup", async (req, res) => {
     if (!normal) {
       const block = await getCandidateAdditionBlock(req, job, dynamicFields.Email, dynamicFields.Phone, false);
       if (!block.canAdd) return res.status(409).json({ success: false, ...block });
-      normal = await CandidateByJob.create({ _id: candidate._id, jobId: job._id, createdBy: candidate.recruiterId?._id || candidate.recruiterId, sourceCreatedAt: candidate.createdAt, dynamicFields, resumeUrl: candidate.resumeFileUrl, linkedinUrl: candidate.linkedinProfile, notes: "Converted to lineup from Follow-ups", status: "New" });
+      normal = await CandidateByJob.create({ _id: candidate._id, jobId: job._id, createdBy: candidate.recruiterId?._id || candidate.recruiterId, sourceCreatedAt: candidate.createdAt, contactSource: candidate.contactSource || null, dynamicFields, resumeUrl: candidate.resumeFileUrl, linkedinUrl: candidate.linkedinProfile, notes: "Converted to lineup from Follow-ups", status: "New" });
     }
     // Stop the source workflow before removing its profile. Preserve its history for audit.
     await Communication.updateMany({ candidateId: candidate._id, status: { $in: ["generated", "reviewed", "scheduled", "failed"] } }, { $set: { status: "stopped", stoppedAt: new Date(), stopReason: "converted_to_lineup" } });
