@@ -18,6 +18,7 @@ const { sendWhatsAppMessage } = require("../services/whatsappService");
 const { scheduleForStep } = require("../services/emailSequenceWorker");
 const { getLineupForm, validateLineupFields } = require("../services/lineupConversion");
 const { getSignedUrl } = require("../config/s3Config");
+const { normalizeLinkedinProfile } = require('../services/candidateLinkedin');
 
 const router = express.Router();
 const { reportDateRange, buildReportRows } = require('../services/followUpReport');
@@ -195,6 +196,7 @@ const buildCandidateSummary = (candidate, extras = {}) => ({
   experience: getCandidateField(candidate, ["Experience", "experience", "totalExperience"]),
   currentCompany: getCandidateField(candidate, ["Current Company", "currentCompany", "company"]),
   resumeUrl: getSignedUrl(candidate.resumeFileUrl || candidate.resumeUrl),
+  linkedinProfile: candidate.linkedinProfile || '',
   status: candidate.status || "Sourced",
   createdAt: candidate.createdAt,
   recruiterId: candidate.recruiterId?._id || candidate.recruiterId,
@@ -910,6 +912,8 @@ router.post("/requirements/:requirementId/candidates", upload.single("resume"), 
     }
 
     const { candidateName, email, phone } = req.body;
+    const linkedinProfile = normalizeLinkedinProfile(req.body.linkedinProfile);
+    if (linkedinProfile === null) return res.status(400).json({ success: false, message: 'Enter a valid HTTPS LinkedIn profile link' });
     if (!candidateName || !email || !phone || !req.file) {
       return res.status(400).json({ success: false, message: "Candidate name, email, phone and resume are required" });
     }
@@ -941,6 +945,7 @@ router.post("/requirements/:requirementId/candidates", upload.single("resume"), 
       name: candidateName.trim(),
       email: cleanEmail,
       phoneNumber: cleanPhone,
+      linkedinProfile,
       sourceType: "Follow-up Upload",
       isDuplicate: isDuplicate,
       originalCandidateId: earliestCandidate ? earliestCandidate._id : null,
@@ -1011,12 +1016,15 @@ router.patch("/candidates/:candidateId", upload.single("resume"), async (req, re
     const name = String(req.body.candidateName || "").trim();
     const email = String(req.body.email || "").trim();
     const phoneNumber = String(req.body.phone || "").trim();
+    const linkedinProfile = normalizeLinkedinProfile(req.body.linkedinProfile);
+    if (linkedinProfile === null) return res.status(400).json({ success: false, message: 'Enter a valid HTTPS LinkedIn profile link' });
     if (!name || !email || !phoneNumber) return res.status(400).json({ success: false, message: "Candidate name, email and phone are required" });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ success: false, message: "Invalid candidate email" });
     if (!/^\d{10,15}$/.test(phoneNumber.replace(/\D/g, ""))) return res.status(400).json({ success: false, message: "Enter a valid phone number" });
     const block = await getCandidateAdditionBlock(req, job, email, phoneNumber, true, candidate._id);
     if (!block.canAdd) return res.status(409).json({ success: false, ...block });
     const updates = { name, email, phoneNumber };
+    if (req.body.linkedinProfile !== undefined) updates.linkedinProfile = linkedinProfile;
     if (req.file) updates.resumeFileUrl = req.file.location || req.file.path;
     const updated = await SourcedCandidate.findOneAndUpdate({ _id: candidate._id }, { $set: updates }, { new: true, runValidators: true }).populate("recruiterId", "name email designation").lean();
     if (!updated) return res.status(404).json({ success: false, message: "Candidate not found" });

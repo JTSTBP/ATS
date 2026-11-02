@@ -141,6 +141,7 @@ export default function FollowUps() {
   const [editingCandidate, setEditingCandidate] = useState<any>(null);
   const [candidateForm, setCandidateForm] = useState<any>({
     candidateName: "",
+    linkedinProfile: '',
     email: "",
     phone: "",
     resume: null,
@@ -407,6 +408,7 @@ export default function FollowUps() {
     setEditingCandidate(null);
     setCandidateForm({
       candidateName: "",
+      linkedinProfile: '',
       email: "",
       phone: "",
       resume: null,
@@ -946,7 +948,7 @@ export default function FollowUps() {
                 </td>
                 <td data-label="Actions" className="px-4 py-3">
                   <div className="flex flex-wrap justify-end gap-1.5">
-                    <button type="button" title="Edit" aria-label={`Edit ${candidate.name}`} disabled={Boolean(saving)} onClick={() => { setEditingCandidate(candidate); setCandidateForm({ candidateName: candidate.name || "", email: candidate.email || "", phone: candidate.phone || "", resume: null }); setDuplicateWarning(null); setModal("candidate"); }} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"><Pencil size={16} /></button>
+                    <button type="button" title="Edit" aria-label={`Edit ${candidate.name}`} disabled={Boolean(saving)} onClick={() => { setEditingCandidate(candidate); setCandidateForm({ candidateName: candidate.name || "", email: candidate.email || "", phone: candidate.phone || "", linkedinProfile: candidate.linkedinProfile || "", resume: null }); setDuplicateWarning(null); setModal("candidate"); }} className="rounded-lg p-2 text-blue-600 hover:bg-blue-50 disabled:opacity-50"><Pencil size={16} /></button>
                     <button disabled={Boolean(saving)} onClick={() => openLineup(candidate)} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-50">{saving === `lineup-${candidate._id}` ? "Loading..." : "Convert to lineup"}</button>
                     {isAdmin && activeTab === "Candidates" && <button title="Delete candidate" aria-label={`Delete ${candidate.name}`} disabled={saving === "delete-candidates"} onClick={() => deleteCandidates([candidate._id])} className="rounded-lg p-2 text-red-600 hover:bg-red-50 disabled:opacity-50"><Trash2 size={16} /></button>}
                     {showDuplicateDetails && candidate.isDuplicate && (
@@ -1353,10 +1355,14 @@ export default function FollowUps() {
               ["candidateName", "Candidate Name *"],
               ["email", "Email *"],
               ["phone", "Phone Number *"],
+              ['linkedinProfile', 'LinkedIn Profile (optional)'],
             ].map(([key, label]) => (
               <label key={key} className="block">
                 <span className="text-xs font-bold text-slate-600">{label}</span>
                 <input
+                  type={key === 'linkedinProfile' ? 'url' : 'text'}
+                  placeholder={key === 'linkedinProfile' ? 'https://www.linkedin.com/in/profile' : undefined}
+                  maxLength={key === 'linkedinProfile' ? 2048 : undefined}
                   value={candidateForm[key] || ""}
                   onChange={(e) => setCandidateForm({ ...candidateForm, [key]: e.target.value })}
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
