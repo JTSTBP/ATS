@@ -7,6 +7,26 @@ const { validateReportingMentors, syncReportingMentors } = require('../services/
 
 const router = express.Router();
 
+router.get('/:id/team-profile', protect, async (req, res) => {
+  if (!req.user || req.user.isDisabled || !['Mentor', 'Manager'].includes(req.user.designation)) return res.status(403).json({ message: 'Team profile access required' });
+  if (!/^[a-f\d]{24}$/i.test(req.params.id)) return res.status(400).json({ message: 'Invalid recruiter' });
+  try {
+    const teamIds = [req.user._id];
+    if (req.user.designation === 'Manager') {
+      const mentors = await User.find({ designation: 'Mentor', $or: [{ reporter: req.user._id }, { secondary_managers: req.user._id }] }).select('_id').lean();
+      teamIds.push(...mentors.map(mentor => mentor._id));
+    }
+    const recruiter = await User.findOne({ _id: req.params.id, designation: 'Recruiter', $or: [{ reporter: { $in: teamIds } }, { secondary_managers: { $in: teamIds } }] })
+      .select('name email designation personalEmail phone phoneNumber department dateOfJoining joinDate dateOfBirth profilePhoto whatsappLink linkedinLink reporter secondary_managers isDisabled disabledAt createdAt')
+      .populate('reporter', 'name email designation').populate('secondary_managers', 'name email designation').lean();
+    if (!recruiter) return res.status(404).json({ message: 'Recruiter not found in your team' });
+    const jobs = await require('../models/Jobs').find({ $or: [{ assignedRecruiters: recruiter._id }, { leadRecruiter: recruiter._id }] })
+      .select('title status clientId noOfPositions').populate('clientId', 'companyName clientName name').sort({ createdAt: -1 }).lean();
+    res.set('Cache-Control', 'no-store');
+    res.json({ recruiter, jobs });
+  } catch { res.status(500).json({ message: 'Unable to load recruiter details' }); }
+});
+
 // ➕ Create New User
 router.post("/", protect, async (req, res) => {
   try {

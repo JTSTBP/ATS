@@ -1,3 +1,4 @@
+import RecruiterDetails from "../../RecruiterDetails";
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "../../../context/AuthProvider";
 import { useUserContext } from "../../../context/UserProvider";
@@ -31,6 +32,7 @@ export default function TeamRecruiters() {
     const [recruiters, setRecruiters] = useState<Recruiter[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [viewingRecruiterId, setViewingRecruiterId] = useState<string | null>(null);
     const [togglingId, setTogglingId] = useState<string | null>(null);
     const [recruiterJobs, setRecruiterJobs] = useState<Record<string, AssignedJob[]>>({});
     const [jobsLoading, setJobsLoading] = useState<Record<string, boolean>>({});
@@ -223,9 +225,7 @@ export default function TeamRecruiters() {
                                                         {getInitials(recruiter.name)}
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="font-bold text-slate-800 leading-tight truncate">
-                                                            {recruiter.name}
-                                                        </p>
+                                                        <button type="button" onClick={() => setViewingRecruiterId(recruiter._id)} aria-label={`View details for ${recruiter.name}`} className="min-h-11 text-left font-bold text-blue-700 hover:underline focus-visible:outline-blue-600">{recruiter.name}</button>
                                                         <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
                                                             ID: {recruiter._id.slice(-6).toUpperCase()}
                                                         </p>
@@ -335,6 +335,7 @@ export default function TeamRecruiters() {
 
                                             {/* Actions */}
                                             <td className="px-6 py-4 text-right">
+                                                <button type="button" onClick={() => setViewingRecruiterId(recruiter._id)} className="mr-2 min-h-11 rounded-lg border border-blue-200 px-3 text-sm font-semibold text-blue-700 hover:bg-blue-50">View details</button>
                                                 <button
                                                     onClick={() => handleToggleStatus(recruiter._id)}
                                                     disabled={togglingId === recruiter._id}
@@ -370,6 +371,7 @@ export default function TeamRecruiters() {
                     </div>
                 </div>
             )}
+            {viewingRecruiterId && <RecruiterDetails recruiterId={viewingRecruiterId} onClose={() => setViewingRecruiterId(null)} />}
         </div>
     );
 }
