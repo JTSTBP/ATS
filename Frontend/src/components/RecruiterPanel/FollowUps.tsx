@@ -282,7 +282,7 @@ export default function FollowUps() {
     };
   }, [search, status, location, requirementsPage]);
 
-  const openRequirement = async (requirement: any, preserveContext = false) => {
+  const openRequirement = async (requirement: any, preserveContext = false, initialTab = "Overview") => {
     const requestId = ++detailRequestId.current;
     if (!preserveContext) {
       setSelectedRequirement(requirement);
@@ -291,7 +291,7 @@ export default function FollowUps() {
       setCandidateStatusFilter("all");
       setCandidateDateFrom("");
       setCandidateDateTo("");
-      setActiveTab("Overview");
+      setActiveTab(initialTab);
       setSelectedCandidate(null);
       setDuplicateModalCandidate(null);
       setCandidates([]);
@@ -682,18 +682,18 @@ export default function FollowUps() {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 lg:min-w-[330px]">
-                <div className="rounded-lg bg-slate-50 p-3 text-center">
+                <button type="button" aria-label={`View openings for ${requirement.title}`} onClick={() => openRequirement(requirement)} className="min-h-11 rounded-lg bg-slate-50 p-3 text-center hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
                   <p className="text-lg font-black text-slate-900">{requirement.noOfPositions}</p>
                   <p className="text-[11px] font-bold uppercase text-slate-400">Openings</p>
-                </div>
-                <div className="rounded-lg bg-slate-50 p-3 text-center">
+                </button>
+                <button type="button" aria-label={`View candidates for ${requirement.title}`} onClick={() => openRequirement(requirement, false, "Candidates")} className="min-h-11 rounded-lg bg-slate-50 p-3 text-center hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
                   <p className="text-lg font-black text-slate-900">{requirement.candidateCount}</p>
                   <p className="text-[11px] font-bold uppercase text-slate-400">Candidates</p>
-                </div>
-                <div className="rounded-lg bg-amber-50 p-3 text-center">
+                </button>
+                <button type="button" aria-label={`View follow-ups for ${requirement.title}`} onClick={() => openRequirement(requirement, false, "Follow-ups")} className="min-h-11 rounded-lg bg-amber-50 p-3 text-center hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
                   <p className="text-lg font-black text-amber-700">{requirement.pendingFollowUpsCount}</p>
                   <p className="text-[11px] font-bold uppercase text-amber-600">Pending</p>
-                </div>
+                </button>
                 <button onClick={() => openRequirement(requirement)} className="col-span-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-bold text-white hover:bg-slate-800">View Details</button>
               </div>
             </div>
