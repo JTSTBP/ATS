@@ -32,7 +32,7 @@ export default function RecruiterDetails({ recruiterId, onClose }: { recruiterId
   const p = data?.recruiter;
   const jobs = data?.jobs || [];
   const facts = p ? [
-    ['Recruiter ID', p._id], ['Designation', p.designation], ['Official email', p.email], ['Personal email', p.personalEmail],
+    ['Designation', p.designation], ['Official email', p.email], ['Personal email', p.personalEmail],
     ['Official phone', p.phoneNumber?.official || p.phone], ['Personal phone', p.phoneNumber?.personal], ['Department', p.department],
     ['Date of joining', date(p.dateOfJoining || p.joinDate)], ['Date of birth', date(p.dateOfBirth)],
     ['Primary reporter', p.reporter ? `${p.reporter.name} (${p.reporter.designation || 'Team member'})${p.reporter.email ? ` · ${p.reporter.email}` : ''}` : 'Not assigned'],
