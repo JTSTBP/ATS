@@ -193,6 +193,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateUser = async (id: string, userData: UserFormData) => {
+    const currentUser = [...paginatedUsers, ...users].find(user => user._id === id);
+    if (userData.isDisabled && !currentUser?.isDisabled && !window.confirm(`Disable ${currentUser?.name || userData.name || 'this user'}${currentUser?.email ? ` (${currentUser.email})` : ''}? They will no longer be able to sign in. You can enable them again later.`)) return false;
     try {
       // 🔹 FIX: Extract ID if it's a populated object
       const processedData = {
@@ -213,6 +215,8 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteUser = async (id: string) => {
+    const user = [...paginatedUsers, ...users].find(user => user._id === id);
+    if (!window.confirm(`Permanently delete ${user?.name || 'this user'}${user?.email ? ` (${user.email})` : ''}? This removes their account and cannot be undone from the ATS. Choose Cancel to keep the account, or disable it instead.`)) return false;
     try {
       await axios.delete(`${API_BASE_URL}/api/users/${id}`);
       setUsers((prev) => prev.filter((user) => user._id !== id));
@@ -255,6 +259,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const toggleUserStatus = async (id: string, disabledBy?: string) => {
+    const user = [...paginatedUsers, ...users].find(user => user._id === id);
+    const action = user ? (user.isDisabled ? 'Enable' : 'Disable') : 'Change the account status of';
+    if (!window.confirm(`${action} ${user?.name || 'this user'}${user?.email ? ` (${user.email})` : ''}?${user && !user.isDisabled ? ' They will no longer be able to sign in. You can enable them again later.' : ''}`)) return false;
     try {
       const res = await axios.patch(`${API_BASE_URL}/api/users/${id}/toggle-status`, { disabledBy });
       if (res.data.success) {
