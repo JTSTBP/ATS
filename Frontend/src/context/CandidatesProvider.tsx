@@ -123,6 +123,7 @@ type CandidateContextType = {
 
   // 🔹 Pagination
   paginatedCandidates: Candidate[];
+  statusCounts: Record<string, number> | null;
   pagination: {
     currentPage: number;
     totalPages: number;
@@ -165,6 +166,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
 
   // Pagination State
   const [paginatedCandidates, setPaginatedCandidates] = useState<Candidate[]>([]);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number> | null>(null);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -188,6 +190,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (data.success) {
         setPaginatedCandidates(data.candidates);
+        setStatusCounts(data.statusCounts || null);
         setPagination({
           currentPage: data.currentPage,
           totalPages: data.totalPages,
@@ -647,6 +650,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     deleteComment,
     clearNotes,
     paginatedCandidates,
+    statusCounts,
     pagination,
     fetchPaginatedCandidates,
     fetchPaginatedCandidatesByUser,
@@ -667,6 +671,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
     deleteComment,
     clearNotes,
     paginatedCandidates,
+    statusCounts,
     pagination,
     fetchPaginatedCandidates,
     fetchPaginatedCandidatesByUser,

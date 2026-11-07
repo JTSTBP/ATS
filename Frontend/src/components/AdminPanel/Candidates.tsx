@@ -1,3 +1,5 @@
+import "./candidate-design.css";
+import { candidatePresentation } from "../../utils/candidatePresentation";
 import { useState, useEffect } from "react";
 import {
     Plus,
@@ -15,6 +17,10 @@ import {
     Download,
     UserCheck,
     Briefcase,
+    CalendarDays,
+    MapPin,
+    Clock3,
+    BadgeCheck,
 } from "lucide-react";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
@@ -66,16 +72,16 @@ const SearchableSelect = ({
 
     return (
         <div className={`relative ${className}`} ref={myRef}>
-            <div
+            <button type="button" aria-expanded={isOpen} aria-label={placeholder} disabled={disabled}
                 onClick={() => !disabled && setIsOpen(!isOpen)}
-                className={`w-full p-2 border border-gray-300 rounded-lg bg-gray-50 flex justify-between items-center focus:ring-2 focus:ring-orange-500 transition-all ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                className={`w-full p-2 border border-gray-300 rounded-lg bg-gray-50 flex justify-between items-center focus:ring-2 focus:ring-blue-500 transition-all ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                     }`}
             >
                 <span className={`text-sm ${selectedOption && selectedOption.value !== 'all' ? "text-gray-800 font-medium" : "text-gray-500"}`}>
                     {selectedOption && selectedOption.value !== 'all' ? selectedOption.label : placeholder}
                 </span>
                 <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </div>
+            </button>
             {isOpen && (
                 <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-xl max-h-64 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-2 border-b border-gray-100 bg-gray-50">
@@ -85,7 +91,7 @@ const SearchableSelect = ({
                                 autoFocus
                                 type="text"
                                 placeholder="Search..."
-                                className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                                className="w-full pl-7 pr-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -94,17 +100,17 @@ const SearchableSelect = ({
                     <div className="overflow-y-auto custom-scrollbar">
                         {filteredOptions.length > 0 ? (
                             filteredOptions.map(opt => (
-                                <div
+                                <button type="button"
                                     key={opt.value}
                                     onClick={() => {
                                         onChange(opt.value);
                                         setIsOpen(false);
                                         setSearchTerm("");
                                     }}
-                                    className={`px-3 py-2 hover:bg-orange-50 cursor-pointer text-sm transition-colors ${value === opt.value ? 'bg-orange-100 text-orange-700 font-semibold' : 'text-gray-700'}`}
+                                    className={`w-full text-left px-3 py-2 hover:bg-blue-50 cursor-pointer text-sm transition-colors ${value === opt.value ? 'bg-orange-100 text-orange-700 font-semibold' : 'text-gray-700'}`}
                                 >
                                     {opt.label}
-                                </div>
+                                </button>
                             ))
                         ) : (
                             <div className="p-4 text-center text-gray-400 text-xs italic">No matching results</div>
@@ -125,6 +131,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
         updateStatus,
         paginatedCandidates,
         pagination,
+        statusCounts,
         fetchPaginatedCandidates,
         loading,
         deleteCandidate,
@@ -151,7 +158,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const limit = 10;
+    const [limit, setLimit] = useState(10);
 
     const [clients, setClients] = useState<any[]>([]);
     const [mentors, setMentors] = useState<any[]>([]);
@@ -229,7 +236,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
         }, 300); // Debounce search
         return () => clearTimeout(timer);
-    }, [currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterReporter, filterRecruiter, filterJobStatus, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, fetchPaginatedCandidates]);
+    }, [currentPage, limit, searchTerm, statusFilter, filterClient, filterJobTitle, filterReporter, filterRecruiter, filterJobStatus, user, showForm, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, fetchPaginatedCandidates]);
 
 
     // Reset page to 1 on filter change
@@ -399,23 +406,23 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
     }
 
     return (
-        <div className="space-y-6">
+        <div className="admin-candidate-design space-y-5">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
+            <div className="candidate-command flex flex-wrap items-center gap-3">
+                <div className="mr-auto">
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1 sm:mb-2">Candidates (Admin View)</h2>
                     <p className="text-xs sm:text-sm text-gray-600">Manage all candidate profiles and CVs</p>
                 </div>
                 <button
                     onClick={() => setShowForm(true)}
-                    className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition shadow-md w-full sm:w-auto"
+                    className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition shadow-md w-full sm:w-auto"
                 >
                     <Plus className="w-5 h-5" />
                     <span>Add Candidate</span>
                 </button>
         <button
           onClick={() => navigate('/Admin/upload-source-candidate')}
-          className="flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white rounded-xl font-bold hover:from-indigo-600 hover:to-indigo-700 transition shadow-md hover:shadow-indigo-200/50 w-full sm:w-auto"
+          className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-50 text-blue-700 text-white rounded-xl font-bold hover:bg-blue-100 transition shadow-md hover:shadow-indigo-200/50 w-full sm:w-auto"
         >
           <Upload className="w-5 h-5" />
           <span>Upload Source Candidate</span>
@@ -423,7 +430,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             </div>
 
             {/* Search + Filters */}
-            <div className="bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200 space-y-4 sm:space-y-6">
+            <div className="candidate-filter-panel bg-white rounded-xl p-4 sm:p-6 shadow-md border border-gray-200 space-y-4 sm:space-y-6">
                 {/* Search Bar Row */}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -432,7 +439,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                         placeholder="Search by name, email, phone, or skills..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all text-sm sm:text-base"
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
                     />
                 </div>
 
@@ -513,7 +520,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
                         />
                     </div>
 
@@ -523,7 +530,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
                         />
                     </div>
 
@@ -535,7 +542,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                     type="date"
                                     value={joinStartDate}
                                     onChange={(e) => setJoinStartDate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
                                 />
                             </div>
                             <div className="space-y-1">
@@ -544,7 +551,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                     type="date"
                                     value={joinEndDate}
                                     onChange={(e) => setJoinEndDate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
                                 />
                             </div>
                         </>
@@ -558,7 +565,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                     type="date"
                                     value={selectStartDate}
                                     onChange={(e) => setSelectStartDate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
                                 />
                             </div>
                             <div className="space-y-1">
@@ -567,7 +574,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                     type="date"
                                     value={selectEndDate}
                                     onChange={(e) => setSelectEndDate(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent text-sm bg-gray-50"
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-gray-50"
                                 />
                             </div>
                         </>
@@ -604,8 +611,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
             </div>
 
             {/* Status Filter Buttons */}
-            <div className="bg-white p-2 sm:p-4 rounded-xl shadow-md border border-gray-200">
-                <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-2 sm:pb-0 whitespace-nowrap scrollbar-hide">
+            <div className="candidate-status-panel bg-white">
+                <div className="candidate-status-tabs">
                     {[
                         "all",
                         "New",
@@ -620,136 +627,57 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                     ].map((status) => (
                         <button
                             key={status}
+                            aria-pressed={statusFilter === status}
                             onClick={() => setStatusFilter(status)}
                             className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-medium capitalize transition-colors
                             ${statusFilter === status
-                                    ? "bg-orange-600 text-white shadow-sm"
+                                    ? "bg-blue-600 text-white shadow-sm"
                                     : "bg-gray-50 text-gray-600 hover:bg-gray-100"
                                 }
                             `}
                         >
-                            {status}
+                            {status === "all" ? "All" : status === "Not responding" ? "Not Responding" : status}
+                            {statusCounts && (status === "all" || statusCounts[status] > 0) && <span className="candidate-status-count">{(statusCounts[status] || 0).toLocaleString("en-US")}</span>}
                         </button>
                     ))}
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1200px]">
-                        <thead className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Upload Date
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Name
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Contact
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Client
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Designation
-                                </th>
-
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Requirement Status
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Resume
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Created By
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Mentor
-                                </th>
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Status
-                                </th>
-                                {statusFilter === "Joined" && (
-                                    <>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                            Offer Letter
-                                        </th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                            Joining Date
-                                        </th>
-                                    </>
-                                )}
-                                {statusFilter === "Selected" && (
-                                    <>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                            Selection Date
-                                        </th>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                            Expected Joining Date
-                                        </th>
-                                    </>
-                                )}
-                                <th className="px-6 py-4 text-left text-sm font-semibold whitespace-nowrap">
-                                    Remarks
-                                </th>
-                                <th className="px-6 py-4 text-center text-sm font-semibold whitespace-nowrap">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={10} className="py-12 text-center">
-                                        <div className="flex justify-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                allCandidates.map((candidate: any) => (
-                                    <tr key={candidate._id} className="hover:bg-gray-50 transition">
-                                        {/* NAME */}
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                                            {candidate.createdAt ? formatDate(candidate.createdAt) : "-"}
-                                        </td>
-                                        <td className="px-6 py-4 font-semibold text-gray-800 whitespace-nowrap">
-                                            {candidate.dynamicFields?.candidateName || candidate.dynamicFields?.CandidateName || candidate.dynamicFields?.Name || candidate.dynamicFields?.name || candidate.name || "-"}
-                                        </td>
-
-                                        {/* CONTACT */}
-                                        <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap">
-                                            <div className="flex items-center mb-1">
-                                                <Mail className="w-4 h-4 mr-2" />
-                                                {candidate.dynamicFields?.Email || candidate.dynamicFields?.email || candidate.dynamicFields?.['Email ID'] || candidate.email || "No Email"}
-                                            </div>
-                                            <div className="flex items-center">
-                                                <Phone className="w-4 h-4 mr-2" />
-                                                {candidate.dynamicFields?.Phone || candidate.dynamicFields?.phone || candidate.dynamicFields?.Number || candidate.phoneNumber || "No Phone"}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                                            {candidate.jobId?.clientId?.companyName || "N/A"}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                                            {candidate.jobId?.title || "-"}
-                                        </td>
-
-                                        <td className="px-6 py-4 text-sm whitespace-nowrap">
-                                            <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${candidate.jobId?.status === 'Open' ? 'bg-green-100 text-green-700' :
-                                                candidate.jobId?.status === 'Closed' ? 'bg-red-100 text-red-700' :
-                                                    'bg-yellow-100 text-yellow-700'
-                                                }`}>
-                                                {candidate.jobId?.status || "Open"}
-                                            </span>
-                                        </td>
-
-
-                                        {/* RESUME */}
-                                        <td className="px-6 py-4 whitespace-nowrap">
+            <section className="candidate-profile-list" aria-label="Candidate profiles" aria-busy={loading}>
+                {loading ? <div role="status" className="p-12 text-center text-slate-500">Loading candidate profiles...</div> : allCandidates.map((candidate: any) => {
+                    const profile = candidatePresentation(candidate);
+                    return (
+                    <article key={candidate._id} className="candidate-profile-card">
+                        <div className="candidate-card-top">
+                            <div className="candidate-card-top-left">
+                                <span className="candidate-card-date"><CalendarDays aria-hidden="true" />{candidate.createdAt ? formatDate(candidate.createdAt) : "—"}</span>
+                                <span className={`candidate-requirement-badge ${candidate.jobId?.status === "Closed" ? "is-closed" : ""}`}><span />{candidate.jobId?.status || "Open"} Requirement</span>
+                                <span className="candidate-stage-badge">{profile.stage}</span>
+                            </div>
+                            <div className="candidate-card-top-right">
+                                <span className="candidate-match-badge" title={profile.aiMatch === null ? "AI match score is not available for this candidate" : "AI match score"}><BadgeCheck aria-hidden="true" />{profile.aiMatch === null ? "—" : `${profile.aiMatch}%`} AI Match</span>
+                                <span className="candidate-requirement-id">Req ID: #{profile.requirementId}</span>
+                            </div>
+                        </div>
+                        <div className="candidate-card-body">
+                            <div className="candidate-card-person">
+                                <div className="candidate-avatar" aria-hidden="true">{profile.initials}</div>
+                                <div className="candidate-card-identity">
+                                    <div className="candidate-name-row"><h3>{profile.name}</h3><span className="candidate-location"><MapPin aria-hidden="true" />{profile.location}</span></div>
+                                    <div className="candidate-contact-row">
+                                        {profile.email ? <a href={`mailto:${profile.email}`}><Mail aria-hidden="true" />{profile.email}</a> : <span><Mail aria-hidden="true" />No Email</span>}
+                                        <span className="candidate-contact-separator" aria-hidden="true">•</span>
+                                        <span><Phone aria-hidden="true" />{profile.phone || "No Phone"}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="candidate-role-summary">
+                                <div className="candidate-summary-line"><span>Client:</span><strong>{candidate.jobId?.clientId?.companyName || "—"}</strong></div>
+                                <div className="candidate-summary-line candidate-summary-role"><span>Role:</span><strong title={candidate.jobId?.title}>{candidate.jobId?.title || "—"}</strong></div>
+                                <div className="candidate-summary-metrics"><span>CTC: <strong>{profile.ctc}</strong></span><i aria-hidden="true">•</i><span>Notice: <strong>{profile.notice}</strong></span><i aria-hidden="true">•</i><span>Exp: <strong>{profile.experience}</strong></span></div>
+                            </div>
+                            <div className="candidate-card-controls">
+                                        <div data-label="Resume" className="candidate-card-resume">
                                             {candidate.resumeUrl ? (
                                                 <button
                                                     onClick={() => {
@@ -770,17 +698,12 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                             ) : (
                                                 <span className="text-gray-400 text-sm">No Resume</span>
                                             )}
-                                        </td>
+                                        </div>
 
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                                            {candidate.createdBy?.name || "-"}-
-                                            {candidate.createdBy?.designation}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                                            {candidate.createdBy?.reporter?.name}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                                        <div data-label="Status" className="candidate-card-status">
                                             <select
+                                                aria-label={`Status for ${profile.name}`}
+                                                style={{ width: `${Math.max(76, (candidate.status || "New").length * 7 + 32)}px` }}
                                                 value={candidate.status || "New"}
                                                 onChange={(e) => {
                                                     const newStatus = e.target.value;
@@ -853,7 +776,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                         rejectedByVal
                                                     );
                                                 }}
-                                                className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-orange-500 max-w-[150px]"
+                                                className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 max-w-[150px]"
                                             >
                                                 {/* Logic for Candidates ALREADY in Interviewed Status */}
                                                 {candidate.status === "Interviewed" ? (
@@ -930,89 +853,8 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                     Joined: {formatDate(candidate.joiningDate)}
                                                 </p>
                                             )}
-                                        </td>
-                                        {statusFilter === "Joined" && (
-                                            <>
-                                                {/* OFFER LETTER */}
-                                                <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                                                    {candidate.offerLetter ? (
-                                                        <a
-                                                            href={getFilePreviewUrl(candidate.offerLetter)}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-blue-600 hover:underline flex items-center"
-                                                        >
-                                                            <Upload className="w-4 h-4 mr-1" /> {isWordDocument(candidate.offerLetter) ? 'Download' : 'View'}
-                                                        </a>
-                                                    ) : (
-                                                        "-"
-                                                    )}
-                                                </td>
-                                                {/* JOINING DATE */}
-                                                <td className="px-6 py-4 text-sm text-gray-700">
-                                                    <div className="flex items-center gap-2">
-                                                        {candidate.joiningDate ? formatDate(candidate.joiningDate) : "-"}
-                                                        {/* Edit Button for Joined Details */}
-                                                        <button
-                                                            onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
-                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
-                                                            title="Edit Joining Details"
-                                                        >
-                                                            <Edit className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-
-
-                                            </>
-                                        )}
-
-
-                                        {statusFilter === "Selected" && (
-                                            <>
-                                                {/* SELECTION DATE */}
-                                                <td className="px-6 py-4 text-sm text-gray-700">
-                                                    <div className="flex items-center gap-2">
-                                                        {candidate.selectionDate ? formatDate(candidate.selectionDate) : "-"}
-                                                        {/* Edit Button for Selection Details */}
-                                                        <button
-                                                            onClick={() => handleStatusChange(
-                                                                candidate._id,
-                                                                "Selected",
-                                                                undefined,
-                                                                undefined,
-                                                                candidate.selectionDate,
-                                                                candidate.expectedJoiningDate
-                                                            )}
-                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
-                                                            title="Edit Selection Details"
-                                                        >
-                                                            <Edit className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-
-                                                {/* EXPECTED JOINING DATE */}
-                                                <td className="px-6 py-4 text-sm text-gray-700">
-                                                    {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "-"}
-                                                </td>
-                                            </>
-                                        )}
-
-                                        {/* REMARKS */}
-                                        <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px]" title={candidate.notes}>
-                                            {candidate.status === "Rejected" && candidate.rejectionReason && (
-                                                <div className="text-xs text-red-600 font-semibold mb-1">
-                                                    Reason: {candidate.rejectionReason}
-                                                </div>
-                                            )}
-                                            <div className="truncate text-slate-500">
-                                                {candidate.notes || "-"}
-                                            </div>
-                                        </td>
-
-                                        {/* ACTIONS */}
-                                        <td className="px-6 py-4 flex space-x-2 whitespace-nowrap">
+                                        </div>
+                                        <div data-label="Actions" className="candidate-card-actions">
                                             <button
                                                 onClick={() => handleEdit(candidate)}
                                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -1025,7 +867,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                                 onClick={() =>
                                                     setCommentModal({
                                                         candidateId: candidate._id,
-                                                        candidateName: candidate.dynamicFields?.candidateName || "Candidate",
+                                                        candidateName: profile.name,
                                                         comments: candidate.comments || [],
                                                     })
                                                 }
@@ -1047,22 +889,102 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                        </div>
+
+                            </div>
+                        </div>
+                                        {statusFilter === "Joined" && (
+                                            <>
+                                                {/* OFFER LETTER */}
+                                                <div data-label="Offer letter" className="candidate-cell candidate-cell-11 px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
+                                                    {candidate.offerLetter ? (
+                                                        <a
+                                                            href={getFilePreviewUrl(candidate.offerLetter)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-blue-600 hover:underline flex items-center"
+                                                        >
+                                                            <Upload className="w-4 h-4 mr-1" /> {isWordDocument(candidate.offerLetter) ? 'Download' : 'View'}
+                                                        </a>
+                                                    ) : (
+                                                        "-"
+                                                    )}
+                                                </div>
+                                                {/* JOINING DATE */}
+                                                <div data-label="Joining date" className="candidate-cell candidate-cell-12 px-6 py-4 text-sm text-gray-700">
+                                                    <div className="flex items-center gap-2">
+                                                        {candidate.joiningDate ? formatDate(candidate.joiningDate) : "-"}
+                                                        {/* Edit Button for Joined Details */}
+                                                        <button
+                                                            onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
+                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                                                            title="Edit Joining Details"
+                                                        >
+                                                            <Edit className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
 
 
+                                            </>
+                                        )}
+
+
+                                        {statusFilter === "Selected" && (
+                                            <>
+                                                {/* SELECTION DATE */}
+                                                <div data-label="Selection date" className="candidate-cell candidate-cell-13 px-6 py-4 text-sm text-gray-700">
+                                                    <div className="flex items-center gap-2">
+                                                        {candidate.selectionDate ? formatDate(candidate.selectionDate) : "-"}
+                                                        {/* Edit Button for Selection Details */}
+                                                        <button
+                                                            onClick={() => handleStatusChange(
+                                                                candidate._id,
+                                                                "Selected",
+                                                                undefined,
+                                                                undefined,
+                                                                candidate.selectionDate,
+                                                                candidate.expectedJoiningDate
+                                                            )}
+                                                            className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                                                            title="Edit Selection Details"
+                                                        >
+                                                            <Edit className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* EXPECTED JOINING DATE */}
+                                                <div data-label="Expected joining date" className="candidate-cell candidate-cell-14 px-6 py-4 text-sm text-gray-700">
+                                                    {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "-"}
+                                                </div>
+                                            </>
+                                        )}
+
+
+                        <div className="candidate-card-footer">
+                            <div className="candidate-footer-details">
+                                <span>Recruiter: <strong>{candidate.createdBy?.name || "—"}</strong></span><i aria-hidden="true">•</i>
+                                <span>Mentor: <strong>{candidate.createdBy?.reporter?.name || "—"}</strong></span><i aria-hidden="true">•</i>
+                                <span className="candidate-footer-remarks" title={candidate.notes}>Remarks: <strong>{candidate.notes ? `"${candidate.notes}"` : "—"}</strong></span>
+                                {candidate.status === "Rejected" && candidate.rejectionReason && <span className="text-red-600">Reason: {candidate.rejectionReason}</span>}
+                            </div>
+                            <span className="candidate-last-action"><Clock3 aria-hidden="true" />Last action: {profile.lastAction}</span>
+                        </div>
+                    </article>
+                ); })}
+            </section>
 
             {/* Pagination Controls */}
             <div className="p-4 sm:p-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white rounded-b-xl shadow-md border-x border-b border-gray-200 -mt-2 mb-6">
                 <div className="text-xs sm:text-sm text-slate-500 text-center sm:text-left">
-                    Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, pagination.totalCandidates)} of {pagination.totalCandidates} candidates
+                    Showing {pagination.totalCandidates ? ((currentPage - 1) * limit) + 1 : 0} to {Math.min(currentPage * limit, pagination.totalCandidates)} of {pagination.totalCandidates} candidates
                 </div>
+                <label className="flex items-center gap-2 text-xs text-slate-500">Rows per page
+                    <select aria-label="Rows per page" value={limit} onChange={e => { setLimit(Number(e.target.value)); setCurrentPage(1); }} className="rounded border border-slate-200 p-1">
+                        {[10, 25, 50].map(size => <option key={size} value={size}>{size}</option>)}
+                    </select>
+                </label>
                 <div className="flex gap-2 sm:gap-3 flex-wrap justify-center">
                     <button
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
@@ -1080,7 +1002,7 @@ export const AdminCandidates = ({ initialJobTitleFilter = "all", initialFormOpen
 
                     <button
                         onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
-                        disabled={currentPage === pagination.totalPages}
+                        disabled={currentPage >= pagination.totalPages}
                         className="px-3 sm:px-4 py-1.5 sm:py-2 border border-slate-200 rounded-lg text-xs sm:text-sm font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         Next

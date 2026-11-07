@@ -26,6 +26,7 @@ interface Client {
 
 interface Candidate {
     _id: string;
+    name?: string;
     jobId?: {
         _id: string;
         title: string;
@@ -38,6 +39,10 @@ interface Candidate {
     joiningDate?: string;
     status?: string;
 }
+
+const getCandidateName = (candidate?: Candidate) =>
+    candidate?.dynamicFields?.candidateName || candidate?.dynamicFields?.CandidateName ||
+    candidate?.dynamicFields?.Name || candidate?.dynamicFields?.name || candidate?.name || "Unknown";
 
 interface InvoiceCandidate {
     candidateId: Candidate;
@@ -184,6 +189,7 @@ const Finance = () => {
     const [clients, setClients] = useState<Client[]>([]);
     const [expenseFormData, setExpenseFormData] = useState({ date: "", amount: "", description: "" });
     const [candidates, setCandidates] = useState<Candidate[]>([]);
+    const candidateFetchInFlight = React.useRef(false);
     const [loading, setLoading] = useState(false);
     const [invoiceLoading, setInvoiceLoading] = useState(true);
     const [paymentLoading, setPaymentLoading] = useState(true);
@@ -392,7 +398,9 @@ const Finance = () => {
         }
     };
 
-    const fetchCandidates = async () => {
+    const fetchCandidates = React.useCallback(async () => {
+        if (candidateFetchInFlight.current) return;
+        candidateFetchInFlight.current = true;
         setLoading(true);
         try {
             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/CandidatesJob`);
@@ -402,10 +410,25 @@ const Finance = () => {
         } catch (error) {
             console.error("Error fetching candidates:", error);
         } finally {
+            candidateFetchInFlight.current = false;
             setLoading(false);
         }
-    };
+    }, []);
 
+
+    useEffect(() => {
+        if (!isCreatingInvoice) return;
+        const refreshCandidates = () => {
+            if (document.visibilityState === "visible") void fetchCandidates();
+        };
+        void fetchCandidates();
+        window.addEventListener("focus", refreshCandidates);
+        document.addEventListener("visibilitychange", refreshCandidates);
+        return () => {
+            window.removeEventListener("focus", refreshCandidates);
+            document.removeEventListener("visibilitychange", refreshCandidates);
+        };
+    }, [isCreatingInvoice, fetchCandidates]);
 
     const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setPaymentData({ ...paymentData, [e.target.name]: e.target.value });
@@ -990,7 +1013,7 @@ const Finance = () => {
                             <SearchableSelect
                                 options={candidates.map(c => ({
                                     value: c._id,
-                                    label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
+                                    label: `${getCandidateName(c)}`
                                 }))}
                                 value={filterInvoiceCandidate}
                                 onChange={(val) => setFilterInvoiceCandidate(val)}
@@ -1240,7 +1263,7 @@ const Finance = () => {
                             <SearchableSelect
                                 options={candidates.map(c => ({
                                     value: c._id,
-                                    label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"}`
+                                    label: `${getCandidateName(c)}`
                                 }))}
                                 value={filterPaymentCandidate}
                                 onChange={(val) => setFilterPaymentCandidate(val)}
@@ -1828,6 +1851,7 @@ const Finance = () => {
                                     <div className="flex justify-between items-center border-b pb-2">
                                         <h3 className="font-bold text-slate-800">Candidates List</h3>
                                         <button
+                                            type="button"
                                             onClick={addCandidateRow}
                                             className="text-blue-600 hover:text-blue-700 text-sm font-bold flex items-center gap-1"
                                         >
@@ -1852,10 +1876,10 @@ const Finance = () => {
                                                         <div className="flex items-center gap-2">
                                                             <SearchableSelect
                                                                 options={candidates
-                                                                    .filter(c => c.status?.toLowerCase() === 'selected' || c.status?.toLowerCase() === 'joined')
+                                                                    .filter(c => ['new', 'selected', 'joined'].includes(c.status?.toLowerCase() || 'new') || c._id === row.candidateId)
                                                                     .map(c => ({
                                                                         value: c._id,
-                                                                        label: `${c.dynamicFields?.candidateName || c.dynamicFields?.Name || "Unknown"} (${c.status})`
+                                                                        label: `${getCandidateName(c)} (${c.status || "New"})`
                                                                     }))}
                                                                 value={row.candidateId}
                                                                 placeholder="Select Candidate"
@@ -2018,7 +2042,7 @@ const Finance = () => {
                                                         return (
                                                             <tr key={i} className="border-b border-slate-400 text-center">
                                                                 <td className="py-2 px-1 border-r border-slate-400">{i + 1}</td>
-                                                                <td className="py-2 px-1 border-r border-slate-400 font-bold">{cand?.dynamicFields?.candidateName || cand?.dynamicFields?.Name || "[Candidate Name]"}</td>
+                                                                <td className="py-2 px-1 border-r border-slate-400 font-bold">{cand ? getCandidateName(cand) : "[Candidate Name]"}</td>
                                                                 <td className="py-2 px-1 border-r border-slate-400">{c.doj ? new Date(c.doj).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-"}</td>
                                                                 <td className="py-2 px-1 border-r border-slate-400 text-[9px]">{c.designation || cand?.jobId?.title || "-"}</td>
                                                                 <td className="py-2 px-1 border-r border-slate-400">{c.ctc ? Number(c.ctc).toLocaleString() : "0"}</td>

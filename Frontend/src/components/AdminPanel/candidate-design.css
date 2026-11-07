@@ -1,0 +1,214 @@
+@font-face { font-family: 'Inter'; font-style: normal; font-weight: 400 800; font-display: swap; src: url('/fonts/inter-latin.woff2') format('woff2'); }
+@font-face { font-family: 'Plus Jakarta Sans'; font-style: normal; font-weight: 400 800; font-display: swap; src: url('/fonts/plus-jakarta-sans-latin.woff2') format('woff2'); }
+
+.admin-candidate-design { font-family: Inter, sans-serif; font-size: 14px; line-height: 20px; color: #0b1c30; background: #f8f9ff; padding: 0; min-width: 0; width: 100%; }
+.admin-candidate-design h1, .admin-candidate-design h2, .admin-candidate-design h3 { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -.015em; color: #0b1c30; }
+.admin-candidate-design h1, .admin-candidate-design h2 { font-size: 24px; line-height: 32px; font-weight: 700; }
+.admin-candidate-design h3 { font-size: 18px; line-height: 26px; font-weight: 600; }
+.admin-candidate-design button, .admin-candidate-design input, .admin-candidate-design select, .admin-candidate-design textarea { font-family: inherit; font-size: 13px; line-height: 18px; }
+.admin-candidate-design button { border-radius: 8px; box-shadow: none; }
+.admin-candidate-design :is(input:not([type=file]):not([type=checkbox]), select, textarea) { border: 1px solid #dce1ed; border-radius: 4px; padding: 10px 12px; background-color: #f8f9ff; color: #213145; }
+.admin-candidate-design .relative input[placeholder^='Search'] { padding-left: 40px; }
+.admin-candidate-design :is(button, input, select, textarea):focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.admin-candidate-design > .shadow-md { box-shadow: 0 1px 3px #0b1c3008; border-color: #e4e7f0; border-radius: 8px; }
+.candidate-command h2 { font-size: 18px; line-height: 26px; margin-bottom: 2px; }
+.candidate-command p { font-size: 13px; color: #565e74; }
+.candidate-command button { padding: 10px 16px; font-size: 13px; font-weight: 600; }
+.candidate-command button:last-child { background: #e5eeff; color: #0053db; }
+.candidate-command svg { width: 18px; height: 18px; }
+/* Match the supplied close-up: 48px avatars, 18px names and 13px contact text. */
+.candidate-profile-list { display: grid; gap: 12px; container-type: inline-size; }
+.admin-candidate-design .candidate-profile-card { --candidate-accent: #2563eb; background: #fff; border: 1px solid #c3c6d74d; border-radius: 8px; padding: 20px; position: relative; box-shadow: 0 1px 3px #0b1c300d; display: flex; flex-direction: column; gap: 12px; min-width: 0; overflow: hidden; }
+.candidate-profile-card::before { content: ''; position: absolute; inset: 0 auto 0 0; width: 6px; background: var(--candidate-accent); }
+.candidate-profile-card:nth-child(3n+2) { --candidate-accent: #f59e0b; }
+.candidate-profile-card:nth-child(3n) { --candidate-accent: #7c3aed; }
+.candidate-card-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-left: 8px; }
+.candidate-card-top-left, .candidate-card-top-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.candidate-card-date { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 500; color: #434655; letter-spacing: -.01em; }
+.candidate-card-date svg { width: 16px; height: 16px; color: #737686; }
+.candidate-requirement-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 12px; border: 1px solid #10b98133; background: #ecfdf5; color: #047857; font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: .03em; }
+.candidate-requirement-badge > span { width: 6px; height: 6px; border-radius: 50%; background: #10b981; margin-right: 6px; }
+.candidate-requirement-badge.is-closed { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+.candidate-requirement-badge.is-closed > span { background: #ef4444; }
+.candidate-stage-badge { padding: 2px 8px; border-radius: 2px; border: 1px solid #c3c6d74d; background: #eff4ff; color: #434655; font-size: 11px; line-height: 16px; font-weight: 600; letter-spacing: .03em; }
+.candidate-match-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: #dbe1ff; color: #003ea8; border: 1px solid #2563eb33; border-radius: 12px; font-size: 11px; line-height: 16px; font-weight: 700; letter-spacing: .03em; }
+.candidate-match-badge svg { width: 14px; height: 14px; }
+.candidate-requirement-id { font-family: ui-monospace, monospace; color: #737686; font-size: 12px; line-height: 16px; overflow-wrap: anywhere; }
+.candidate-card-body { display: grid; grid-template-columns: minmax(0,4fr) minmax(0,5fr) minmax(215px,3fr); gap: 20px; align-items: center; padding-left: 8px; }
+.candidate-card-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.candidate-avatar { width: 48px; height: 48px; flex: 0 0 48px; border-radius: 8px; background: var(--candidate-accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; line-height: 26px; font-weight: 700; box-shadow: 0 1px 2px #0b1c3010; }
+.candidate-card-identity { min-width: 0; }
+.candidate-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.admin-candidate-design .candidate-name-row h3 { margin: 0; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 18px; line-height: 26px; font-weight: 700; letter-spacing: -.015em; overflow-wrap: anywhere; }
+.candidate-location { display: inline-flex; align-items: center; gap: 2px; padding: 2px 8px; background: #e5eeff; color: #434655; border-radius: 2px; font-size: 11px; line-height: 16px; font-weight: 600; }
+.candidate-location svg { width: 13px; height: 13px; }
+.candidate-contact-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; color: #434655; font-size: 13px; line-height: 18px; }
+.candidate-contact-row > :not(.candidate-contact-separator) { display: inline-flex; align-items: center; gap: 4px; overflow-wrap: anywhere; min-width: 0; }
+.candidate-contact-row a:hover { color: #004ac6; }
+.candidate-contact-row svg { width: 14px; height: 14px; flex-shrink: 0; color: #737686; }
+.candidate-contact-separator { color: #c3c6d7; }
+.candidate-role-summary { background: #eff4ff; border: 1px solid #c3c6d74d; border-radius: 4px; padding: 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.candidate-summary-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.candidate-summary-line > span { font-size: 11px; line-height: 16px; font-weight: 600; color: #737686; text-transform: uppercase; }
+.candidate-summary-line > strong { font-size: 13px; line-height: 18px; font-weight: 600; overflow-wrap: anywhere; }
+.candidate-summary-role > strong { font-size: 14px; line-height: 20px; font-weight: 500; color: #004ac6; }
+.candidate-summary-metrics { border-top: 1px solid #c3c6d733; padding-top: 4px; margin-top: 4px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; color: #434655; font-size: 11px; line-height: 16px; font-weight: 600; }
+.candidate-summary-metrics strong { color: #0b1c30; font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: -.01em; }
+.candidate-summary-metrics i { font-style: normal; }
+.candidate-card-controls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.admin-candidate-design .candidate-card-resume button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; color: #fff; background: #2563eb; border-radius: 4px; border: 1px solid #2563eb; font-size: 13px; line-height: 18px; font-weight: 500; text-decoration: none; white-space: nowrap; }
+.candidate-card-resume button:hover { background: #004ac6; }
+.candidate-card-resume svg { width: 18px; height: 18px; margin: 0; }
+.admin-candidate-design .candidate-card-status select { max-width: 150px; padding: 8px 12px; background: #eff4ff; border: 1px solid #c3c6d766; border-radius: 4px; font-size: 13px; line-height: 18px; font-weight: 600; }
+.candidate-card-actions { display: flex; flex-basis: 100%; align-items: center; justify-content: flex-end; gap: 4px; }
+.admin-candidate-design .candidate-card-actions button { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #c3c6d74d; border-radius: 4px; color: #737686; background: #fff; }
+.candidate-card-actions button:hover { background: #eff4ff; color: #004ac6; }
+.candidate-card-actions button[title='Delete']:hover { background: #fff1f2; color: #ba1a1a; }
+.candidate-card-actions svg { width: 18px; height: 18px; }
+.candidate-card-footer { background: #f8f9ff; border: 1px solid #c3c6d74d; border-radius: 4px; padding: 8px 12px 8px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: #434655; font-size: 12px; line-height: 16px; }
+.candidate-footer-details { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; min-width: 0; flex: 1; }
+.candidate-footer-details strong { color: #0b1c30; font-weight: 500; }
+.candidate-footer-details > i { font-style: normal; color: #c3c6d7; }
+.candidate-footer-remarks { overflow-wrap: anywhere; }
+.candidate-last-action { display: inline-flex; align-items: center; gap: 8px; color: #737686; font-size: 13px; line-height: 18px; white-space: nowrap; }
+.candidate-last-action svg { width: 14px; height: 14px; }
+.candidate-cell-11, .candidate-cell-12, .candidate-cell-13, .candidate-cell-14 { padding: 8px; font-size: 13px; }
+.candidate-cell-11::before, .candidate-cell-12::before, .candidate-cell-13::before, .candidate-cell-14::before { content: attr(data-label) ': '; color: #737686; font-size: 11px; }
+.admin-candidate-design > .candidate-filter-panel { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; box-shadow: none; padding: 20px 20px 12px; }
+.admin-candidate-design > .candidate-status-panel { margin-top: -20px; padding: 0 20px 20px; border: 1px solid #c3c6d74d; border-top: 0; border-radius: 0 0 8px 8px; box-shadow: 0 1px 3px #0b1c300d; }
+.candidate-status-tabs { display: flex; flex-wrap: wrap; gap: 4px; border-top: 1px solid #c3c6d733; padding-top: 8px; }
+.admin-candidate-design .candidate-status-tabs button { background: transparent; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; color: #434655; font-size: 13px; line-height: 18px; font-weight: 500; white-space: nowrap; text-transform: none; }
+.admin-candidate-design .candidate-status-tabs button[aria-pressed='true'] { color: #fff; background: #2563eb; font-weight: 600; }
+.candidate-status-count { padding: 2px 5px; background: #e5eeff; border-radius: 2px; color: #434655; font-size: 11px; line-height: 16px; font-weight: 600; }
+[aria-pressed='true'] .candidate-status-count { color: #fff; background: #ffffff33; }
+@container (max-width: 860px) {
+ .candidate-card-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); }
+ .candidate-card-controls { grid-column: 1 / -1; }
+ .candidate-card-actions { flex-basis: auto; }
+}
+@container (max-width: 620px) {
+ .candidate-card-body { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+ .candidate-card-person { align-items: flex-start; }
+ .candidate-card-controls { justify-content: flex-start; }
+ .candidate-card-actions { margin-left: auto; }
+ .candidate-profile-card { padding: 16px; }
+ .candidate-card-top-right { width: 100%; }
+ .candidate-contact-separator { display: none; }
+ .candidate-contact-row { flex-direction: column; align-items: flex-start; }
+ .candidate-last-action { margin-top: 4px; }
+}
+.candidate-application { max-width: 1560px; margin: auto; }
+.candidate-application > div:first-child { background: white; padding: 24px 28px; border: 1px solid #e4e7f0; border-radius: 8px; margin-bottom: 24px; }
+.admin-candidate-design .candidate-application-grid { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.admin-candidate-design .candidate-application-grid > * { margin-top: 0 !important; background: white; border: 1px solid #e4e7f0; border-radius: 8px; padding: 28px; box-shadow: 0 1px 3px #0b1c3008; }
+.admin-candidate-design .candidate-application-grid h3 { border-bottom: 1px solid #eff2f8; padding-bottom: 16px; margin-bottom: 20px; font-size: 14px; line-height: 20px; }
+.admin-candidate-design .candidate-job-section { grid-column: 1 / -1; }
+.admin-candidate-design .candidate-fields-section { grid-column: 1; grid-row: 2; }
+.admin-candidate-design .candidate-resume-section { grid-column: 2; grid-row: 2; }
+.admin-candidate-design .candidate-personal-section { grid-column: 1; grid-row: 3; }
+.admin-candidate-design .candidate-dispatch-section { grid-column: 2; grid-row: 3; }
+.admin-candidate-design .candidate-application-grid label { font-size: 13px; display: block; margin-bottom: 6px; color: #3f465c; }
+.admin-candidate-design .candidate-resume-section > div { flex-direction: column; border: 2px dashed #e0e7f2; border-radius: 8px; padding: 32px 16px; }
+.admin-candidate-design .candidate-resume-section button { width: 100%; min-height: 100px; background: #f8f9ff; }
+.admin-candidate-design .candidate-checklist { padding: 16px; border: 1px solid #eef0f7; border-radius: 4px; background: #f8f9ff; margin-bottom: 20px; }
+.candidate-source-page { max-width: 1560px; margin: auto; display: flow-root; }
+.candidate-source-page > div:first-child { padding: 24px; border: 1px solid #e4e7f0; background: white; border-radius: 12px; }
+@media (min-width: 1280px) { .admin-candidate-design .candidate-fields-section > .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .admin-candidate-design { padding: 0; }
+  .admin-candidate-design .candidate-application-grid { grid-template-columns: 1fr; gap: 16px; }
+  .admin-candidate-design .candidate-application-grid > * { grid-column: 1; grid-row: auto; padding: 20px; }
+}
+@media (max-width: 480px) { .admin-candidate-design { padding: 0; } .candidate-application > div:first-child { flex-wrap: wrap; padding: 16px; gap: 16px; } .candidate-profile-card { padding: 12px; } }
+
+.admin-candidate-design .bg-orange-50.text-orange-600 { background: #eff4ff; color: #0053db; }
+.admin-candidate-design [class*="grid-cols-6"] { gap: 12px; }
+.admin-candidate-design [class*="grid-cols-6"] > div { align-self: start; }
+
+.admin-candidate-design .candidate-application-grid, .admin-candidate-design .candidate-application-grid > *, .admin-candidate-design .candidate-application-grid .grid > * { min-width: 0; }
+.admin-candidate-design .candidate-application-grid :is(input, select, textarea) { max-width: 100%; min-width: 0; }
+
+.candidate-source-page .rounded-3xl { border-radius: 12px; }
+/* Application and upload references use Plus Jakarta Sans for body text as well. */
+.admin-candidate-design.candidate-application,
+.admin-candidate-design.candidate-source-page { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; line-height: 22px; }
+.admin-candidate-design.candidate-application h2,
+.admin-candidate-design.candidate-source-page h1 { font-size: 22px; line-height: 32px; letter-spacing: -.025em; }
+.candidate-form-subtitle { color: #64748b; font-size: 13px; line-height: 22px; margin-top: 6px; }
+.admin-candidate-design.candidate-application :is(input:not([type=file]), select, textarea) { background: #fff; border-color: #cbd5e1; font-size: 13px; line-height: 20px; padding: 10px 15px; border-radius: 4px; }
+.admin-candidate-design.candidate-application button { font-size: 13px; line-height: 20px; }
+.admin-candidate-design.candidate-application .candidate-application-grid { gap: 20px; }
+.admin-candidate-design.candidate-application .candidate-application-grid > * { padding: 20px; border-radius: 6px; }
+.admin-candidate-design.candidate-application .candidate-application-grid label { font-size: 13px; line-height: 20px; font-weight: 500; margin-bottom: 6px; }
+.admin-candidate-design.candidate-application .candidate-application-grid h3 { font-size: 13px; line-height: 22px; font-weight: 700; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 18px; margin-bottom: 20px; }
+.admin-candidate-design .candidate-job-section h3 { font-size: 16px; font-weight: 600; border: 0; padding-bottom: 0; margin-bottom: 8px; }
+.candidate-section-caption { color: #94a3b8; font-size: 11px; font-weight: 400; }
+.candidate-parameter-count { color: #2563eb; font-size: 11px; line-height: 20px; font-weight: 500; padding: 2px 8px; border-radius: 4px; background: #eff6ff; }
+.admin-candidate-design.candidate-application[data-has-role='true'] > div:first-child { border-bottom: 0; border-radius: 6px 6px 0 0; margin-bottom: 0; }
+.admin-candidate-design.candidate-application[data-has-role='true'] .candidate-job-section { border-top: 0; border-radius: 0 0 6px 6px; margin-top: -1px !important; padding-top: 0; }
+.admin-candidate-design.candidate-application[data-has-role='false'] .candidate-job-section { grid-column: 1; grid-row: 1; }
+.admin-candidate-design.candidate-application[data-has-role='false'] .candidate-resume-section { grid-column: 2; grid-row: 1; }
+.admin-candidate-design.candidate-application[data-has-role='false'] .candidate-personal-section { grid-column: 1; grid-row: 2; }
+.admin-candidate-design.candidate-application[data-has-role='false'] .candidate-dispatch-section { grid-column: 2; grid-row: 2; }
+.admin-candidate-design .candidate-resume-section .candidate-resume-dropzone { display: flex; flex-direction: column; align-items: center; text-align: center; border: 2px dashed #e2e8f0; border-radius: 6px; padding: 20px 20px; gap: 10px; }
+.candidate-upload-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #eff6ff; color: #2563eb; margin-bottom: 8px; }
+.candidate-upload-help { color: #94a3b8; font-size: 11px; }
+.admin-candidate-design .candidate-resume-section button { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 36px; width: auto; padding: 8px 16px; margin-top: 10px; border: 1px solid #cbd5e1; border-radius: 4px; background: #f1f5f9; color: #334155; }
+.candidate-selected-file { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-top: 1px solid #f1f5f9; padding-top: 16px; margin-top: 20px; color: #64748b; font-size: 13px; overflow-wrap: anywhere; }
+.candidate-selected-file > span:last-child { color: #94a3b8; }
+.candidate-checklist-heading { text-transform: uppercase; font-size: 11px; font-weight: 600; color: #64748b; letter-spacing: .02em; }
+.admin-candidate-design.candidate-source-page :is(button, input, select, textarea) { font-size: 13px; line-height: 20px; }
+.admin-candidate-design.candidate-source-page .text-xs { font-size: 13px; line-height: 22px; }
+.admin-candidate-design.candidate-source-page .text-sm { font-size: 13px; line-height: 22px; }
+.admin-candidate-design.candidate-source-page h3 { font-size: 18px; line-height: 26px; }
+@media (max-width: 900px) {
+ .admin-candidate-design.candidate-application .candidate-application-grid { gap: 20px; }
+ .admin-candidate-design.candidate-application .candidate-application-grid > * { grid-column: 1 !important; grid-row: auto !important; padding: 20px; }
+ .admin-candidate-design.candidate-application[data-has-role='false'] .candidate-job-section { grid-row: 1 !important; }
+ .admin-candidate-design.candidate-application[data-has-role='false'] .candidate-resume-section { grid-row: 2 !important; }
+}
+
+.admin-candidate-design .candidate-command h2 { font-size: 18px; line-height: 26px; }
+.admin-candidate-design .candidate-command p { font-size: 13px; line-height: 18px; }
+.admin-candidate-design .candidate-command button { font-size: 13px; line-height: 18px; padding: 10px 16px; }
+.admin-candidate-design .candidate-filter-panel label { font-size: 11px; line-height: 20px; }
+.admin-candidate-design .candidate-filter-panel :is(input, select, button > span) { font-size: 13px; line-height: 18px; }
+.admin-candidate-design.candidate-application .candidate-job-section h3 { font-size: 16px; font-weight: 600; padding-bottom: 0; margin-bottom: 8px; }
+.admin-candidate-design.candidate-source-page [class~='text-[11px]'] { font-size: 11px; line-height: 20px; }
+.admin-candidate-design .candidate-command > div:first-child { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.admin-candidate-design .candidate-command p { border-left: 1px solid #c3c6d7; padding-left: 12px; }
+.admin-candidate-design .candidate-filter-panel button[aria-expanded] { height: 36px; background: #f8f9ff; border-color: #c3c6d74d; padding: 8px 12px; }
+.admin-candidate-design .candidate-filter-panel button[aria-expanded] > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-candidate-design .candidate-filter-panel button[aria-expanded] > svg { flex-shrink: 0; }
+.admin-candidate-design .candidate-filter-panel input[placeholder^='Search by'] { height: 40px; }
+.candidate-contact-row > :not(.candidate-contact-separator) { max-width: 100%; }
+
+/* Use the shell's padding once and let content adapt to its available width. */
+.admin-candidate-design:not(.candidate-application):not(.candidate-source-page) { max-width: 1560px; margin-left: auto; margin-right: auto; }
+.admin-candidate-design .candidate-filter-panel { padding: 16px 16px 12px; }
+.admin-candidate-design > .candidate-status-panel { padding: 0 16px 16px; }
+.admin-candidate-design .candidate-filter-panel :is(input, select) { min-width: 0; max-width: 100%; }
+.admin-candidate-design .candidate-command { gap: 12px; }
+.admin-candidate-design .candidate-command > div:first-child { flex: 1 1 320px; }
+.admin-candidate-design .candidate-command button { width: auto; flex-shrink: 0; }
+.admin-candidate-design .candidate-command p { border: 0; padding-left: 0; }
+.admin-candidate-design .candidate-command svg { width: 16px; height: 16px; }
+.admin-candidate-design.candidate-source-page > div:first-child { padding: 20px; }
+@media (max-width: 639px) {
+ .admin-candidate-design .candidate-command > div:first-child { flex-basis: 100%; }
+ .admin-candidate-design .candidate-command button { flex: 1 1 auto; padding: 8px 10px; }
+ .admin-candidate-design .candidate-card-top-right { gap: 8px; }
+}
+.admin-candidate-design.space-y-5 > div.candidate-status-panel { margin-top: 0; }
+.admin-candidate-design .candidate-filter-panel.space-y-4 > div + div { margin-top: 12px; }
+.candidate-summary-line > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@container (max-width: 1100px) {
+ .admin-candidate-design .candidate-profile-card { padding: 16px; }
+}
+@container (max-width: 620px) {
+ .candidate-footer-details { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1 0 100%; gap: 4px; }
+ .candidate-footer-details > i { display: none; }
+ .candidate-card-top-left { gap: 6px; }
+ .candidate-card-date { font-size: 12px; }
+ .candidate-requirement-id { font-size: 11px; }
+}

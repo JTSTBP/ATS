@@ -1,3 +1,4 @@
+import "../AdminPanel/candidate-design.css";
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useJobContext } from "../../context/DataProvider";
@@ -379,7 +380,7 @@ export default function UploadSourceCandidatePage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
+    <div className={pathname.startsWith("/Admin") ? "admin-candidate-design candidate-source-page" : "max-w-5xl mx-auto px-4 py-8"}>
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <button
@@ -398,6 +399,31 @@ export default function UploadSourceCandidatePage() {
         </div>
       </div>
 
+      {!jobId && step === "upload" && jobs.filter(job => job.status === "Open").length === 0 && !contextJobsLoading && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-5 py-4 rounded-2xl flex gap-3 items-start shadow-sm mb-6">
+          <XCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+          <div>
+            <h4 className="font-semibold text-sm">No Active Requirements Found</h4>
+            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+              There are currently no active open requirements to upload candidates to. Please create or open a requirement first.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <AnimatePresence mode="wait">
+        {/* Step 1: Upload View */}
+        {step === "upload" && (
+          <motion.div
+            key="upload-step"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.3 }}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          >
+            {/* Drag & Drop Card */}
+            <div className="lg:col-span-2">
       {/* Job Selector (Visible if jobId is not in route params) */}
       {!jobId && step === "upload" && (
         <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm mb-6">
@@ -432,31 +458,7 @@ export default function UploadSourceCandidatePage() {
         </div>
       )}
 
-      {!jobId && step === "upload" && jobs.filter(job => job.status === "Open").length === 0 && !contextJobsLoading && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-5 py-4 rounded-2xl flex gap-3 items-start shadow-sm mb-6">
-          <XCircle className="text-amber-600 shrink-0 mt-0.5" size={18} />
-          <div>
-            <h4 className="font-semibold text-sm">No Active Requirements Found</h4>
-            <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-              There are currently no active open requirements to upload candidates to. Please create or open a requirement first.
-            </p>
-          </div>
-        </div>
-      )}
 
-      <AnimatePresence mode="wait">
-        {/* Step 1: Upload View */}
-        {step === "upload" && (
-          <motion.div
-            key="upload-step"
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
-          >
-            {/* Drag & Drop Card */}
-            <div className="lg:col-span-2">
               <div
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}

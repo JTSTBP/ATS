@@ -1,3 +1,4 @@
+import "../../AdminPanel/candidate-design.css";
 import React, { useEffect, useRef, useState } from "react";
 import { useJobContext } from "../../../context/DataProvider";
 import { useAuth } from "../../../context/AuthProvider";
@@ -5,11 +6,24 @@ import { useCandidateContext } from "../../../context/CandidatesProvider";
 import { toast } from "react-toastify";
 import { Upload, ArrowLeft } from "lucide-react";
 import { formatDate } from "../../../utils/dateUtils";
+import { useClientsContext } from "../../../context/ClientsProvider";
 import { useUserContext } from "../../../context/UserProvider";
 import { allIndianCities } from "./data/locationData";
 
+const getJobClientId = (job: { clientId?: string | { _id?: string } | null } | string | null | undefined): string => {
+  if (!job || typeof job === "string") return "";
+  return typeof job.clientId === "string" ? job.clientId : job.clientId?._id || "";
+};
+
+const getJobStatusLabel = (status?: string) => {
+  if (!status) return "Status not set";
+  const active = ["open", "active"].includes(status.toLowerCase());
+  return `${active ? "Active" : "Inactive"} (${status})`;
+};
+
 export const CandidateForm = ({ isOpen, onClose, candidate }) => {
-  const { jobs, fetchJobs } = useJobContext();
+  const { jobs, fetchJobs, loading: jobsLoading } = useJobContext();
+  const { clients, loading: clientsLoading } = useClientsContext();
   const { user } = useAuth();
   const { users } = useUserContext();
   const { createCandidate, updateCandidate } = useCandidateContext();
@@ -17,8 +31,10 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initializedForm = useRef<string | null>(null);
 
+  const draftKey = `candidate-draft:${user?._id}:${candidate?._id || "new"}`;
+  const [selectedClientId, setSelectedClientId] = useState("");
   const [selectedJob, setSelectedJob] = useState<any>(null);
-  const [resumeFile, setResumeFile] = useState(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -53,6 +69,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
         (j: any) => (j._id === candidate.jobId?._id || j._id === candidate.jobId)
       );
       setSelectedJob(jobObj || null);
+      setSelectedClientId(getJobClientId(jobObj || candidate.jobId));
 
       // Merge job's candidateFields with existing values
       const dynamicFields = { ...candidate.dynamicFields };
@@ -74,6 +91,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       });
     } else {
       // CREATE MODE
+      setSelectedClientId("");
       setSelectedJob(null);
       setFormData({
         jobId: "",
@@ -93,6 +111,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
     const job = jobs.find((item: any) => item._id === formData.jobId);
     if (!job) return;
     setSelectedJob(job);
+    if (isFinance) setSelectedClientId(getJobClientId(job));
     setFormData(previous => {
       const fields = { ...previous.dynamicFields };
       let changed = false;
@@ -104,7 +123,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       });
       return changed ? { ...previous, dynamicFields: fields } : previous;
     });
-  }, [isOpen, jobs, formData.jobId]);
+  }, [isOpen, jobs, formData.jobId, isFinance]);
 
   let filteredJobs: any[] = [];
   const designation = user?.designation?.toLowerCase() || "";
@@ -198,6 +217,10 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
     );
   }
 
+
+  const visibleJobs = isFinance
+    ? filteredJobs.filter(job => Boolean(selectedClientId) && getJobClientId(job) === selectedClientId)
+    : filteredJobs;
 
   const handleJobChange = (e) => {
     const jobId = e.target.value;
@@ -349,6 +372,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
       }
 
       if (result) {
+        try { sessionStorage.removeItem(draftKey); } catch { /* Browser storage may be disabled. */ }
         toast.success(candidate ? "Candidate updated!" : "Candidate created!");
         setSelectedJob(null);
         setFormData({
@@ -391,11 +415,11 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
   };
 
   return (
-    <div className="bg-white max-w-4xl mx-auto p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 animate-fadeIn">
+    <div data-has-role={Boolean(selectedJob)} className={user?.isAdmin || user?.designation === "Admin" ? "admin-candidate-design candidate-application" : "bg-white max-w-4xl mx-auto p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 animate-fadeIn"}>
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-        <h2 className="text-2xl font-bold text-gray-800">
-          {candidate ? "Edit Candidate Application" : "Candidate Application Form"}
-        </h2>
+        <div><h2 className="text-2xl font-bold text-gray-800">
+          {candidate ? "Edit Candidate Application Form" : "Candidate Application Form"}
+        </h2><p className="candidate-form-subtitle">Submit new talent profile into the recruitment pipeline</p></div>
         <button
           type="button"
           onClick={onClose}
@@ -406,31 +430,50 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="candidate-application-grid space-y-8">
             {/* Job Selection */}
-            <div>
-              <h3 className="font-semibold mb-2 text-lg">Job Details</h3>
-              <label>Select Job Role {!isFinance && <span className="text-red-500">*</span>}</label>
-              <select
-                className="w-full p-2 border rounded-lg"
-                value={formData.jobId}
-                onChange={handleJobChange}
-                required={!isFinance}
-              >
-                <option value="">Select Job</option>
-                {filteredJobs.map((job) => (
-                  <option key={job._id} value={job._id}>
-                    {job.title}
-                  </option>
-                ))}
-              </select>
+            <div className="candidate-job-section">
+              <h3 className="font-semibold mb-2 text-lg">Job Details<span className="candidate-section-caption">Position Configuration</span></h3>
+              <div className={isFinance ? "grid grid-cols-1 md:grid-cols-2 gap-4" : ""}>
+                {isFinance && <div>
+                  <label htmlFor="candidate-client" className="block mb-1">Select Client</label>
+                  <select id="candidate-client" className="w-full p-2 border rounded-lg"
+                    value={selectedClientId} disabled={clientsLoading}
+                    onChange={e => {
+                      setSelectedClientId(e.target.value);
+                      setSelectedJob(null);
+                      setFormData(previous => ({ ...previous, jobId: "", dynamicFields: {} }));
+                    }}>
+                    <option value="">{clientsLoading ? "Loading clients..." : "Select Client"}</option>
+                    {clients.map(client => <option key={client._id} value={client._id}>{client.companyName}</option>)}
+                  </select>
+                </div>}
+                <div>
+                  <label htmlFor="candidate-job-role" className="block mb-1">Select Job Role {(!isFinance || Boolean(selectedClientId)) && <span className="text-red-500">*</span>}</label>
+                  <select id="candidate-job-role"
+                    className="w-full p-2 border rounded-lg"
+                    value={formData.jobId}
+                    onChange={handleJobChange}
+                    required={!isFinance || Boolean(selectedClientId)}
+                    disabled={isFinance && (!selectedClientId || jobsLoading)}
+                  >
+                    <option value="">{isFinance && !selectedClientId ? "Select a client first" : jobsLoading ? "Loading job roles..." : "Select Job"}</option>
+                    {visibleJobs.map(job => (
+                      <option key={job._id} value={job._id}>
+                        {job.title}{isFinance ? ` — ${getJobStatusLabel(job.status)}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {isFinance && selectedClientId && !jobsLoading && visibleJobs.length === 0 && <p className="mt-2 text-sm text-slate-500" role="status">No job roles available for this client.</p>}
+                </div>
+              </div>
             </div>
 
             {/* Dynamic Fields */}
             {selectedJob?.candidateFields?.length > 0 && (
-              <div className="border p-4 rounded-lg">
+              <div className="candidate-fields-section border p-4 rounded-lg">
                 <h3 className="font-semibold text-lg mb-3">
-                  {selectedJob.title} Specific Fields
+                  {selectedJob.title} Specific Fields<span className="candidate-parameter-count">{selectedJob.candidateFields.length} Parameters</span>
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedJob.candidateFields.map((field) => (
@@ -449,8 +492,8 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
             )}
 
             {/* Personal Details */}
-            <div>
-              <h3 className="font-semibold mb-2 text-lg">Personal Details</h3>
+            <div className="candidate-personal-section">
+              <h3 className="font-semibold mb-2 text-lg">Personal Details<span className="candidate-section-caption">Profiles &amp; Background</span></h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium">
@@ -494,16 +537,21 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
                 </div>
               </div>
 
+            </div>
+
               {/* Resume Upload */}
-              <div className="mt-4">
-                <label className="block text-sm font-medium">Resume / CV</label>
-                <div className="flex items-center gap-4">
+              <div className="candidate-resume-section mt-4" onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) handleFileUpload({ target: { files: e.dataTransfer.files } }); }}>
+                <h3 className="font-semibold text-lg mb-3">Resume / CV</h3>
+                <div className="candidate-resume-dropzone">
+                  <span className="candidate-upload-icon"><Upload size={24} /></span>
+                  <p>Drag and drop file here</p>
+                  <span className="candidate-upload-help">PDF, DOC, DOCX</span>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="px-4 py-2 bg-slate-100 rounded-lg"
                   >
-                    Upload Resume
+                    <Upload size={16} />Upload Resume
                   </button>
                   <input
                     ref={fileInputRef}
@@ -512,14 +560,9 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
                     onChange={handleFileUpload}
                     className="hidden"
                   />
-                  {formData.resumeUrl && (
-                    <span className="text-green-600 text-sm">
-                      Resume uploaded
-                    </span>
-                  )}
                 </div>
+                <p className="candidate-selected-file"><span>Selected File:</span><span>{resumeFile?.name || (formData.resumeUrl ? "Existing resume attached" : "No file chosen")}</span></p>
               </div>
-            </div>
 
             {/* Status History Section */}
             {candidate?.statusHistory && candidate.statusHistory.length > 0 && (
@@ -554,6 +597,32 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
               </div>
             )}
 
+            <div className="candidate-dispatch-section">
+              <h3 className="font-semibold text-lg mb-3">Application Action Console</h3>
+              <div className="candidate-checklist text-sm text-slate-500 space-y-3">
+                <p className="candidate-checklist-heading">Pre-submission checklist</p>
+                <p>Target role: {selectedJob ? selectedJob.title : "Pending selection"}</p>
+                <p>Resume: {resumeFile || formData.resumeUrl ? "Attached" : "Optional"}</p>
+                <p>Required fields are checked before submission.</p>
+              </div>
+            {(user?.isAdmin || user?.designation === "Admin") && <div className="flex gap-2 mb-3">
+              <button type="button" className="flex-1 border border-slate-200 p-2" onClick={() => {
+                try { sessionStorage.setItem(draftKey, JSON.stringify({ ...formData, resumeUrl: resumeFile ? candidate?.resumeUrl || "" : formData.resumeUrl })); toast.success("Draft saved for this browser session. Reattach any new resume when restoring."); }
+                catch { toast.error("Unable to save draft in this browser."); }
+              }}>Save as Draft</button>
+              <button type="button" className="flex-1 border border-slate-200 p-2" onClick={() => {
+                try {
+                  const saved = sessionStorage.getItem(draftKey);
+                  if (!saved) { toast.info("No saved draft for this application."); return; }
+                  const draft = JSON.parse(saved);
+                  if (!draft || typeof draft.jobId !== "string" || typeof draft.dynamicFields !== "object" || !draft.dynamicFields || draft.createdBy !== formData.createdBy) throw new Error("Invalid draft");
+                  setFormData(draft); setResumeFile(null);
+                  if (fileInputRef.current) fileInputRef.current.value = "";
+                  setSelectedJob(jobs.find(job => job._id === draft.jobId) || null);
+                  toast.success("Draft restored. Reattach any new resume before submitting.");
+                } catch { toast.error("Unable to restore this draft."); }
+              }}>Restore Draft</button>
+            </div>}
             <button
               type="submit"
               disabled={isSubmitting}
@@ -562,6 +631,7 @@ export const CandidateForm = ({ isOpen, onClose, candidate }) => {
               {isSubmitting && <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               {isSubmitting ? "Submitting..." : (candidate ? "Update Candidate" : "Submit Application")}
             </button>
+            </div>
           </form>
     </div>
   );

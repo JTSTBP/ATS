@@ -244,10 +244,10 @@ router.get("/", async (req, res) => {
     // Base Match Stage (for direct fields)
     const matchStage = {};
 
-    // Filter by Status
-    if (status && status !== "all") {
-      matchStage.status = new RegExp(`^${status}$`, "i");
-    }
+    // Apply status inside pagination facets so sibling status totals remain visible.
+    const statusMatch = status && status !== "all"
+      ? [{ $match: { status: new RegExp(`^${status}$`, "i") } }]
+      : [];
 
     // Filter by Interview Stage
     if (stage && stage !== "all") {
@@ -359,6 +359,7 @@ router.get("/", async (req, res) => {
         {
           $facet: {
             candidates: [
+              ...statusMatch,
               { $skip: skip },
               { $limit: limitNum },
               // Project to restore original structure expected by frontend (nested objects)
@@ -374,6 +375,7 @@ router.get("/", async (req, res) => {
                   selectionDate: 1,
                   expectedJoiningDate: 1,
                   createdAt: 1,
+                  updatedAt: 1,
                   notes: 1,
                   rejectionReason: 1,
                   rejectedBy: 1,
@@ -407,7 +409,8 @@ router.get("/", async (req, res) => {
                 }
               }
             ],
-            totalCount: [{ $count: "count" }]
+            totalCount: [...statusMatch, { $count: "count" }],
+            statusCounts: [{ $group: { _id: "$status", count: { $sum: 1 } } }]
           }
         }
       ]);
@@ -423,6 +426,10 @@ router.get("/", async (req, res) => {
         success: true,
         candidates,
         totalCandidates,
+        statusCounts: {
+          ...Object.fromEntries(result[0].statusCounts.map(bucket => [bucket._id || "New", bucket.count])),
+          all: result[0].statusCounts.reduce((total, bucket) => total + bucket.count, 0)
+        },
         totalPages: Math.ceil(totalCandidates / limitNum),
         currentPage: pageNum
       });
