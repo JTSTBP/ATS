@@ -4,6 +4,7 @@ import { Plus, X, Trash2, Mail, RotateCcw, RefreshCw, Download, DownloadCloud, D
 import { useAuth } from "../../context/AuthProvider";
 import { toast } from "react-toastify";
 import { formatDate } from "../../utils/dateUtils";
+import InvoicePDFPreview from "./InvoicePDFPreview";
 
 interface Client {
     _id: string;
@@ -553,20 +554,6 @@ const Finance = () => {
         setInvoiceFormData({ ...invoiceFormData, candidates: newCandidates });
     };
 
-    const numberToWords = (num: number) => {
-        const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
-        const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-
-        const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-        if (!n) return '';
-        let str = '';
-        str += (parseInt(n[1]) !== 0) ? (a[Number(n[1])] || b[parseInt(n[1][0])] + ' ' + a[parseInt(n[1][1])]) + 'Crore ' : '';
-        str += (parseInt(n[2]) !== 0) ? (a[Number(n[2])] || b[parseInt(n[2][0])] + ' ' + a[parseInt(n[2][1])]) + 'Lakh ' : '';
-        str += (parseInt(n[3]) !== 0) ? (a[Number(n[3])] || b[parseInt(n[3][0])] + ' ' + a[parseInt(n[3][1])]) + 'Thousand ' : '';
-        str += (parseInt(n[4]) !== 0) ? (a[Number(n[4])] || b[parseInt(n[4][0])] + ' ' + a[parseInt(n[4][1])]) + 'Hundred ' : '';
-        str += (parseInt(n[5]) !== 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[parseInt(n[5][0])] + ' ' + a[parseInt(n[5][1])]) + 'Only' : '';
-        return str || 'Zero Only';
-    };
 
     const handlePaymentSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -717,7 +704,7 @@ const Finance = () => {
             const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/download/${id}`, {
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', `Invoice_${invoiceNumber || id}.pdf`);
@@ -730,12 +717,10 @@ const Finance = () => {
         }
     };
 
-    const handleDownloadPreview = async () => {
-        try {
+    const invoicePreviewData = React.useMemo(() => {
             const selectedClient = clients.find(c => c._id === invoiceFormData.client);
 
-            // Prepare data for PDF generation
-            const previewData = {
+            return {
                 ...invoiceFormData,
                 client: {
                     ...selectedClient,
@@ -755,17 +740,22 @@ const Finance = () => {
                 invoiceDate: invoiceFormData.invoiceDate || new Date().toISOString()
             };
 
-            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/preview-download`, previewData, {
+    }, [invoiceFormData, clients, candidates]);
+
+    const handleDownloadPreview = async () => {
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/invoices/preview-download`, invoicePreviewData, {
                 responseType: 'blob'
             });
 
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', `Invoice_Preview.pdf`);
             document.body.appendChild(link);
             link.click();
             link.remove();
+            window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
         } catch (error) {
             console.error("Error downloading preview:", error);
             toast.error("Failed to download preview");
@@ -1504,7 +1494,7 @@ const Finance = () => {
             {isCreatingInvoice && (
                 <div className="fixed inset-0 bg-slate-50 z-[60] overflow-y-auto">
                     <div className="max-w-[1400px] mx-auto p-6">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-wrap justify-between items-center gap-4 mb-6">
                             <div className="flex items-center gap-4">
                                 <button
                                     onClick={() => {
@@ -1519,7 +1509,7 @@ const Finance = () => {
                                 </button>
                                 <h2 className="text-2xl font-bold text-slate-800">{isEditingInvoice ? "Edit Invoice" : "Create Multi-Candidate Invoice"}</h2>
                             </div>
-                            <div className="flex gap-3">
+                            <div className="flex w-full gap-3 sm:w-auto">
                                 <button
                                     onClick={() => {
                                         setIsCreatingInvoice(false);
@@ -1534,7 +1524,7 @@ const Finance = () => {
                                 <button
                                     onClick={handleInvoiceSubmit}
                                     disabled={loading || !invoiceFormData.client || invoiceFormData.candidates.some(c => !c.candidateId || !c.amount)}
-                                    className={`px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 flex items-center gap-2 ${loading ? 'opacity-70' : ''}`}
+                                    className={`flex-1 min-w-0 sm:flex-none px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-blue-400 flex items-center gap-2 ${loading ? 'opacity-70' : ''}`}
                                 >
                                     {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                                     {loading ? (isEditingInvoice ? "Saving..." : "Creating...") : (isEditingInvoice ? "Save Changes" : "Save & Generate Invoice")}
@@ -1951,228 +1941,9 @@ const Finance = () => {
                                 </div>
                             </div>
 
-                            {/* Right Side: Preview */}
-                            <div className="w-full md:w-1/2 sticky top-6">
-                                <div className="bg-white shadow-xl rounded-xl border border-slate-200 overflow-hidden min-h-[800px] flex flex-col">
-                                    <div className="bg-slate-800 p-3 text-white flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                                        <span>Live Invoice Preview</span>
-                                        <button
-                                            onClick={handleDownloadPreview}
-                                            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition-colors"
-                                            title="Download Preview PDF"
-                                        >
-                                            <DownloadCloud size={14} />
-                                            Download
-                                        </button>
-                                    </div>
-                                    <div className="p-8 flex-1 flex flex-col text-[11px] leading-tight text-slate-800 font-sans bg-white overflow-y-auto">
-                                        {/* Header */}
-                                        <div className="flex justify-between items-start mb-4">
-                                            <img src="/src/images/logo.png" alt="Logo" className="w-32" />
-                                        </div>
-
-                                        {/* Boxed Header Info */}
-                                        <div className="border border-slate-400 mb-6">
-                                            {/* Invoice Title Bar */}
-                                            <div className="border-b border-slate-400 py-1 bg-slate-50 text-center">
-                                                <span className="font-bold text-sm uppercase tracking-wider">Invoice</span>
-                                            </div>
-                                            
-                                            <div className="flex min-h-[80px]">
-                                                {/* Left: To Address */}
-                                                <div className="w-[60%] border-r border-slate-400 p-2">
-                                                    <p className="font-bold mb-1">To,</p>
-                                                    <p className="font-bold text-[12px] mb-1">{clients.find(c => c._id === invoiceFormData.client)?.companyName || "[Client Name]"}</p>
-                                                    <div className="text-slate-600 leading-snug max-w-[250px]">
-                                                        {(() => {
-                                                            const addressParts = [];
-                                                            if (invoiceFormData.billingAddress) addressParts.push(invoiceFormData.billingAddress);
-                                                            if (invoiceFormData.billingState) addressParts.push(invoiceFormData.billingState);
-
-                                                            if (addressParts.length > 0) return addressParts.join(', ');
-
-                                                            const selectedClient = clients.find(c => c._id === invoiceFormData.client);
-                                                            if (!selectedClient) return "Select a client to view address...";
-                                                            return selectedClient.companyInfo || "No address available";
-                                                        })()}
-                                                    </div>
-                                                    <div className="mt-2 font-bold text-[10px]">
-                                                        {(() => {
-                                                            const selectedClient = clients.find(c => c._id === invoiceFormData.client);
-                                                            const gst = invoiceFormData.gstNumber || selectedClient?.gstNumber;
-                                                            return gst ? <span>GST No: {gst}</span> : null;
-                                                        })()}
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Middle: Empty Spacer (Matches Image) */}
-                                                <div className="w-[10%] border-r border-slate-400"></div>
-
-                                                {/* Right: Invoice Details */}
-                                                <div className="w-[30%]">
-                                                    <div className="p-2 border-b border-slate-400 h-1/3 flex items-center">
-                                                        <span className="font-bold">Invoice No. {invoiceFormData.invoiceNumber || "JT/RO/25-26/XXXX"}</span>
-                                                    </div>
-                                                    <div className="p-2 border-b border-slate-400 h-1/3 flex items-center">
-                                                        <span>Date :- {new Date(invoiceFormData.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')}</span>
-                                                    </div>
-                                                    <div className="p-2 h-1/3 flex items-center">
-                                                        <span className="font-bold">SAC Code:-998512</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Grid Table */}
-                                        <div className="border border-slate-400 mb-6">
-                                            <table className="w-full border-collapse text-[10px]">
-                                                <thead>
-                                                    <tr className="bg-slate-50 font-bold border-b border-slate-400 text-center">
-                                                        <td className="py-1 px-1 border-r border-slate-400 w-8">Sr. No.</td>
-                                                        <td className="py-1 px-1 border-r border-slate-400">Name Of the Candidate</td>
-                                                        <td className="py-1 px-1 border-r border-slate-400 w-16">D.O.J</td>
-                                                        <td className="py-1 px-1 border-r border-slate-400 w-24">Designation</td>
-                                                        <td className="py-1 px-1 border-r border-slate-400 w-16">CTC</td>
-                                                        <td className="py-1 px-1 w-16">Amount</td>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {invoiceFormData.candidates.map((c, i) => {
-                                                        const cand = candidates.find(cand => cand._id === c.candidateId);
-                                                        return (
-                                                            <tr key={i} className="border-b border-slate-400 text-center">
-                                                                <td className="py-2 px-1 border-r border-slate-400">{i + 1}</td>
-                                                                <td className="py-2 px-1 border-r border-slate-400 font-bold">{cand ? getCandidateName(cand) : "[Candidate Name]"}</td>
-                                                                <td className="py-2 px-1 border-r border-slate-400">{c.doj ? new Date(c.doj).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : "-"}</td>
-                                                                <td className="py-2 px-1 border-r border-slate-400 text-[9px]">{c.designation || cand?.jobId?.title || "-"}</td>
-                                                                <td className="py-2 px-1 border-r border-slate-400">{c.ctc ? Number(c.ctc).toLocaleString() : "0"}</td>
-                                                                <td className="py-2 px-1">{Number(c.amount || 0).toLocaleString()}</td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                    
-                                                    {/* Totals within the grid */}
-                                                    {(() => {
-                                                        const isKarnataka = invoiceFormData.billingState?.toLowerCase() === 'karnataka';
-                                                        const total = invoiceFormData.candidates.reduce((sum, c) => sum + Number(c.amount || 0), 0);
-                                                        
-                                                        const rowStyle = "border-b border-slate-400 font-bold text-center bg-slate-50/30";
-                                                        const labelCell = "py-1 px-1 border-r border-slate-400";
-                                                        const valCell = "py-1 px-1";
-
-                                                        if (isKarnataka) {
-                                                            const halfTax = Math.round(total * 0.09);
-                                                            return (
-                                                                <>
-                                                                    <tr className={rowStyle}>
-                                                                        <td colSpan={4} className={labelCell}>Total</td>
-                                                                        <td colSpan={2} className={valCell}>{total.toLocaleString()}</td>
-                                                                    </tr>
-                                                                    <tr className={rowStyle}>
-                                                                        <td colSpan={4} className={labelCell}>CGST@9%</td>
-                                                                        <td colSpan={2} className={valCell}>{halfTax.toLocaleString()}</td>
-                                                                    </tr>
-                                                                    <tr className={rowStyle}>
-                                                                        <td colSpan={4} className={labelCell}>SGST@9%</td>
-                                                                        <td colSpan={2} className={valCell}>{halfTax.toLocaleString()}</td>
-                                                                    </tr>
-                                                                    <tr className="font-bold text-center bg-slate-100">
-                                                                        <td colSpan={4} className={labelCell}>Grand Total</td>
-                                                                        <td colSpan={2} className={valCell}>{(total + (halfTax * 2)).toLocaleString()}</td>
-                                                                    </tr>
-                                                                </>
-                                                            );
-                                                        }
-                                                        const tax = Math.round(total * 0.18);
-                                                        return (
-                                                            <>
-                                                                <tr className={rowStyle}>
-                                                                    <td colSpan={4} className={labelCell}>Total</td>
-                                                                    <td colSpan={2} className={valCell}>{total.toLocaleString()}</td>
-                                                                </tr>
-                                                                <tr className={rowStyle}>
-                                                                    <td colSpan={4} className={labelCell}>IGST@18%</td>
-                                                                    <td colSpan={2} className={valCell}>{tax.toLocaleString()}</td>
-                                                                </tr>
-                                                                <tr className="font-bold text-center bg-slate-100">
-                                                                    <td colSpan={4} className={labelCell}>Grand Total</td>
-                                                                    <td colSpan={2} className={valCell}>{(total + tax).toLocaleString()}</td>
-                                                                </tr>
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <p className="mb-4 font-medium text-[10px]">
-                                            Amount in words- {(() => {
-                                                const total = invoiceFormData.candidates.reduce((sum, c) => sum + Number(c.amount || 0), 0);
-                                                const isKarnataka = invoiceFormData.billingState?.toLowerCase() === 'karnataka';
-                                                const grandTotal = isKarnataka ? total + (Math.round(total * 0.09) * 2) : Math.round(total * 1.18);
-                                                return numberToWords(grandTotal);
-                                            })()}.
-                                        </p>
-
-                                        {/* Bank Details & Signature Section */}
-                                        <div className="mt-2 flex justify-between items-start">
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <p className="font-bold underline mb-1">Bank Details</p>
-                                                    <div className="space-y-0.5 text-[9px]">
-                                                        <div className="flex gap-4">
-                                                            <span className="w-20 font-semibold">Name</span>
-                                                            <span>: Jobs Territory</span>
-                                                        </div>
-                                                        <div className="flex gap-4">
-                                                            <span className="w-20 font-semibold">Bank Name</span>
-                                                            <span>: IDFC Bank</span>
-                                                        </div>
-                                                        <div className="flex gap-4">
-                                                            <span className="w-20 font-semibold">Account Number</span>
-                                                            <span>: 89686116220</span>
-                                                        </div>
-                                                        <div className="flex gap-4">
-                                                            <span className="w-20 font-semibold">Branch Name</span>
-                                                            <span>: Whitefield Branch</span>
-                                                        </div>
-                                                        <div className="flex gap-4">
-                                                            <span className="w-20 font-semibold">IFSC Code</span>
-                                                            <span>: IDFB0080153</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-0.5 mt-2 text-[9px]">
-                                                    <p><span className="font-semibold">PAN</span> :- AIPPJ6608Q</p>
-                                                    <p><span className="font-semibold">GST No</span> :- 29AIPPJ6608Q1ZB</p>
-                                                </div>
-                                            </div>
-
-                                            {/* Stamp Placeholder */}
-                                            <div className="relative pt-4 pr-12 flex flex-col items-center">
-                                                <img 
-                                                    src="/src/images/stamp.png" 
-                                                    alt="Stamp" 
-                                                    className="w-24 h-24 object-contain opacity-80 rotate-6" 
-                                                />
-                                                <p className="mt-[-10px] font-bold text-sm italic text-slate-700">Sarun</p>
-                                            </div>
-                                        </div>
-
-                                        {/* Note & Footer */}
-                                        <div className="mt-auto">
-                                            <div className="border border-slate-400 p-0.5 mb-2">
-                                                <span className="font-bold text-[9px]">Note :-</span>
-                                            </div>
-                                            <div className="text-center space-y-0.5 text-[9px]">
-                                                <p className="font-bold">
-                                                    Address: Door No. 108, 1st Floor Brigade Arcade, Whitefield Road, Mahadevapura, Bangalore Karnataka -560048
-                                                </p>
-                                                <p className="font-bold text-blue-600">www.jobsterritory.com</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            {/* Preview and downloads share the reference PDF renderer. */}
+                            <div className="w-full md:w-1/2 md:sticky md:top-6">
+                                <InvoicePDFPreview invoice={invoicePreviewData} onDownload={handleDownloadPreview} />
                             </div>
                         </div>
                     </div>

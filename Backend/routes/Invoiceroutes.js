@@ -1,4 +1,5 @@
 const express = require('express');
+const { randomUUID } = require('node:crypto');
 const router = express.Router();
 const Invoice = require('../models/Invoice');
 const Client = require('../models/Client');
@@ -508,10 +509,9 @@ router.get('/download/:id', async (req, res) => {
 
 // Download Preview PDF
 router.post('/preview-download', async (req, res) => {
+    const pdfPath = path.join(__dirname, `../temp/preview_${randomUUID()}.pdf`);
     try {
         const previewData = req.body;
-        const tempId = Date.now();
-        const pdfPath = path.join(__dirname, `../temp/preview_${tempId}.pdf`);
         
         // Ensure temp directory exists
         if (!fs.existsSync(path.join(__dirname, '../temp'))) {
@@ -521,10 +521,17 @@ router.post('/preview-download', async (req, res) => {
         // Generate PDF using the same utility as regular invoices
         await generateInvoicePDF(previewData, null, pdfPath);
         
+        if (res.destroyed) {
+            fs.unlinkSync(pdfPath);
+            return;
+        }
+
         // Stream PDF for inline preview (no attachment download)
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'inline; filename="Invoice_Preview.pdf"');
         const fileStream = fs.createReadStream(pdfPath);
+        res.on('close', () => fileStream.destroy());
+        fileStream.on('error', error => res.destroy(error));
         fileStream.pipe(res);
         fileStream.on('close', () => {
             // Clean up temporary file after sending
@@ -533,6 +540,7 @@ router.post('/preview-download', async (req, res) => {
             }
         });
     } catch (error) {
+        if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
         console.error('Error generating preview download:', error);
         res.status(500).json({ message: 'Error generating preview download', error: error.message });
     }

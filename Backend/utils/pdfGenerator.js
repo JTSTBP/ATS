@@ -1,6 +1,6 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
-const path = require('path');
+const path = require('node:path');
 
 function generateInvoicePDF(invoice, payment, savePath) {
     return new Promise((resolve, reject) => {
@@ -35,11 +35,7 @@ function generateInvoicePDF(invoice, payment, savePath) {
         };
 
         // --- Header Section ---
-        const logoPath = 'c:\\MyProjects\\OfficeProjects\\ATS\\Frontend\\src\\images\\logo.png';
-        if (fs.existsSync(logoPath)) {
-            doc.image(logoPath, 40, 30, { width: 140 });
-        }
-
+        doc.image(path.join(__dirname, '../assets/invoice/logo.png'), 40, 12, { fit: [125, 65], align: 'left', valign: 'center' });
         doc.moveDown(4);
         const topY = 90;
         
@@ -142,7 +138,7 @@ function generateInvoicePDF(invoice, payment, savePath) {
                 rowX += width;
             };
 
-            const candidateName = c.candidateId?.dynamicFields?.candidateName || c.candidateId?.dynamicFields?.Name || '[Candidate Name]';
+            const candidateName = c.candidateId?.dynamicFields?.candidateName || c.candidateId?.dynamicFields?.CandidateName || c.candidateId?.dynamicFields?.Name || c.candidateId?.dynamicFields?.name || c.candidateId?.name || '[Candidate Name]';
             const doj = c.doj ? new Date(c.doj).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
             const designation = c.designation || c.candidateId?.jobId?.title || '-';
             const ctc = c.ctc ? formatCurrency(c.ctc) : '0';
@@ -228,11 +224,8 @@ function generateInvoicePDF(invoice, payment, savePath) {
         const sigX = 380;
         const sigY = currentY + 30;
         
-        const stampPath = 'c:\\MyProjects\\OfficeProjects\\ATS\\Frontend\\src\\images\\stamp.png';
-        if (fs.existsSync(stampPath)) {
-            doc.image(stampPath, sigX, sigY, { width: 100 });
-        }
-        
+        doc.image(path.join(__dirname, '../assets/invoice/signature.jpeg'), sigX, sigY, { fit: [100, 80], align: 'center', valign: 'center' });
+
         doc.font('Helvetica-BoldOblique').fontSize(12).text('Sarun', sigX + 35, sigY + 80);
         
         // Note Box
@@ -257,4 +250,3 @@ function generateInvoicePDF(invoice, payment, savePath) {
 }
 
 module.exports = { generateInvoicePDF };
-
