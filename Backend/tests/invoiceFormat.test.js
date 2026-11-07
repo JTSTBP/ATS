@@ -31,7 +31,7 @@ async function render(t, data, images) {
  t.after(()=>{ if(fs.existsSync(output)) fs.unlinkSync(output); fs.rmdirSync(dir); });
  await generatorWithImagesAvailable(images)(data,null,output);
  const bytes=fs.readFileSync(output);
- return {parsed:await pdfParse(Uint8Array.from(bytes)), document:await ReadPDF.load(bytes),raw:bytes.toString("latin1")};
+ return {parsed:await pdfParse(Uint8Array.from(bytes)), document:await ReadPDF.load(bytes),raw:bytes.toString("latin1"),bytes};
 }
 test('reference invoice keeps A4, Helvetica and the supplied logo and signature',async t=>{
  const images=[]; const result=await render(t,invoice(),images);
@@ -48,4 +48,25 @@ test('the reference format retains existing split-GST rounding for Karnataka',as
  const result=await render(t,invoice('Karnataka'),[]);
  for(const text of ['CGST@9%','SGST@9%','10,871','1,42,527']) assert.ok(result.parsed.text.includes(text),text);
  assert.ok(!result.parsed.text.includes('IGST@18%'));
+});
+
+test('footer address lines and website share the page centre', async t => {
+ const result = await render(t, invoice(), []);
+ const footerLines = new Map();
+ await pdfParse(Uint8Array.from(result.bytes), { pagerender: async page => {
+  const content = await page.getTextContent();
+  for (const item of content.items) {
+   if (item.transform[5] >= 110 || !item.str.trim()) continue;
+   const key = Math.round(item.transform[5]);
+   const line = footerLines.get(key) || {left:Infinity,right:-Infinity,text:''};
+   line.left=Math.min(line.left,item.transform[4]);
+   line.right=Math.max(line.right,item.transform[4]+item.width);
+   line.text+=item.str;
+   footerLines.set(key,line);
+  }
+  return content.items.map(item=>item.str).join(' ');
+ }});
+ assert.equal(footerLines.size,3);
+ const centre=result.document.getPage(0).getWidth()/2;
+ for(const line of footerLines.values()) assert.ok(Math.abs((line.left+line.right)/2-centre)<1,`Footer line must be centred: ${line.text}`);
 });

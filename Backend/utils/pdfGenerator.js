@@ -233,14 +233,20 @@ function generateInvoicePDF(invoice, payment, savePath) {
         doc.rect(40, currentY, 515, 25).stroke();
         doc.font('Helvetica').fontSize(10).text('Note :-', 45, currentY + 7);
 
-        // Footer
+        // Centre each footer line within the same page margins; continued text shifts the cursor.
         const footerY = 750;
-        doc.font('Helvetica-Bold').fontSize(9).text('Address: ', 120, footerY, { continued: true });
-        doc.font('Helvetica').text('Door No. 108, 1st Floor Brigade Arcade, Whitefield Road, Mahadevapura,');
-        doc.text('Bangalore Karnataka -560048', { align: 'center', width: 515 });
-        
-        doc.moveDown(1);
-        doc.text('www.jobsterritory.com', { align: 'center', width: 515 });
+        const footerX = 40;
+        const footerWidth = 515;
+        const addressLabel = 'Address: ';
+        const addressLine = 'Door No. 108, 1st Floor Brigade Arcade, Whitefield Road, Mahadevapura,';
+        doc.fillColor('black').font('Helvetica-Bold').fontSize(9);
+        const labelWidth = doc.widthOfString(addressLabel);
+        doc.font('Helvetica');
+        const addressX = footerX + (footerWidth - labelWidth - doc.widthOfString(addressLine)) / 2;
+        doc.font('Helvetica-Bold').text(addressLabel, addressX, footerY, { lineBreak: false });
+        doc.font('Helvetica').text(addressLine, addressX + labelWidth, footerY, { lineBreak: false });
+        doc.text('Bangalore Karnataka -560048', footerX, footerY + 12, { align: 'center', width: footerWidth });
+        doc.text('www.jobsterritory.com', footerX, footerY + 32, { align: 'center', width: footerWidth });
 
         doc.end();
 
