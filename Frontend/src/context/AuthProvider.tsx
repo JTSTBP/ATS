@@ -8,6 +8,7 @@ import {
 } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { loginFailureMessage } from '../utils/loginFailure';
 
 interface User {
   _id: string;
@@ -34,6 +35,7 @@ interface User {
 }
 
 interface AuthContextType {
+  loginError: string;
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
@@ -50,6 +52,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loginError, setLoginError] = useState('');
   const [loading, setLoading] = useState(true); // start as loading
 
   // Restore user from localStorage on refresh
@@ -69,12 +72,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // 🔹 LOGIN FUNCTION
   const login = async (email: string, password: string): Promise<boolean> => {
+    setLoginError('');
     try {
       setLoading(true);
       const res = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-        email,
+        email: email.trim(),
         password,
-      });
+      }, { timeout: 30000 });
 
       if (res.data.success) {
         const userData = res.data.user;
@@ -91,11 +95,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         toast.success("Login successful!");
         return true;
       } else {
-        toast.error(res.data.message || "Invalid credentials");
+        const message = 'Unable to sign in. Please try again.';
+        setLoginError(message);
+        toast.error(message);
         return false;
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Login failed");
+    } catch (err: unknown) {
+      const message = loginFailureMessage(err);
+      setLoginError(message);
+      toast.error(message);
       return false;
     } finally {
       setLoading(false);
@@ -193,6 +201,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         loading,
+        loginError,
         login,
         logout,
         setUser,

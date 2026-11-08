@@ -1,0 +1,6 @@
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const ts=require('typescript');const vm=require('node:vm');
+const result={exports:{}};vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/utils/loginFailure.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:result.exports,module:result});
+const {loginFailureMessage}=result.exports;
+test('only credential responses report invalid credentials',()=>{for(const status of [400,401])assert.equal(loginFailureMessage({response:{status}}),'Invalid email or password');});
+test('unreachable, slow and failed servers are distinguished from password rejection',()=>{for(const error of [null,{code:'ERR_NETWORK'},{code:'ECONNABORTED'},{code:'ETIMEDOUT'},{response:{status:500}},{response:{status:503}}])assert.doesNotMatch(loginFailureMessage(error),/Invalid email or password/);assert.match(loginFailureMessage({code:'ERR_NETWORK'}),/connect/);assert.match(loginFailureMessage({code:'ECONNABORTED'}),/too long/);assert.match(loginFailureMessage({response:{status:503}}),/temporarily unavailable/);});
+test('disabled and rate-limited accounts get actionable messages',()=>{assert.match(loginFailureMessage({response:{status:403}}),/administrator/);assert.match(loginFailureMessage({response:{status:429}}),/wait/);});

@@ -9,7 +9,7 @@ import "./Login.css";
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginError } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -46,8 +46,6 @@ export default function Login() {
         const route = savedUser.designation === 'Finance' ? 'Admin' : savedUser.designation;
         navigate(`/${route}`);
       }
-    } else {
-      setErrors({ general: "Invalid email or password" });
     }
   };
 
@@ -106,7 +104,7 @@ export default function Login() {
               {errors.password && <p id="login-password-error" className="login-error" role="alert">{errors.password}</p>}
             </div>
             <div className="login-form-options"><button type="button" onClick={() => setShowForgotPassword(true)}>Forgot password?</button></div>
-            {errors.general && <p className="login-error login-error-general" role="alert">{errors.general}</p>}
+            {loginError && <p className="login-error login-error-general" role="alert">{loginError}</p>}
             <button type="submit" disabled={isLoading} className="login-submit">{isLoading ? "Signing in…" : <>Sign in <ArrowRight size={21} aria-hidden="true" /></>}</button>
           </form>
           <footer className="login-card-footer">Need recruiter access?<br /><span>Contact your system admin</span></footer>
