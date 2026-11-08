@@ -730,6 +730,9 @@ router.get("/role-based-candidates", async (req, res) => {
 
     const createdAtDateMatch = getDateRangeMatch(startDate, endDate);
 
+    const statusMatch = matchStage.status ? [{ $match: { status: matchStage.status } }] : [];
+    delete matchStage.status;
+
     // Aggregation Pipeline
     const pipeline = [
       // 1. Initial Match (Visibility, Status, Stage, Search on Dynamic Fields)
@@ -816,6 +819,7 @@ router.get("/role-based-candidates", async (req, res) => {
       {
         $facet: {
           candidates: [
+            ...statusMatch,
             { $skip: skip },
             { $limit: limitNum },
 
@@ -830,6 +834,10 @@ router.get("/role-based-candidates", async (req, res) => {
                 selectionDate: 1,
                 expectedJoiningDate: 1,
                 createdAt: 1,
+                updatedAt: 1,
+                candidateId: 1,
+                aiMatchScore: 1,
+                matchScore: 1,
                 resumeUrl: 1,
                 linkedinUrl: 1,
                 portfolioUrl: 1,
@@ -864,7 +872,8 @@ router.get("/role-based-candidates", async (req, res) => {
               }
             }
           ],
-          totalCount: [{ $count: "count" }]
+          totalCount: [...statusMatch, { $count: "count" }],
+          statusCounts: [{ $group: { _id: "$status", count: { $sum: 1 } } }]
         }
       }
     ];
@@ -901,6 +910,10 @@ router.get("/role-based-candidates", async (req, res) => {
       success: true,
       candidates: candidatesWithSignedUrls,
       totalCandidates,
+      statusCounts: {
+        ...Object.fromEntries((result[0].statusCounts || []).map(bucket => [bucket._id || "New", bucket.count])),
+        all: (result[0].statusCounts || []).reduce((total, bucket) => total + bucket.count, 0),
+      },
       totalPages: Math.ceil(totalCandidates / limitNum),
       currentPage: pageNum
     });

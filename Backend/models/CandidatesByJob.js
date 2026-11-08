@@ -17,6 +17,11 @@ const candidateSchema = new mongoose.Schema(
       required: true,
     },
     sourceCreatedAt: { type: Date },
+    lineupApproval: {
+      status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' },
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reviewedAt: Date,
+    },
     contactSource: { type: String, enum: ['Shine', 'Naukri', 'LinkedIn', 'Other'], default: null },
     resumeUrl: String,
     linkedinUrl: String,

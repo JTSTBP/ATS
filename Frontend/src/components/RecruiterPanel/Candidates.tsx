@@ -1,11 +1,10 @@
+import CandidateProfileCard, { CandidateStatusTabs } from '../Common/CandidateProfileCard';
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   Users,
   ChevronLeft,
   ChevronRight,
-  Mail,
-  Phone,
   Upload,
   ChevronDown,
   MessageSquare,
@@ -112,6 +111,7 @@ const SearchableSelect = ({
 
 export default function Candidates() {
   const {
+    statusCounts,
     paginatedCandidates,
     fetchRoleBasedCandidates,
     pagination,
@@ -289,7 +289,7 @@ export default function Candidates() {
 
   return (
     <>
-      <motion.div
+      <motion.div className="admin-candidate-design role-candidate-design"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -314,7 +314,7 @@ export default function Candidates() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+        <div className="candidate-list-shell">
           {/* 🔍 Top Controls */}
           <div className="p-4 sm:p-6 border-b border-gray-100 bg-gray-50/30">
             <div className="space-y-6">
@@ -385,31 +385,7 @@ export default function Candidates() {
               {/* Status Tabs Row (Direct Filtration) */}
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 font-mono">Status Filter</label>
-                <div className="flex items-center gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
-                  {[
-                    "All Status",
-                    "New",
-                    "Shortlisted",
-                    "Interviewed",
-                    "Selected",
-                    "Joined",
-                    "Rejected",
-                    "Dropped",
-                    "Hold",
-                    "Not responding",
-                  ].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setStatusFilter(status)}
-                      className={`px-5 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 whitespace-nowrap ${statusFilter === status
-                        ? "bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200"
-                        : "bg-white text-gray-600 border-gray-100 hover:border-blue-300 hover:text-blue-600 shadow-sm"
-                        }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
+                <CandidateStatusTabs value={statusFilter} onChange={status => { setStatusFilter(status);  }} counts={statusCounts} allValue="All Status" />
               </div>
             </div>
 
@@ -488,7 +464,7 @@ export default function Candidates() {
           </div>
 
           {/* 📊 Candidates Table */}
-          <div className="bg-white overflow-x-auto min-h-[400px]">
+          <div className="candidate-list-content">
             {loading ? (
               <div className="flex justify-center py-24">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -504,86 +480,11 @@ export default function Candidates() {
                 </p>
               </div>
             ) : (
-              <table className="w-full border-collapse">
-                <thead className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Candidate</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Contact</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Client</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Designation</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Upload Date</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Resume</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Status</th>
-                    {statusFilter === "Joined" && (
-                      <>
-                        <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Offer Letter</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Joining Date</th>
-                      </>
-                    )}
-                    {statusFilter === "Selected" && (
-                      <>
-                        <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Selection Date</th>
-                        <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Exp. Join Date</th>
-                      </>
-                    )}
-                    <th className="px-6 py-4 text-left text-sm font-semibold uppercase tracking-wider">Remarks</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 bg-white">
-                  {paginatedCandidates.map((candidate) => {
-                    const dynamicFields = candidate.dynamicFields || {};
-                    const nameKey = Object.keys(dynamicFields).find(k => k.toLowerCase().includes("name")) || Object.keys(dynamicFields)[0];
-                    const nameValue = dynamicFields[nameKey] || "Unknown";
-
-                    const emailKey = Object.keys(dynamicFields).find(k => k.toLowerCase().includes("email"));
-                    const emailValue = (emailKey && dynamicFields[emailKey]) || "--";
-
-                    const phoneKey = Object.keys(dynamicFields).find(k => k.toLowerCase().includes("phone"));
-                    const phoneValue = (phoneKey && dynamicFields[phoneKey]) || "--";
-
-                    const job = (candidate.jobId as any);
-                    const clientName = job?.clientId?.companyName || "N/A";
-
+              <section className="candidate-profile-list" aria-label="Candidate profiles" aria-busy={loading}>{paginatedCandidates.map((candidate) => {
                     return (
-                      <tr
-                        key={candidate._id}
-                        className="hover:bg-slate-50 transition-colors group cursor-pointer"
-                        onClick={() => {
-                          setSelectedCandidate(candidate);
-                          setIsModalOpen(true);
-                        }}
-                      >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-200">
-                              {(nameValue as string).charAt(0).toUpperCase()}
-                            </div>
-                            <span className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">{nameValue}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center text-xs text-slate-600 gap-1.5 font-medium">
-                              <Mail size={14} className="text-slate-400" />
-                              {emailValue}
-                            </div>
-                            <div className="flex items-center text-xs text-slate-600 gap-1.5 font-medium">
-                              <Phone size={14} className="text-slate-400" />
-                              {phoneValue}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-xs text-indigo-500 font-bold uppercase tracking-tight">{clientName}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-semibold text-slate-800">{job?.title || "N/A"}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-slate-600">{candidate.createdAt ? formatDate(candidate.createdAt) : "-"}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {candidate.resumeUrl ? (
+                      <CandidateProfileCard key={candidate._id} candidate={candidate}
+onOpen={() => { setSelectedCandidate(candidate); setIsModalOpen(true); }}
+resume={<>{candidate.resumeUrl ? (
                             <a
                               href={getFilePreviewUrl(candidate.resumeUrl)}
                               target="_blank"
@@ -598,14 +499,12 @@ export default function Candidates() {
                               }}
                             >
                               <Upload size={14} />
-                              {isWordDocument(candidate.resumeUrl) ? 'Download' : 'View'}
+                              {isWordDocument(candidate.resumeUrl) ? 'Download Resume' : 'View Resume'}
                             </a>
                           ) : (
                             <span className="text-slate-300 text-xs font-medium">No Resume</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div
+                          )}</>}
+status={<><div
                             className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border text-center whitespace-nowrap inline-block min-w-[100px] ${candidate.status === "New" ? "bg-blue-50 text-blue-700 border-blue-100" :
                               candidate.status === "Interviewed" ? "bg-purple-50 text-purple-700 border-purple-100" :
                                 candidate.status === "Shortlisted" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
@@ -617,11 +516,25 @@ export default function Candidates() {
                               }`}
                           >
                             {candidate.status || "New"}
-                          </div>
-                        </td>
-                        {statusFilter === "Joined" && (
+                          </div></>}
+actions={<><button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCommentModal({
+                                candidateId: candidate._id as string,
+                                candidateName: (candidate.dynamicFields as any)?.[Object.keys(candidate.dynamicFields || {}).find((k) => k.toLowerCase().includes("name")) || ""] || "Candidate",
+                                comments: (candidate as any).comments || [],
+                              });
+                            }}
+                            className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-orange-500 hover:text-orange-700 transition relative"
+                            title="Add / View Comments"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {(candidate as any).comments?.length > 0 && <span className="absolute -top-1 -right-1 rounded-full bg-orange-500 px-1 text-[9px] text-white">{(candidate as any).comments.length}</span>}
+                          </button></>}
+details={<>{statusFilter === "Joined" && (
                           <>
-                            <td className="px-6 py-4">
+                            <div className="candidate-extra-field" data-label="Offer letter">
                               {(candidate as any).offerLetter ? (
                                 <a
                                   href={getFilePreviewUrl((candidate as any).offerLetter)}
@@ -640,50 +553,25 @@ export default function Candidates() {
                                   {isWordDocument((candidate as any).offerLetter) ? 'Download' : 'View'}
                                 </a>
                               ) : "--"}
-                            </td>
-                            <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                            </div>
+                            <div className="candidate-extra-field" data-label="Joining date">
                               {(candidate as any).joiningDate ? formatDate((candidate as any).joiningDate) : "--"}
-                            </td>
+                            </div>
                           </>
                         )}
-                        {statusFilter === "Selected" && (
+{statusFilter === "Selected" && (
                           <>
-                            <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                            <div className="candidate-extra-field" data-label="Selection date">
                               {(candidate as any).selectionDate ? formatDate((candidate as any).selectionDate) : "--"}
-                            </td>
-                            <td className="px-6 py-4 text-sm font-medium text-slate-700">
+                            </div>
+                            <div className="candidate-extra-field" data-label="Expected joining date">
                               {(candidate as any).expectedJoiningDate ? formatDate((candidate as any).expectedJoiningDate) : "--"}
-                            </td>
+                            </div>
                           </>
-                        )}
-                        <td className="px-6 py-4 max-w-[200px]">
-                          <div className="text-xs text-slate-500 font-medium truncate italic" title={candidate.notes}>
-                            {candidate.notes || "No remarks"}
-                          </div>
-                          {candidate.status === "Rejected" && (candidate as any).rejectionReason && (
-                            <div className="text-[10px] text-red-600 font-bold mt-1 uppercase">Reason: {(candidate as any).rejectionReason}</div>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCommentModal({
-                                candidateId: candidate._id as string,
-                                candidateName: (candidate.dynamicFields as any)?.[Object.keys(candidate.dynamicFields || {}).find((k) => k.toLowerCase().includes("name")) || ""] || "Candidate",
-                                comments: (candidate as any).comments || [],
-                              });
-                            }}
-                            className="mt-1.5 flex items-center gap-1 text-[10px] font-bold text-orange-500 hover:text-orange-700 transition relative"
-                            title="Add / View Comments"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            Comment{(candidate as any).comments?.length > 0 ? ` (${(candidate as any).comments.length})` : ""}
-                          </button>
-                        </td>
-                      </tr>
+                        )}</>}
+/>
                     );
-                  })}
-                </tbody>
-              </table>
+                  })}</section>
             )}
           </div>
 

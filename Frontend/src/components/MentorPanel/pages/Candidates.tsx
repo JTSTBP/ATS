@@ -1,5 +1,7 @@
+import CandidateProfileCard, { CandidateStatusTabs } from '../../Common/CandidateProfileCard';
 import { useState, useEffect, useMemo } from "react";
-import { Plus, X, Search, Users, Mail, Phone, Edit, MessageSquare, Briefcase, Location, Trash2, UserCheck, ChevronLeft, ChevronRight, FileText, Download, Upload } from "lucide-react";
+import LineupApprovals from '../LineupApprovals';
+import { Plus, X, Search, Users, Mail, Phone, Edit, MessageSquare, Briefcase, Trash2, UserCheck, ChevronLeft, ChevronRight, FileText, Download, Upload } from "lucide-react";
 
 import { CandidateForm } from "./CandidatesForm";
 import { StatusUpdateModal } from "../../Common/StatusUpdateModal";
@@ -23,6 +25,7 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
 
 
   const {
+    statusCounts,
     updateStatus,
     paginatedCandidates,
     pagination,
@@ -348,7 +351,8 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
   }
 
   return (
-    <div className="space-y-6">
+    <div className="admin-candidate-design role-candidate-design space-y-5">
+      {user?.designation === 'Mentor' && <LineupApprovals />}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
@@ -536,192 +540,24 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
       </div>
 
       {/* Status Filter Buttons */}
-      <div className="flex gap-2 bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto scrollbar-hide pb-2 sm:pb-4 -mx-4 px-4 sm:mx-0 sm:px-4">
-        {[
-          "all",
-          "New",
-          "Shortlisted",
-          "Interviewed",
-          "Selected",
-          "Joined",
-          "Rejected",
-          "Dropped",
-          "Hold",
-          "Not responding",
-        ].map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border
-              ${statusFilter === status
-                ? "bg-orange-600 text-white border-orange-600 shadow-md shadow-orange-100"
-                : "bg-gray-50 text-gray-500 border-gray-200 hover:border-orange-300 hover:bg-white hover:text-orange-600"
-              }
-            `}
-          >
-            {status === "all" ? "All Status" : status === "Shortlisted" ? "Screen" : status}
-          </button>
-        ))}
-      </div>
+      <CandidateStatusTabs value={statusFilter} onChange={status => { setStatusFilter(status); setCurrentPage(1); }} counts={statusCounts}  />
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="candidate-list-shell">
         <div className="overflow-x-auto">
-          <table className="w-full text-left min-w-[1400px]">
-            <thead>
-              <tr className="bg-gray-50/50 border-b border-gray-100">
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Name
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Identifier
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Contact
-                </th>
-                {statusFilter === "Joined" && (
-                  <>
-                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                      Joining Date
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                      Offer Letter
-                    </th>
-                  </>
-                )}
-
-                {statusFilter === "Selected" && (
-                  <>
-                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                      Selection Date
-                    </th>
-                    <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                      Expected Joining Date
-                    </th>
-                  </>
-                )}
-
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Resume
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Client
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Designation
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Upload Date
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Created By
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Mentor
-                </th>
-
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Status
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                  Remarks
-                </th>
-                <th className="px-6 py-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
-                <tr>
-                    <td colSpan={14} className="px-6 py-8 text-center">
+          <section className="candidate-profile-list" aria-label="Candidate profiles" aria-busy={loading}>{loading ? (
+                <div>
+                    <div className="p-8 text-center">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
                     </div>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ) : (
                 paginatedCandidates.map((candidate: any) => (
-                  <tr key={candidate._id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4 font-semibold text-gray-800">
-                      {candidate.dynamicFields?.candidateName || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{candidate.candidateId || candidate._id}</td>
+                  <CandidateProfileCard key={candidate._id} candidate={candidate}
 
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      <div className="flex items-center mb-1">
-                        <Mail className="w-4 h-4 mr-2" />
-                        {candidate.dynamicFields?.Email || "No Email"}
-                      </div>
-                      <div className="flex items-center">
-                        <Phone className="w-4 h-4 mr-2" />
-                        {candidate.dynamicFields?.Phone || "No Phone"}
-                      </div>
-                    </td>
-
-                    {statusFilter === "Joined" && (
-                      <>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          <div className="flex items-center gap-2">
-                            {candidate.joiningDate ? formatDate(candidate.joiningDate) : "-"}
-                            <button
-                              onClick={() => handleStatusChange(candidate._id || "", "Joined", undefined, candidate.joiningDate)}
-                              className="p-1 hover:bg-gray-100 rounded text-blue-600"
-                              title="Edit Joining Details"
-                            >
-                              <Edit className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {candidate.offerLetter ? (
-                            <a
-                              href={getFilePreviewUrl(candidate.offerLetter)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:underline flex items-center"
-                            >
-                              <Upload className="w-4 h-4 mr-1" /> View
-                            </a>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                      </>
-                    )}
-
-                    {statusFilter === "Selected" && (
-                      <>
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          <div className="flex items-center gap-2">
-                            {candidate.selectionDate ? formatDate(candidate.selectionDate) : "-"}
-                            <button
-                              onClick={() => handleStatusChange(
-                                candidate._id,
-                                "Selected",
-                                undefined,
-                                undefined,
-                                candidate.selectionDate,
-                                candidate.expectedJoiningDate
-                              )}
-                              className="p-1 hover:bg-gray-100 rounded text-blue-600"
-                              title="Edit Selection Details"
-                            >
-                              <Edit className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 text-sm text-gray-700">
-                          {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "-"}
-                        </td>
-                      </>
-                    )}
-
-                    <td className="px-6 py-4">
-                      {candidate.resumeUrl ? (
+resume={<>{candidate.resumeUrl ? (
                         <button
                           onClick={() => {
                             const url = getFilePreviewUrl(candidate.resumeUrl);
@@ -740,33 +576,8 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                         </button>
                       ) : (
                         <span className="text-gray-400 text-sm">No Resume</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                      {candidate.jobId?.clientId?.companyName || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                      {candidate.jobId?.title || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700 whitespace-nowrap">
-                      {candidate.createdAt ? formatDate(candidate.createdAt) : "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      <div>
-                        {candidate.createdBy?.name || "-"}
-                        {candidate.createdBy?.designation && (
-                          <p className="text-[10px] text-gray-400 font-medium">
-                            {candidate.createdBy.designation}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {candidate.createdBy?.reporter?.name || "-"}
-                    </td>
-
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      <select
+                      )}</>}
+status={<><select
                         value={candidate.status || "New"}
                         onChange={(e) => {
                           const newStatus = e.target.value;
@@ -835,41 +646,22 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                             <option value="Not responding">Not responding</option>
                           </>
                         )}
-                      </select>
-                      {candidate.status === "Interviewed" && candidate.interviewStage && (
+                      </select>{candidate.status === "Interviewed" && candidate.interviewStage && (
                         <div className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 text-center uppercase tracking-wider">
                           {candidate.interviewStage}
                         </div>
-                      )}
-                      {candidate.status === "Joined" && candidate.joiningDate && (
+                      )}{candidate.status === "Joined" && candidate.joiningDate && (
                         <p className="text-[10px] text-green-600 mt-1 font-medium">
                           Joined: {formatDate(candidate.joiningDate)}
                         </p>
-                      )}
-                    </td>
-
-                    {/* REMARKS */}
-                    <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px]" title={candidate.notes}>
-                      {candidate.status === "Rejected" && (
-                        <div className="text-xs text-red-600 font-semibold mb-1">
-                          Rejected {candidate.rejectedBy ? `By ${candidate.rejectedBy}` : ""}: {candidate.rejectionReason || "N/A"}
-                        </div>
-                      )}
-                      <div className="truncate text-slate-500">
-                        {candidate.notes || "-"}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4 flex space-x-2">
-                      <button
+                      )}</>}
+actions={<><button
                         onClick={() => handleEdit(candidate)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
                         title="Edit"
                       >
                         <Edit className="w-4 h-4" />
-                      </button>
-
-                      <button
+                      </button><button
                         onClick={() =>
                           setCommentModal({
                             candidateId: candidate._id,
@@ -886,21 +678,74 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
                             {candidate.comments.length}
                           </span>
                         )}
-                      </button>
-
-                      <button
+                      </button><button
                         onClick={() => handleDelete(candidate._id)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
                         title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                      </button></>}
+details={<>{statusFilter === "Joined" && (
+                      <>
+                        <div className="candidate-extra-field" data-label="Joining date">
+                          <div className="flex items-center gap-2">
+                            {candidate.joiningDate ? formatDate(candidate.joiningDate) : "-"}
+                            <button
+                              onClick={() => handleStatusChange(candidate._id || "", "Joined", undefined, candidate.joiningDate)}
+                              className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                              title="Edit Joining Details"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="candidate-extra-field" data-label="Offer letter">
+                          {candidate.offerLetter ? (
+                            <a
+                              href={getFilePreviewUrl(candidate.offerLetter)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline flex items-center"
+                            >
+                              <Upload className="w-4 h-4 mr-1" /> View
+                            </a>
+                          ) : (
+                            "-"
+                          )}
+                        </div>
+                      </>
+                    )}
+{statusFilter === "Selected" && (
+                      <>
+                        <div className="candidate-extra-field" data-label="Selection date">
+                          <div className="flex items-center gap-2">
+                            {candidate.selectionDate ? formatDate(candidate.selectionDate) : "-"}
+                            <button
+                              onClick={() => handleStatusChange(
+                                candidate._id,
+                                "Selected",
+                                undefined,
+                                undefined,
+                                candidate.selectionDate,
+                                candidate.expectedJoiningDate
+                              )}
+                              className="p-1 hover:bg-gray-100 rounded text-blue-600"
+                              title="Edit Selection Details"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="candidate-extra-field" data-label="Expected joining date">
+                          {candidate.expectedJoiningDate ? formatDate(candidate.expectedJoiningDate) : "-"}
+                        </div>
+                      </>
+                    )}<span className="candidate-extra-field" data-label="Candidate ID">{candidate.candidateId || candidate._id}</span></>}
+/>
                 ))
-              )}
-            </tbody>
-          </table>
+              )}</section>
         </div>
 
         {/* Simplified Pagination Controls */}

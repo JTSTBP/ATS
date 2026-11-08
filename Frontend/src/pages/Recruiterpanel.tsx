@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import '../components/RecruiterPanel/Dashboard.css';
 import PanelOutlet from "../components/PanelOutlet";
 import Sidebar from "../components/RecruiterPanel/Sidebar";
 import Navbar from "../components/RecruiterPanel/Navbar";
@@ -33,7 +34,7 @@ export default function MainLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="recruiter-shell min-h-screen">
       <Sidebar
         isOpen={isSidebarOpen}
         toggleSidebar={toggleSidebar}
@@ -46,7 +47,7 @@ export default function MainLayout() {
       >
         <Navbar toggleSidebar={toggleSidebar} />
 
-        <main className="p-6">
+        <main className="p-3 sm:p-5 lg:p-6 min-w-0">
           <PanelOutlet />
         </main>
       </div>

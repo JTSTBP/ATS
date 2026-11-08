@@ -18,13 +18,14 @@ export default function Sidebar({ isOpen, toggleSidebar, menuItems }: SidebarPro
         initial={false}
         animate={{ x: isOpen ? 0 : -280 }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="fixed left-0 top-0 h-full w-64 bg-slate-900 text-white shadow-xl z-40 overflow-y-auto"
+        className="fixed left-0 top-0 h-full w-64 bg-[#f0f0ff] text-slate-900 border-r border-indigo-100 z-40 overflow-y-auto"
       >
-        <div className="flex items-center justify-between p-6 border-b border-slate-700">
-          <h2 className="text-xl font-bold">ATS Portal</h2>
+        <div className="flex items-center justify-between p-5 border-b border-indigo-100">
+          <div><p className="text-[10px] tracking-widest text-emerald-700">● RECRUITMENT OPS</p><h2 className="text-base font-semibold mt-2">Jobs Territory ATS</h2><p className="text-xs text-slate-500 mt-1">Recruiter workspace</p></div>
           <button
             onClick={toggleSidebar}
-            className="lg:hidden text-slate-300 hover:text-white transition-colors"
+            aria-label="Close navigation"
+            className="lg:hidden text-slate-500 hover:text-indigo-700 transition-colors"
           >
             <X size={24} />
           </button>
@@ -38,6 +39,7 @@ export default function Sidebar({ isOpen, toggleSidebar, menuItems }: SidebarPro
                 <li key={item.path}>
                   <NavLink
                     to={item.path}
+                    end={item.path === '/Recruiter'}
                     onMouseEnter={() => preloadPanelRoute(item.path)}
                     onFocus={() => preloadPanelRoute(item.path)}
                     onTouchStart={() => preloadPanelRoute(item.path)}
@@ -50,9 +52,9 @@ export default function Sidebar({ isOpen, toggleSidebar, menuItems }: SidebarPro
                       sessionStorage.removeItem('ats_jobs_currentPage');
                     }}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${isActive
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                      `flex items-center gap-3 px-3 py-2.5 text-[13px] rounded-lg transition-all duration-200 ${isActive
+                        ? "bg-indigo-700 text-white shadow-sm"
+                        : "text-slate-700 hover:bg-indigo-100 hover:text-indigo-900"
                       }`
                     }
                   >

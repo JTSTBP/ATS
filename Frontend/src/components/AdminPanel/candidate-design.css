@@ -212,3 +212,27 @@
  .candidate-card-date { font-size: 12px; }
  .candidate-requirement-id { font-size: 11px; }
 }
+/* Shared role cards use the admin sizing while their controls retain role permissions. */
+.role-candidate-design .candidate-card-resume a {
+ display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px;
+ color: #fff; background: #2563eb; border: 1px solid #2563eb; border-radius: 4px;
+ font-size: 13px; line-height: 18px; font-weight: 500; text-decoration: none; white-space: nowrap;
+}
+.role-candidate-design .candidate-card-resume a:hover { background: #004ac6; }
+.role-candidate-design .candidate-name-open { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; }
+.role-candidate-design .candidate-name-open:hover { color: #004ac6; }
+.role-candidate-design .candidate-extra-details { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.role-candidate-design .candidate-extra-details:empty { display: none; }
+.role-candidate-design .candidate-extra-field { display: flex; align-items: center; gap: 8px; font-size: 13px; overflow-wrap: anywhere; min-width: 0; }
+.role-candidate-design .candidate-extra-field::before { content: attr(data-label) ': '; color: #737686; font-size: 11px; }
+.role-candidate-design > .candidate-status-panel,
+.role-candidate-design .candidate-status-panel { margin: 0 0 16px; padding: 12px 16px; border: 1px solid #c3c6d74d; border-radius: 8px; }
+.role-candidate-design .candidate-status-tabs { border-top: 0; padding-top: 0; }
+.role-candidate-design .candidate-status-tabs button { border: 0; box-shadow: none; }
+.role-candidate-design .candidate-card-status > div > div { min-width: 0; }
+.role-candidate-design .candidate-list-shell { min-width: 0; background: transparent; }
+.role-candidate-design .candidate-list-shell > .overflow-x-auto { overflow: visible; }
+.role-candidate-design .candidate-card-actions > div { display: flex; gap: 4px; }
+.role-candidate-design .candidate-card-actions button { position: relative; }
+.role-candidate-design .candidate-list-content { padding-top: 12px; }
+.role-candidate-design .relative > input[type='text'] { padding-left: 40px; }

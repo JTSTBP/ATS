@@ -1,4 +1,5 @@
 import { Menu, User, LogOut, Bell } from 'lucide-react';
+import logo from '../../images/logo.png';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthProvider';
@@ -192,12 +193,14 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
         <div className="flex items-center gap-3 md:gap-4">
           <button
             onClick={toggleSidebar}
+            aria-label="Toggle navigation"
             className="text-slate-600 hover:text-slate-900 transition-colors"
           >
             <Menu size={24} />
           </button>
+          {user?.designation === 'Recruiter' && <img src={logo} alt="" className="hidden sm:block h-8 w-auto max-w-16 object-contain" />}
           <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-slate-800 truncate">
-            {user?.designation === 'Recruiter' ? 'Recruiter Portal' :
+            {user?.designation === 'Recruiter' ? 'Jobs Territory ATS' :
               user?.designation === 'Manager' ? 'Manager Portal' : user?.designation === 'Admin' ? 'Admin Portal' : user?.designation === "Mentor" ? "Mentor Portal" : 'Finance Portal'}
           </h1>
         </div>

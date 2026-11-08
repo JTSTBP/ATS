@@ -233,6 +233,7 @@ export const CandidateProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (data.success) {
         setPaginatedCandidates(data.candidates);
+        setStatusCounts(data.statusCounts || null);
         setPagination({
           currentPage: data.currentPage,
           totalPages: data.totalPages,

@@ -1,11 +1,10 @@
+import CandidateProfileCard, { CandidateStatusTabs } from '../Common/CandidateProfileCard';
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Plus,
   Edit,
   Trash2,
   Users,
-  Mail,
-  Phone,
   Search,
   Upload,
   ChevronDown,
@@ -14,8 +13,7 @@ import {
   Clock,
   MessageSquare,
 } from "lucide-react";
-import { getFilePreviewUrl, isWordDocument } from "../../utils/imageUtils";
-import { formatDate } from "../../utils/dateUtils";
+import { getFilePreviewUrl } from "../../utils/imageUtils";
 import { CandidateForm } from "../MentorPanel/pages/CandidatesForm";
 import { useCandidateContext } from "../../context/CandidatesProvider";
 import { useJobContext } from "../../context/DataProvider";
@@ -119,6 +117,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
   const navigate = useNavigate();
 
   const {
+    statusCounts,
     updateStatus,
     paginatedCandidates,
     pagination,
@@ -466,13 +465,11 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
   }, [filterReporter, reporterOptions]);
 
   if (showForm) {
-    return (
-      {/* Form rendered conditionally at top level */}
-    );
+    return <CandidateForm isOpen={showForm} onClose={handleCloseForm} candidate={editingCandidate} />;
   }
 
   return (
-    <div className="p-4 md:p-8 bg-slate-50 min-h-screen">
+    <div className="admin-candidate-design role-candidate-design space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">Candidates</h1>
@@ -645,104 +642,34 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         </div>
       </div>
 
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 scroll-smooth">
-        {["all", "New", "Shortlisted", "Interviewed", "Selected", "Joined", "Rejected", "Dropped", "Hold", "Not responding"].map((status) => (
-          <button
-            key={status}
-            onClick={() => { setStatusFilter(status); setCurrentPage(1); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border whitespace-nowrap ${statusFilter === status
-              ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200"
-              : "bg-white text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-              }`}
-          >
-            {status === "all" ? "All Status" : status === "Shortlisted" ? "Screen" : status}
-          </button>
-        ))}
-      </div>
+      <CandidateStatusTabs value={statusFilter} onChange={status => { setStatusFilter(status); setCurrentPage(1); }} counts={statusCounts}  />
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative mb-6 sm:mb-8">
+      <div className="candidate-list-shell relative">
         {loading && (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left min-w-[1200px]">
-            <thead className="bg-slate-50 text-slate-400 font-bold uppercase text-[10px] tracking-widest border-b border-slate-100">
-              <tr>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4">Client</th>
-                <th className="px-6 py-4">Designation</th>
-                <th className="px-6 py-4">Upload Date</th>
-                <th className="px-6 py-4">Recruiter</th>
-                <th className="px-6 py-4">Reporter</th>
-                <th className="px-6 py-4">Resume</th>
-                <th className="px-6 py-4">Status</th>
-                {statusFilter === "Joined" && (
-                  <>
-                    <th className="px-6 py-4">Offer Letter</th>
-                    <th className="px-6 py-4">Joining Date</th>
-                  </>
-                )}
-                {statusFilter === "Selected" && (
-                  <>
-                    <th className="px-6 py-4">Selection Date</th>
-                    <th className="px-6 py-4">Exp. Joining Date</th>
-                  </>
-                )}
-                <th className="px-6 py-4">Remarks</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedCandidates.length > 0 ? (
+          <section className="candidate-profile-list" aria-label="Candidate profiles" aria-busy={loading}>{paginatedCandidates.length > 0 ? (
                 paginatedCandidates.map((candidate: any) => {
                   const dynamicKeys = Object.keys(candidate.dynamicFields || {});
                   const nameKey = dynamicKeys.find(k => k.toLowerCase().includes("name")) || dynamicKeys[0];
-                  const emailKey = dynamicKeys.find(k => k.toLowerCase().includes("email")) || dynamicKeys[1];
-                  const phoneKey = dynamicKeys.find(k => k.toLowerCase().includes("phone")) || dynamicKeys[2];
 
                   return (
-                    <tr key={candidate._id} className="hover:bg-slate-50/80 transition-all group">
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-slate-900">{candidate.dynamicFields[nameKey] || "N/A"}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1 text-xs text-slate-500">
-                          <span className="flex items-center gap-1"><Mail size={12} /> {candidate.dynamicFields[emailKey] || "N/A"}</span>
-                          <span className="flex items-center gap-1"><Phone size={12} /> {candidate.dynamicFields[phoneKey] || "N/A"}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs text-indigo-500 font-medium">{candidate.jobId?.clientId?.companyName || "N/A"}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-semibold text-slate-700">{candidate.jobId?.title || "N/A"}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-slate-600">{candidate.createdAt ? formatDate(candidate.createdAt) : "-"}</span>
-                      </td>
-                      <td className="px-6 py-4 font-medium text-slate-600">
-                        {candidate.createdBy?.name || "N/A"}
-                      </td>
-                      <td className="px-6 py-4 text-slate-400 text-[10px] font-medium">
-                        {candidate.createdBy?.reporter?.name || "-"}
-                      </td>
-                      <td className="px-6 py-4">
-                        {candidate.resumeUrl ? (
+                    <CandidateProfileCard key={candidate._id} candidate={candidate}
+
+resume={<>{candidate.resumeUrl ? (
                           <a
                             href={getFilePreviewUrl(candidate.resumeUrl)}
                             target="_blank"
                             className="p-2 bg-slate-50 text-slate-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 transition-colors flex items-center justify-center w-fit"
                             title="View Resume"
                           >
-                            <FileText size={16} />
+                            <FileText size={16} /> View Resume
                           </a>
-                        ) : <span className="text-slate-300">-</span>}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-2">
+                        ) : <span className="text-slate-300">-</span>}</>}
+status={<><div className="flex flex-col gap-2">
                           <select
                             value={candidate.status || "New"}
                             onChange={(e) => {
@@ -806,76 +733,8 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                               <Clock size={10} /> {candidate.interviewStage}
                             </span>
                           )}
-                        </div>
-                      </td>
-                      {statusFilter === "Joined" && (
-                        <>
-                          <td className="px-6 py-4">
-                            {candidate.offerLetter ? (
-                              <a
-                                href={getFilePreviewUrl(candidate.offerLetter)}
-                                target="_blank"
-                                className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center w-fit"
-                                title="View Offer Letter"
-                              >
-                                <Upload size={16} />
-                              </a>
-                            ) : <span className="text-slate-300">-</span>}
-                          </td>
-                          <td className="px-6 py-4 text-slate-600 font-medium">
-                            <div className="flex items-center gap-2">
-                              {candidate.joiningDate ? (candidate.joiningDate.toString().split('T')[0]) : "-"}
-                              <button
-                                onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
-                                className="p-1 hover:bg-slate-100 rounded text-indigo-600"
-                                title="Edit Joining Details"
-                              >
-                                <Edit size={12} />
-                              </button>
-                            </div>
-                          </td>
-                        </>
-                      )}
-                      {statusFilter === "Selected" && (
-                        <>
-                          <td className="px-6 py-4 text-slate-600 font-medium">
-                            <div className="flex items-center gap-2">
-                              {candidate.selectionDate ? (candidate.selectionDate.toString().split('T')[0]) : "-"}
-                              <button
-                                onClick={() => handleStatusChange(
-                                  candidate._id,
-                                  "Selected",
-                                  undefined,
-                                  undefined,
-                                  candidate.selectionDate,
-                                  candidate.expectedJoiningDate
-                                )}
-                                className="p-1 hover:bg-slate-100 rounded text-indigo-600"
-                                title="Edit Selection Details"
-                              >
-                                <Edit size={12} />
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-600 font-medium">
-                            {candidate.expectedJoiningDate ? (candidate.expectedJoiningDate.toString().split('T')[0]) : "-"}
-                          </td>
-                        </>
-                      )}
-                      <td className="px-6 py-4 text-slate-600">
-                        <div className="max-w-[200px]" title={candidate.notes}>
-                          {candidate.status === "Rejected" && (
-                            <div className="text-[10px] text-red-600 font-bold uppercase mb-0.5">
-                              Rejected {candidate.rejectedBy ? `By ${candidate.rejectedBy}` : ""}: {candidate.rejectionReason || "N/A"}
-                            </div>
-                          )}
-                          <div className="truncate text-slate-500">
-                            {candidate.notes || "-"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        </div></>}
+actions={<><div className="flex justify-end gap-2  transition-opacity">
                           <button onClick={() => handleEdit(candidate)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors" title="Edit"><Edit size={16} /></button>
                           <button
                             onClick={() =>
@@ -896,21 +755,72 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                             )}
                           </button>
                           <button onClick={() => handleDelete(candidate._id)} className="p-2 text-slate-400 hover:text-red-500 transition-colors" title="Delete"><Trash2 size={16} /></button>
-                        </div>
-                      </td>
-                    </tr>
+                        </div></>}
+details={<>{statusFilter === "Joined" && (
+                        <>
+                          <div className="candidate-extra-field" data-label="Offer letter">
+                            {candidate.offerLetter ? (
+                              <a
+                                href={getFilePreviewUrl(candidate.offerLetter)}
+                                target="_blank"
+                                className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors flex items-center justify-center w-fit"
+                                title="View Offer Letter"
+                              >
+                                <Upload size={16} />
+                              </a>
+                            ) : <span className="text-slate-300">-</span>}
+                          </div>
+                          <div className="candidate-extra-field" data-label="Joining date">
+                            <div className="flex items-center gap-2">
+                              {candidate.joiningDate ? (candidate.joiningDate.toString().split('T')[0]) : "-"}
+                              <button
+                                onClick={() => handleStatusChange(candidate._id, "Joined", undefined, candidate.joiningDate)}
+                                className="p-1 hover:bg-slate-100 rounded text-indigo-600"
+                                title="Edit Joining Details"
+                              >
+                                <Edit size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+{statusFilter === "Selected" && (
+                        <>
+                          <div className="candidate-extra-field" data-label="Selection date">
+                            <div className="flex items-center gap-2">
+                              {candidate.selectionDate ? (candidate.selectionDate.toString().split('T')[0]) : "-"}
+                              <button
+                                onClick={() => handleStatusChange(
+                                  candidate._id,
+                                  "Selected",
+                                  undefined,
+                                  undefined,
+                                  candidate.selectionDate,
+                                  candidate.expectedJoiningDate
+                                )}
+                                className="p-1 hover:bg-slate-100 rounded text-indigo-600"
+                                title="Edit Selection Details"
+                              >
+                                <Edit size={12} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="candidate-extra-field" data-label="Expected joining date">
+                            {candidate.expectedJoiningDate ? (candidate.expectedJoiningDate.toString().split('T')[0]) : "-"}
+                          </div>
+                        </>
+                      )}</>}
+/>
                   );
                 })
               ) : (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center">
+                <div>
+                  <div className="p-8 text-center">
                     <Users className="mx-auto text-slate-200 mb-3" size={48} />
                     <p className="text-slate-500 font-medium">No candidates found for the selected filters.</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              )}</section>
         </div>
 
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
