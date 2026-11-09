@@ -77,7 +77,7 @@ export const SessionProvider = ({ children }: { children: ReactNode }) => {
             return;
         }
 
-        const TIMEOUT_DURATION = 10 * 60 * 1000; // 10 minutes
+        const TIMEOUT_DURATION = 20 * 60 * 1000; // 20 minutes
         let logoutTimer: NodeJS.Timeout;
 
         const logoutUser = () => {
