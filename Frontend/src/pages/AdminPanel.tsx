@@ -49,7 +49,7 @@ export default function AdminLayout() {
     { path: "/admin/users", label: "Manage Users", icon: Users, roles: ["Admin"] },
     { path: "/Admin/candidates", label: "Candidates", icon: Users, roles: ["Admin", "Finance"] },
     { path: "/Admin/jobs", label: "Requirements", icon: Briefcase, roles: ["Admin"] },
-    { path: "/Admin/follow-ups", label: "Follow-ups", icon: MessageSquareMore, roles: ["Admin"] },
+    { path: "/Admin/follow-ups", label: "Candidate Sourcing", icon: MessageSquareMore, roles: ["Admin"] },
     { path: "/Admin/clients", label: "Clients", icon: Building2, roles: ["Admin", "Finance"] },
     {
       path: "/Admin/leaveApplications",

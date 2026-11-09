@@ -27,7 +27,7 @@ export default function MainLayout() {
     { path: "/Recruiter", label: "Dashboard", icon: LayoutDashboard },
     { path: "/Recruiter/upload-cv", label: "My Requirements", icon: Briefcase },
     { path: "/Recruiter/candidates", label: "My Candidates", icon: Users },
-    { path: "/Recruiter/follow-ups", label: "Follow-ups", icon: MessageSquareMore },
+    { path: "/Recruiter/follow-ups", label: "Candidate Sourcing", icon: MessageSquareMore },
     { path: "/Recruiter/reports", label: "Reports", icon: FileText },
     { path: "/Recruiter/leave-applications", label: "Leave Applications", icon: Calendar },
     { path: "/Recruiter/talent-database", label: "Talent Database", icon: Database }

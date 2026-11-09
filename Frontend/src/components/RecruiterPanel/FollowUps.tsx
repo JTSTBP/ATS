@@ -618,7 +618,7 @@ export default function FollowUps() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Follow-ups</h1>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Candidate Sourcing</h1>
           <p className="text-sm text-slate-500">Manage candidate calls, email, WhatsApp and scheduled follow-ups.</p>
         </div>
         <button onClick={refreshCurrent} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50">

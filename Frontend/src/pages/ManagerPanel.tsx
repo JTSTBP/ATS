@@ -49,7 +49,7 @@ export default function ManagerPanel() {
     },
     { path: "/Manager/clients", label: "Clients", icon: Building2 },
     { path: "/Manager/reports", label: "Reports", icon: BarChart3 },
-    { path: "/Manager/follow-ups", label: "Follow-ups", icon: MessageSquareMore },
+    { path: "/Manager/follow-ups", label: "Candidate Sourcing", icon: MessageSquareMore },
     { path: "/Manager/talent-database", label: "Talent Database", icon: Database }
   ];
 

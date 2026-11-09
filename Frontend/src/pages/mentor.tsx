@@ -48,7 +48,7 @@ export default function MentorLayout() {
     },
     { path: "/Mentor/clients", label: "Clients", icon: Building2 },
     { path: "/Mentor/reports", label: "Reports", icon: BarChart3 },
-    { path: "/Mentor/follow-ups", label: "Follow-ups", icon: MessageSquareMore },
+    { path: "/Mentor/follow-ups", label: "Candidate Sourcing", icon: MessageSquareMore },
     { path: "/Mentor/activity", label: "Activity Log", icon: Activity },
     { path: "/Mentor/team", label: "Team", icon: Users },
     { path: "/Mentor/talent-database", label: "Talent Database", icon: Database },
