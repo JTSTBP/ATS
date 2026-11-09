@@ -67,7 +67,7 @@ export default function MentorLayout() {
           }`}
       >
         <Navbar toggleSidebar={toggleSidebar} />
-        <main className="p-6">
+        <main className="min-w-0 p-3 sm:p-5 lg:p-6">
           <PanelOutlet />
         </main>
       </div>

@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { X } from "lucide-react";
+import { useAuth } from '../../context/AuthProvider';
 import { preloadPanelRoute } from "../../utils/preloadPanelRoute";
 
 interface SidebarProps {
@@ -12,6 +13,7 @@ interface SidebarProps {
 
 
 export default function Sidebar({ isOpen, toggleSidebar, menuItems }: SidebarProps) {
+  const { user } = useAuth();
   return (
     <>
       <motion.aside
@@ -21,7 +23,7 @@ export default function Sidebar({ isOpen, toggleSidebar, menuItems }: SidebarPro
         className="fixed left-0 top-0 h-full w-64 bg-[#f0f0ff] text-slate-900 border-r border-indigo-100 z-40 overflow-y-auto"
       >
         <div className="flex items-center justify-between p-5 border-b border-indigo-100">
-          <div><p className="text-[10px] tracking-widest text-emerald-700">● RECRUITMENT OPS</p><h2 className="text-base font-semibold mt-2">Jobs Territory ATS</h2><p className="text-xs text-slate-500 mt-1">Recruiter workspace</p></div>
+          <div><p className="text-[10px] tracking-widest text-emerald-700">● RECRUITMENT OPS</p><h2 className="text-base font-semibold mt-2">Jobs Territory ATS</h2><p className="text-xs text-slate-500 mt-1">{user?.designation || 'ATS'} workspace</p></div>
           <button
             onClick={toggleSidebar}
             aria-label="Close navigation"
@@ -39,7 +41,7 @@ export default function Sidebar({ isOpen, toggleSidebar, menuItems }: SidebarPro
                 <li key={item.path}>
                   <NavLink
                     to={item.path}
-                    end={item.path === '/Recruiter'}
+                    end={/^\/(Recruiter|Manager|Mentor|Admin)\/?$/.test(item.path)}
                     onMouseEnter={() => preloadPanelRoute(item.path)}
                     onFocus={() => preloadPanelRoute(item.path)}
                     onTouchStart={() => preloadPanelRoute(item.path)}

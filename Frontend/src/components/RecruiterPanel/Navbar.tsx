@@ -1,5 +1,6 @@
 import { Menu, User, LogOut, Bell } from 'lucide-react';
 import logo from '../../images/logo.png';
+import SupervisorInbox from '../Common/SupervisorInbox';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthProvider';
@@ -190,7 +191,7 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
   return (
     <nav className="bg-white shadow-md border-b border-slate-200">
       <div className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4">
-        <div className="flex items-center gap-3 md:gap-4">
+        <div className="flex min-w-0 flex-1 items-center gap-3 md:gap-4">
           <button
             onClick={toggleSidebar}
             aria-label="Toggle navigation"
@@ -205,7 +206,8 @@ export default function Navbar({ toggleSidebar }: NavbarProps) {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3 relative">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3 relative">
+          <SupervisorInbox key={user?._id} />
           <div className="hidden sm:block text-right">
             <p className="text-sm font-semibold text-slate-700">{user?.name || 'User'}</p>
             <p className="text-xs text-slate-500">{user?.designation || 'Staff'}</p>

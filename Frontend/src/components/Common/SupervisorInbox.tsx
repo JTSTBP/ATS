@@ -1,0 +1,17 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { MessageSquare, X } from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthProvider';
+type Ping = { _id: string; message: string; at: string; readAt?: string; from?: { name?: string } };
+export default function SupervisorInbox() {
+ const { user } = useAuth();
+ const [pings, setPings] = useState<Ping[]>([]), [open, setOpen] = useState(false), [error, setError] = useState(''), [busy, setBusy] = useState('');
+ const currentUser = useRef(user?._id); currentUser.current = user?._id;
+ const api = `${import.meta.env.VITE_BACKEND_URL}/api/team-dashboard/inbox`;
+ const load = useCallback(async (signal?: AbortSignal) => { try { const { data } = await axios.get(api, { signal, timeout: 15000 }); if (!signal?.aborted && currentUser.current === user?._id) { setPings(data.pings || []); setError(''); } } catch { if (!signal?.aborted && currentUser.current === user?._id) setError('Unable to load internal pings.'); } }, [api, user?._id]);
+ useEffect(() => { const controller = new AbortController(); setPings([]); if (user?.designation !== 'Recruiter') return () => controller.abort(); void load(controller.signal); const timer = window.setInterval(() => { if (!document.hidden) void load(controller.signal); }, 30000); return () => { controller.abort(); clearInterval(timer); }; }, [user?._id, user?.designation, load]);
+ if (user?.designation !== 'Recruiter') return null;
+ const unread = pings.filter(p => !p.readAt).length;
+ const read = async (id: string) => { setBusy(id); try { await axios.post(`${api}/${id}/read`); await load(); } catch { setError('Unable to acknowledge ping.'); } finally { setBusy(''); } };
+ return <div className="relative"><button aria-label={`Supervisor pings (${unread} unread)`} aria-expanded={open} onClick={() => { setOpen(!open); if (!open) void load(); }} className="relative flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-indigo-700"><MessageSquare size={18}/>{unread > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-red-600 px-1 text-[10px] text-white">{unread}</span>}</button>{open && <section aria-label="Supervisor inbox" className="fixed right-3 top-16 sm:absolute sm:right-0 sm:top-12 z-50 max-h-96 w-[min(320px,calc(100vw-24px))] overflow-auto rounded-xl border bg-white p-4 shadow-xl"><header className="flex items-center justify-between gap-3"><h2 className="font-semibold text-slate-900">Supervisor pings</h2><button aria-label="Close supervisor inbox" onClick={() => setOpen(false)}><X size={16}/></button></header>{error && <p role="alert" className="mt-3 text-xs text-red-700">{error} <button onClick={() => void load()} className="underline">Retry</button></p>}{!pings.length && !error && <p className="py-5 text-sm text-slate-500">No internal pings.</p>}{pings.map(p => <article key={p._id} className={`mt-3 rounded-lg p-3 text-xs ${p.readAt ? 'bg-slate-50' : 'bg-indigo-50'}`}><strong>{p.from?.name || 'Supervisor'}</strong><p className="my-2 whitespace-pre-wrap break-words text-sm text-slate-700">{p.message}</p><time className="text-slate-500">{new Date(p.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</time><div className="mt-2">{p.readAt ? 'Acknowledged' : <button disabled={!!busy} onClick={() => void read(p._id)} className="min-h-9 font-semibold text-indigo-700">Acknowledge</button>}</div></article>)}</section>}</div>;
+}
