@@ -136,6 +136,44 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
   const [filterJobTitle, setFilterJobTitle] = useState(initialJobTitleFilter);
   const [filterStage, setFilterStage] = useState("all");
   const [filterReporter, setFilterReporter] = useState("all");
+  const [filterRecruiter, setFilterRecruiter] = useState("all");
+  const teamRecruiters = useMemo(() => {
+    if (!user?._id || !Array.isArray(users)) return [];
+
+    const isReportee = (candidateUser: any, parentId: string) => {
+      const reporterId = candidateUser?.reporter?._id || candidateUser?.reporter;
+      const secondaryManagers = Array.isArray(candidateUser?.secondary_managers)
+        ? candidateUser.secondary_managers
+        : [];
+      return (
+        String(reporterId || "") === String(parentId) ||
+        secondaryManagers.some((manager: any) => String(manager?._id || manager) === String(parentId))
+      );
+    };
+
+    const activeUsers = users.filter((candidateUser: any) => !candidateUser.isDisabled);
+
+    if (user.designation === "Manager") {
+      const managerMentors = activeUsers.filter((candidateUser: any) => (
+        candidateUser.designation === "Mentor" && isReportee(candidateUser, user._id)
+      ));
+      const mentorIds = new Set(managerMentors.map((mentor: any) => String(mentor._id)));
+      return activeUsers
+        .filter((candidateUser: any) => (
+          candidateUser.designation === "Recruiter" &&
+          (isReportee(candidateUser, user._id) || Array.from(mentorIds).some((mentorId) => isReportee(candidateUser, mentorId)))
+        ))
+        .sort((a: any, b: any) => String(a.name || "").localeCompare(String(b.name || "")));
+    }
+
+    return activeUsers
+      .filter((candidateUser: any) => (
+        candidateUser.designation === "Recruiter" && isReportee(candidateUser, user._id)
+      ))
+      .sort((a: any, b: any) => String(a.name || "").localeCompare(String(b.name || "")));
+  }, [user?._id, user?.designation, users]);
+
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [joinStartDate, setJoinStartDate] = useState("");
@@ -201,6 +239,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         jobTitle: filterJobTitle,
         stage: filterStage,
         reporterId: filterReporter,
+        recruiterId: filterRecruiter,
         startDate,
         endDate,
         joinStartDate,
@@ -210,7 +249,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
       });
     }, 300);
     return () => clearTimeout(timer);
-  }, [user?._id, user?.designation, currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, filterReporter, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, showForm, fetchRoleBasedCandidates]);
+  }, [user?._id, user?.designation, currentPage, searchTerm, statusFilter, filterClient, filterJobTitle, filterStage, filterReporter, filterRecruiter, startDate, endDate, joinStartDate, joinEndDate, selectStartDate, selectEndDate, showForm, fetchRoleBasedCandidates]);
 
   const handleEdit = (candidate: any) => {
     setEditingCandidate(candidate);
@@ -232,6 +271,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         jobTitle: filterJobTitle,
         stage: filterStage,
         reporterId: filterReporter,
+        recruiterId: filterRecruiter,
         startDate,
         endDate,
         joinStartDate,
@@ -302,6 +342,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         jobTitle: filterJobTitle,
         stage: filterStage,
         reporterId: filterReporter,
+        recruiterId: filterRecruiter,
         startDate,
         endDate,
         joinStartDate,
@@ -363,6 +404,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
         jobTitle: filterJobTitle,
         stage: filterStage,
         reporterId: filterReporter,
+        recruiterId: filterRecruiter,
         startDate,
         endDate,
         joinStartDate,
@@ -464,6 +506,12 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
     }
   }, [filterReporter, reporterOptions]);
 
+  useEffect(() => {
+    if (filterRecruiter !== "all" && !teamRecruiters.some((recruiter: any) => String(recruiter._id) === filterRecruiter)) {
+      setFilterRecruiter("all");
+    }
+  }, [filterRecruiter, teamRecruiters]);
+
   if (showForm) {
     return <CandidateForm isOpen={showForm} onClose={handleCloseForm} candidate={editingCandidate} />;
   }
@@ -538,6 +586,21 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
               placeholder="All Stages"
               disabled={filterJobTitle === "all"}
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="manager-recruiter-filter" className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Recruiter</label>
+            <select
+              id="manager-recruiter-filter"
+              value={filterRecruiter}
+              onChange={(event) => { setFilterRecruiter(event.target.value); setCurrentPage(1); }}
+              className="w-full p-2 border border-gray-300 rounded-lg bg-gray-50 text-sm text-gray-700 focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="all">All Recruiters</option>
+              {teamRecruiters.map((recruiter: any) => (
+                <option key={recruiter._id} value={recruiter._id}>{recruiter.name}</option>
+              ))}
+            </select>
           </div>
 
           <div className="space-y-1.5">
@@ -618,7 +681,7 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
           )}
 
           <div className="flex items-end">
-            {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate || filterClient !== "all" || filterJobTitle !== "all" || filterStage !== "all" || filterReporter !== "all" || searchTerm) ? (
+            {(startDate || endDate || joinStartDate || joinEndDate || selectStartDate || selectEndDate || filterClient !== "all" || filterJobTitle !== "all" || filterStage !== "all" || filterReporter !== "all" || filterRecruiter !== "all" || searchTerm) ? (
               <button
                 onClick={() => {
                   setStartDate("");
@@ -631,6 +694,8 @@ export const ManagerCandidates = ({ initialJobTitleFilter = "all", initialFormOp
                   setFilterJobTitle("all");
                   setFilterStage("all");
                   setFilterReporter("all");
+                  setFilterRecruiter("all");
+                  setCurrentPage(1);
                   setSearchTerm("");
                 }}
                 className="w-full h-[38px] px-4 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-all text-sm font-bold flex items-center justify-center gap-2"

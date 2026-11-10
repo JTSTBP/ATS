@@ -393,8 +393,9 @@ export const CandidatesManager = ({ initialJobTitleFilter = "all", initialFormOp
         {/* Filters Grid Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 items-end">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Recruiter</label>
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1" htmlFor="mentor-recruiter-filter">Recruiter</label>
             <select
+              id="mentor-recruiter-filter"
               value={filterRecruiter}
               onChange={(e) => setFilterRecruiter(e.target.value)}
               className="w-full px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-sm font-semibold text-gray-700"
