@@ -579,6 +579,7 @@ resume={<>{candidate.resumeUrl ? (
                         <span className="text-gray-400 text-sm">No Resume</span>
                       )}</>}
 status={<><select
+                        aria-label="Candidate status"
                         value={candidate.status || "New"}
                         onChange={(e) => {
                           const newStatus = e.target.value;
@@ -641,12 +642,12 @@ status={<><select
                             <option value="Interviewed">Interviewed</option>
                             <option value="Selected">Selected</option>
                             <option value="Joined">Joined</option>
-                            <option value="Rejected">Rejected</option>
                             <option value="Dropped">Dropped</option>
                             <option value="Hold">Hold</option>
                             <option value="Not responding">Not responding</option>
                           </>
                         )}
+                        <option value="Rejected">Rejected</option>
                       </select>{candidate.status === "Interviewed" && candidate.interviewStage && (
                         <div className="mt-2 text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200 text-center uppercase tracking-wider">
                           {candidate.interviewStage}

@@ -736,6 +736,7 @@ resume={<>{candidate.resumeUrl ? (
                         ) : <span className="text-slate-300">-</span>}</>}
 status={<><div className="flex flex-col gap-2">
                           <select
+                            aria-label="Candidate status"
                             value={candidate.status || "New"}
                             onChange={(e) => {
                               const newStatus = e.target.value;
@@ -784,14 +785,12 @@ status={<><div className="flex flex-col gap-2">
                                 <option value="Interviewed">Interviewed</option>
                                 <option value="Selected">Selected</option>
                                 <option value="Joined">Joined</option>
-                                {["Shortlisted", "Interviewed", "Rejected", "Dropped"].includes(candidate.status || "") && (
-                                  <option value="Rejected">Rejected</option>
-                                )}
                                 <option value="Dropped">Dropped</option>
                                 <option value="Hold">Hold</option>
                                 <option value="Not responding">Not responding</option>
                               </>
                             )}
+                            <option value="Rejected">Rejected</option>
                           </select>
                           {candidate.status === "Interviewed" && candidate.interviewStage && (
                             <span className="text-[10px] font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100 flex items-center gap-1">

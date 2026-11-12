@@ -258,6 +258,7 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
 
                         {isRejected && (
                             <div className="mb-4 space-y-4 p-4 bg-red-50 rounded-lg border border-red-100">
+                                <p className="text-sm text-red-800">Confirming rejection deletes any uploaded resume and offer letter for this candidate.</p>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Rejected By <span className="text-red-500">*</span>
@@ -315,10 +316,12 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                         )}
 
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            {isRejected ? "Rejection Notes" : (isDropped ? "Reason for Drop" : "Add a Comment (Optional)")} {(isDropped || isRejected) && <span className="text-red-500">*</span>}
+                            {isRejected ? "Rejection Remarks" : (isDropped ? "Reason for Drop" : "Add a Comment (Optional)")} {(isDropped || isRejected) && <span className="text-red-500">*</span>}
                         </label>
                         <textarea
                             className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all resize-none"
+                            aria-label={isRejected ? "Rejection Remarks" : isDropped ? "Reason for Drop" : "Comment"}
+                            required={isRejected || isDropped}
                             rows={3}
                             placeholder={isRejected ? "Add any details about the rejection..." : (isDropped ? "Please explain why the candidate was dropped..." : "Enter reason or notes for this status change...")}
                             value={comment}
@@ -360,8 +363,8 @@ export const StatusUpdateModal: React.FC<StatusUpdateModalProps> = ({
                                     alert("Please enter a rejection reason");
                                     return;
                                 }
-                                if (isRejected && !comment) {
-                                    alert("Please provide rejection notes");
+                                if (isRejected && !comment.trim()) {
+                                    alert("Please enter rejection remarks");
                                     return;
                                 }
 
